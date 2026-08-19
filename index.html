@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Raumbuchungssystem</title>
+  <style>
+    :root{
+      --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3250;
+      --accent:#4f6ef7;--purple:#7c3aed;--green:#22c55e;--red:#ef4444;
+      --amber:#f59e0b;--text:#e8eaf6;--muted:#8891b4;--r:12px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;}
+    header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;
+      display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+    .logo{display:flex;align-items:center;gap:10px;}
+    .logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--purple));
+      border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+    .logo h1{font-size:17px;font-weight:700;}
+    .logo span{font-size:12px;color:var(--muted);}
+    .date-nav{display:flex;align-items:center;gap:10px;}
+    .date-nav button{background:var(--surface2);border:1px solid var(--border);color:var(--text);
+      padding:7px 13px;border-radius:8px;cursor:pointer;font-size:13px;transition:.15s;}
+    .date-nav button:hover{background:var(--border);}
+    .btn-today{background:var(--accent)!important;border-color:var(--accent)!important;}
+    #current-date{font-size:15px;font-weight:600;min-width:200px;text-align:center;}
+    .wrap{display:grid;grid-template-columns:300px 1fr;gap:20px;padding:20px 28px;max-width:1500px;margin:0 auto;}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:16px;}
+    .card h2{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;}
+
+    /* Räume */
+    .room-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;
+      cursor:pointer;transition:.15s;border:2px solid transparent;margin-bottom:6px;}
+    .room-item:hover{background:var(--surface2);}
+    .room-item.active{background:var(--surface2);border-color:var(--accent);}
+    .room-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+    .room-info{flex:1;min-width:0;}
+    .room-info strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .room-info span{font-size:11px;color:var(--muted);}
+    .cap-badge{font-size:12px;padding:3px 9px;border-radius:12px;font-weight:700;white-space:nowrap;}
+    .cap-free{background:rgba(34,197,94,.15);color:#4ade80;}
+    .cap-partial{background:rgba(245,158,11,.15);color:#fbbf24;}
+    .cap-full{background:rgba(239,68,68,.15);color:#f87171;}
+    .cap-bar-wrap{margin-top:5px;}
+    .cap-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+    .cap-bar-fill{height:100%;border-radius:2px;transition:width .4s ease;}
+
+    /* Formular */
+    .form-grid{display:grid;gap:10px;}
+    label{font-size:12px;color:var(--muted);display:block;margin-bottom:3px;}
+    select,input[type=date],input[type=time]{width:100%;background:var(--surface2);
+      border:1px solid var(--border);color:var(--text);padding:8px 11px;border-radius:8px;
+      font-size:13px;outline:none;transition:.15s;}
+    select:focus,input:focus{border-color:var(--accent);}
+    .time-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .open-end-row{display:flex;align-items:center;gap:8px;padding:6px 0;}
+    .open-end-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;}
+    .open-end-row label{font-size:13px;color:var(--text);margin:0;cursor:pointer;}
+    .btn-book{width:100%;padding:10px;background:linear-gradient(135deg,var(--accent),var(--purple));
+      border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;}
+    .btn-book:hover{opacity:.88;}
+
+    /* Kalender */
+    .legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+    .legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);}
+    .legend-dot{width:11px;height:11px;border-radius:3px;}
+    .cal-wrap{overflow-x:auto;}
+    .calendar{display:grid;gap:1px;background:var(--border);border:1px solid var(--border);
+      border-radius:var(--r);overflow:hidden;min-width:520px;}
+    .cal-header{display:grid;background:var(--surface);}
+    .cal-room-header{background:var(--surface);padding:12px 14px;font-size:12px;font-weight:600;
+      text-align:center;border-left:1px solid var(--border);}
+    .cal-room-header .cap-info{font-size:11px;color:var(--muted);font-weight:400;margin-top:3px;}
+    .cal-body{position:relative;}
+    .cal-row{display:grid;background:var(--bg);}
+    .cal-time{width:60px;padding:0 8px;font-size:11px;color:var(--muted);line-height:48px;
+      text-align:right;border-right:1px solid var(--border);flex-shrink:0;}
+    .cal-cell{height:48px;border-left:1px solid var(--border);position:relative;transition:.1s;}
+    .cal-cell.half{border-top:1px dashed rgba(46,50,80,.6);}
+
+    /* Einzelbuchungs-Block (capacity=1) */
+    .booking-block{position:absolute;left:3px;right:3px;border-radius:6px;padding:3px 7px;
+      font-size:11px;font-weight:600;cursor:pointer;overflow:hidden;z-index:2;transition:.15s;
+      box-shadow:0 2px 6px rgba(0,0,0,.3);}
+    .booking-block:hover{opacity:.82;}
+    .bk-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .bk-time{font-size:10px;opacity:.8;}
+    .bk-badge{font-size:9px;opacity:.9;}
+    .st-booked{background:linear-gradient(135deg,#3b4fd4,#6d28d9);color:#fff;}
+    .st-checked_in{background:linear-gradient(135deg,#15803d,#166534);color:#fff;}
+    .st-completed{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+
+    /* Kapazitäts-Badge pro Slot (capacity>1) */
+    .cap-slot{position:absolute;left:3px;right:3px;border-radius:6px;padding:3px 6px;
+      font-size:11px;font-weight:700;cursor:pointer;z-index:2;display:flex;align-items:center;
+      justify-content:space-between;transition:.15s;overflow:hidden;}
+    .cap-slot:hover{opacity:.85;}
+    .cap-slot .slot-mini-bar{position:absolute;bottom:0;left:0;height:3px;border-radius:0 2px 2px 0;}
+    .cap-slot-free{background:rgba(34,197,94,.22);color:#86efac;border:1px solid rgba(34,197,94,.35);}
+    .cap-slot-partial{background:rgba(245,158,11,.22);color:#fcd34d;border:1px solid rgba(245,158,11,.35);}
+    .cap-slot-full{background:rgba(239,68,68,.22);color:#fca5a5;border:1px solid rgba(239,68,68,.35);}
+
+    .now-line{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:5;pointer-events:none;}
+    .now-line::before{content:'';position:absolute;left:-4px;top:-4px;width:10px;height:10px;
+      background:var(--red);border-radius:50%;}
+
+    /* Modal */
+    .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;
+      align-items:center;justify-content:center;}
+    .modal-bg.open{display:flex;}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;
+      padding:24px;width:400px;max-width:95vw;max-height:85vh;overflow-y:auto;}
+    .modal h3{font-size:16px;margin-bottom:14px;}
+    .modal p{font-size:13px;color:var(--muted);margin-bottom:6px;}
+    .modal p strong{color:var(--text);}
+    .slot-detail-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+      padding:8px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;font-size:13px;}
+    .slot-detail-item .status-tag{font-size:11px;padding:2px 8px;border-radius:10px;}
+    .modal-actions{display:flex;gap:8px;margin-top:18px;}
+    .btn-cancel{flex:1;padding:9px;background:var(--surface2);border:1px solid var(--border);
+      color:var(--text);border-radius:8px;cursor:pointer;font-size:13px;}
+    .btn-danger{flex:1;padding:9px;background:var(--red);border:none;color:#fff;border-radius:8px;
+      cursor:pointer;font-size:13px;font-weight:600;}
+
+    #toast{position:fixed;bottom:22px;right:22px;padding:11px 18px;border-radius:10px;font-size:13px;
+      font-weight:600;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;z-index:999;}
+    #toast.show{opacity:1;transform:translateY(0);}
+    #toast.success{background:var(--green);color:#fff;}
+    #toast.error{background:var(--red);color:#fff;}
+    #toast.info{background:var(--accent);color:#fff;}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🏢</div>
+    <div><h1>Raumbuchungssystem</h1><span id="header-status">Lade...</span></div>
+  </div>
+  <div class="date-nav">
+    <button onclick="changeDay(-1)">← Zurück</button>
+    <div id="current-date"></div>
+    <button onclick="changeDay(1)">Weiter →</button>
+    <button class="btn-today" onclick="goToday()">Heute</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div>
+    <div class="card">
+      <h2>Räume &amp; Live-Belegung</h2>
+      <div id="room-list">Lade...</div>
+    </div>
+    <div class="card">
+      <h2>Neue Buchung</h2>
+      <div class="form-grid">
+        <div><label>Raum</label><select id="f-room"></select></div>
+        <div><label>Nutzer</label><select id="f-user"></select></div>
+        <div><label>Datum</label><input type="date" id="f-date"/></div>
+        <div class="time-row">
+          <div><label>Von</label><input type="time" id="f-start" value="09:00" step="1800"/></div>
+          <div><label>Bis</label><input type="time" id="f-end" value="10:00" step="1800"/></div>
+        </div>
+        <div class="open-end-row">
+          <input type="checkbox" id="f-openend" onchange="toggleOpenEnd()"/>
+          <label for="f-openend">Offenes Ende (Desksharing)</label>
+        </div>
+        <button class="btn-book" onclick="submitBooking()">✓ Buchen</button>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(135deg,#3b4fd4,#6d28d9)"></div>Gebucht</div>
+      <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(135deg,#15803d,#166534)"></div>Eingecheckt</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(34,197,94,.22);border:1px solid rgba(34,197,94,.35)"></div>Plätze frei</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(239,68,68,.22);border:1px solid rgba(239,68,68,.35)"></div>Voll belegt</div>
+      <div class="legend-item" style="margin-left:auto;font-size:11px;">🔄 Auto-Refresh</div>
+    </div>
+    <div class="cal-wrap"><div class="calendar" id="calendar">Lade Kalender...</div></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3 id="m-title">Details</h3>
+    <div id="m-body"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Schließen</button>
+      <button class="btn-danger" id="m-cancel-btn" onclick="confirmCancel()" style="display:none">Stornieren</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  let currentDate = new Date();
+  let rooms = [], users = [], selectedBookingId = null;
+  const H_START = 7, H_END = 20;
+  const COLORS = ['#4f6ef7','#7c3aed','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899'];
+
+  async function init(){
+    setDateLabel();
+    await loadRooms();
+    await loadUsers();
+    await renderCalendar();
+    setInterval(refreshAll, 15000);   // alle 15s Live-Update
+    setInterval(updateNowLine, 30000);
+  }
+
+  function dateStr(d){return d.toISOString().split('T')[0];}
+  function formatDE(d){return d.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});}
+  function setDateLabel(){
+    document.getElementById('current-date').textContent=formatDE(currentDate);
+    document.getElementById('f-date').value=dateStr(currentDate);
+  }
+  function changeDay(d){currentDate.setDate(currentDate.getDate()+d);setDateLabel();renderCalendar();}
+  function goToday(){currentDate=new Date();setDateLabel();renderCalendar();}
+  async function refreshAll(){await loadRooms();await renderCalendar();}
+
+  async function loadRooms(){
+    const res=await fetch('/api/raeume');
+    rooms=await res.json();
+    document.getElementById('room-list').innerHTML=rooms.map((r,i)=>{
+      const {plaetze_belegt:bel,plaetze_frei:frei,plaetze_gesamt:ges}=r;
+      const pct=ges>0?(bel/ges*100):0;
+      const barColor=frei===0?'#ef4444':frei<=Math.ceil(ges/2)?'#f59e0b':'#22c55e';
+      const badgeClass=frei===0?'cap-full':frei<=Math.ceil(ges/2)?'cap-partial':'cap-free';
+      const badgeText=frei===0?'VOLL':`${bel}/${ges}`;
+      return `<div class="room-item" onclick="selectRoom(${r.id})" id="ri-${r.id}">
+        <div class="room-dot" style="background:${COLORS[i%COLORS.length]}"></div>
+        <div class="room-info">
+          <strong>${r.name}</strong>
+          <span>${r.type==='meeting'?'Besprechung':'Desksharing'} · ${ges} Platz${ges>1?'ätze':''}</span>
+          <div class="cap-bar-wrap"><div class="cap-bar">
+            <div class="cap-bar-fill" style="width:${pct}%;background:${barColor}"></div>
+          </div></div>
+        </div>
+        <span class="cap-badge ${badgeClass}">${badgeText}</span>
+      </div>`;
+    }).join('');
+
+    document.getElementById('f-room').innerHTML=rooms.map(r=>
+      `<option value="${r.id}">${r.name} (${r.plaetze_frei}/${r.plaetze_gesamt} frei)</option>`).join('');
+
+    const ges=rooms.reduce((s,r)=>s+r.plaetze_gesamt,0);
+    const frei=rooms.reduce((s,r)=>s+r.plaetze_frei,0);
+    document.getElementById('header-status').textContent=`${rooms.length} Räume · ${frei}/${ges} Plätze frei`;
+  }
+
+  async function loadUsers(){
+    const res=await fetch('/api/nutzer');
+    users=await res.json();
+    document.getElementById('f-user').innerHTML=users.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+  }
+
+  async function loadBookings(date){return await (await fetch(`/api/buchungen?datum=${date}`)).json();}
+  async function loadBelegung(date){return await (await fetch(`/api/belegung?datum=${date}`)).json();}
+
+  async function renderCalendar(){
+    const date=dateStr(currentDate);
+    const [buchungen,belegung]=await Promise.all([loadBookings(date),loadBelegung(date)]);
+    const isToday=date===dateStr(new Date());
+    const cal=document.getElementById('calendar');
+    const cols=`60px ${rooms.map(()=>'1fr').join(' ')}`;
+
+    // Header
+    let html=`<div class="cal-header" style="display:grid;grid-template-columns:${cols}">
+      <div style="width:60px"></div>
+      ${rooms.map((r,i)=>{
+        const {plaetze_belegt:bel,plaetze_frei:frei,plaetze_gesamt:ges}=r;
+        const pct=ges>0?(bel/ges*100):0;
+        const barColor=frei===0?'#ef4444':frei<=Math.ceil(ges/2)?'#f59e0b':'#22c55e';
+        return `<div class="cal-room-header" style="border-top:3px solid ${COLORS[i%COLORS.length]}">
+          ${r.name}
+          <div class="cap-info">${bel}/${ges} belegt
+            <div class="cap-bar" style="margin-top:4px"><div class="cap-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+    // Raster
+    html+=`<div class="cal-body" style="position:relative">`;
+    for(let h=H_START;h<H_END;h++){
+      for(let half=0;half<2;half++){
+        html+=`<div class="cal-row" style="display:grid;grid-template-columns:${cols}">
+          <div class="cal-time">${half===0?String(h).padStart(2,'0')+':00':''}</div>
+          ${rooms.map(()=>`<div class="cal-cell${half?' half':''}"></div>`).join('')}
+        </div>`;
+      }
+    }
+
+    // Overlay: pro Raum entweder Einzelblöcke (Kap 1) oder Kapazitäts-Slots (Kap>1)
+    let overlay='';
+    rooms.forEach((r,ri)=>{
+      const leftCalc=`calc(60px + ${ri} * ((100% - 60px) / ${rooms.length}) + 3px)`;
+      const widthCalc=`calc((100% - 60px) / ${rooms.length} - 6px)`;
+
+      if(r.capacity===1){
+        // Einzelbuchungen als Blöcke
+        buchungen.filter(b=>b.raum_id===r.id).forEach(b=>{
+          const st=new Date(b.start_time.replace(' ','T'));
+          const et=b.end_time?new Date(b.end_time.replace(' ','T')):new Date(st.getTime()+3600000);
+          const sMin=st.getHours()*60+st.getMinutes(), eMin=et.getHours()*60+et.getMinutes();
+          const top=(sMin-H_START*60)/30*48;
+          const height=Math.max((eMin-sMin)/30*48-2,22);
+          const openBadge=b.open_end?'<div class="bk-badge">🔓 offen</div>':'';
+          const walkinBadge=b.source==='walkin'?'<div class="bk-badge">⚡ Walk-In</div>':'';
+          overlay+=`<div class="booking-block st-${b.status}"
+            style="top:${top}px;height:${height}px;left:${leftCalc};width:${widthCalc}"
+            onclick="openBookingModal(${b.id},'${r.name}','${b.nutzer}','${b.start_time}','${b.end_time||''}','${b.status}',${b.open_end})">
+            <div class="bk-name">${b.nutzer}</div>
+            <div class="bk-time">${b.start_time.slice(11,16)}–${b.end_time?b.end_time.slice(11,16):'offen'}</div>
+            ${walkinBadge}${openBadge}
+          </div>`;
+        });
+      } else {
+        // Kapazitäts-Slots als Zähler-Badges
+        const slots=belegung[r.id]||{};
+        Object.entries(slots).forEach(([slotKey,info])=>{
+          const [hh,mm]=slotKey.split(':').map(Number);
+          const top=((hh*60+mm)-H_START*60)/30*48;
+          const {belegt,kapazitaet}=info;
+          const frei=kapazitaet-belegt;
+          const cls=frei===0?'cap-slot-full':frei<=Math.ceil(kapazitaet/2)?'cap-slot-partial':'cap-slot-free';
+          const barColor=frei===0?'#ef4444':frei<=Math.ceil(kapazitaet/2)?'#f59e0b':'#22c55e';
+          const barPct=belegt/kapazitaet*100;
+          overlay+=`<div class="cap-slot ${cls}"
+            style="top:${top+1}px;height:46px;left:${leftCalc};width:${widthCalc}"
+            onclick="openSlotModal(${r.id},'${r.name}','${slotKey}','${dateStr(currentDate)}')">
+            <span>${slotKey}</span>
+            <span>${belegt}/${kapazitaet} belegt</span>
+            <div class="slot-mini-bar" style="width:${barPct}%;background:${barColor}"></div>
+          </div>`;
+        });
+      }
+    });
+
+    html+=`<div style="position:absolute;inset:0;pointer-events:none">
+      <div style="position:relative;width:100%;height:100%;pointer-events:auto">${overlay}</div></div>`;
+
+    if(isToday){
+      const now=new Date();
+      const top=(now.getHours()*60+now.getMinutes()-H_START*60)/30*48;
+      if(top>=0)html+=`<div class="now-line" id="now-line" style="top:${top}px"></div>`;
+    }
+    html+='</div>';
+    cal.innerHTML=html;
+  }
+
+  function updateNowLine(){
+    const l=document.getElementById('now-line');if(!l)return;
+    const now=new Date();
+    l.style.top=`${(now.getHours()*60+now.getMinutes()-H_START*60)/30*48}px`;
+  }
+
+  function toggleOpenEnd(){
+    const cb=document.getElementById('f-openend');
+    const end=document.getElementById('f-end');
+    end.disabled=cb.checked;end.style.opacity=cb.checked?'0.4':'1';
+  }
+
+  async function submitBooking(){
+    const room_id=parseInt(document.getElementById('f-room').value);
+    const user_id=parseInt(document.getElementById('f-user').value);
+    const date=document.getElementById('f-date').value;
+    const start=document.getElementById('f-start').value;
+    const end=document.getElementById('f-end').value;
+    const open_end=document.getElementById('f-openend').checked;
+
+    if(!date||!start){showToast('Bitte Datum und Startzeit ausfüllen.','error');return;}
+    if(!open_end&&!end){showToast('Endzeit angeben oder "Offenes Ende" aktivieren.','error');return;}
+    if(!open_end&&start>=end){showToast('Startzeit muss vor Endzeit liegen.','error');return;}
+
+    try{
+      const res=await fetch('/api/buchen',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({raum_id:room_id,nutzer_id:user_id,start_time:`${date} ${start}`,
+          end_time:open_end?null:`${date} ${end}`,open_end})});
+      const data=await res.json();
+      if(res.ok){showToast(`✓ Buchung #${data.buchung_id} erstellt!`,'success');refreshAll();}
+      else{showToast(data.detail||'Fehler beim Buchen.','error');}
+    }catch(e){showToast('Verbindungsfehler.','error');}
+  }
+
+  function openBookingModal(id,room,user,start,end,status,openEnd){
+    selectedBookingId=id;
+    document.getElementById('m-title').textContent='Buchung';
+    const endText=openEnd&&!end?'offen':(end?end.slice(11,16):'–');
+    const statusLabels={booked:'Gebucht',checked_in:'Eingecheckt',completed:'Abgeschlossen'};
+    document.getElementById('m-body').innerHTML=`
+      <p>Raum: <strong>${room}</strong></p>
+      <p>Nutzer: <strong>${user}</strong></p>
+      <p>Zeit: <strong>${start.slice(11,16)} – ${endText} Uhr</strong></p>
+      <p>Status: <strong>${statusLabels[status]||status}</strong></p>`;
+    const btn=document.getElementById('m-cancel-btn');
+    btn.style.display=status==='booked'?'block':'none';
+    document.getElementById('modal').classList.add('open');
+  }
+
+  async function openSlotModal(roomId,roomName,slot,date){
+    selectedBookingId=null;
+    document.getElementById('m-title').textContent=`${roomName} · ${slot} Uhr`;
+    document.getElementById('m-cancel-btn').style.display='none';
+    // Buchungen für diesen Slot laden
+    const buchungen=await loadBookings(date);
+    const slotDt=`${date} ${slot}:00`;
+    const belegt=buchungen.filter(b=>{
+      if(b.raum_id!==roomId)return false;
+      let s=b.start_time.length===16?b.start_time+':00':b.start_time;
+      let e=b.end_time?(b.end_time.length===16?b.end_time+':00':b.end_time):null;
+      if(s>slotDt)return false;
+      if(e)return e>slotDt;
+      return b.open_end&&!b.checkout_at;
+    });
+    const statusLabels={booked:'Gebucht',checked_in:'Eingecheckt',completed:'Fertig'};
+    const statusColors={booked:'rgba(79,110,247,.25)',checked_in:'rgba(34,197,94,.25)',completed:'rgba(136,145,180,.25)'};
+    let body=`<p style="margin-bottom:10px">${belegt.length} Person${belegt.length!==1?'en':''} in diesem Zeitfenster:</p>`;
+    if(belegt.length===0){body+='<p style="color:var(--muted)">Niemand eingecheckt.</p>';}
+    belegt.forEach(b=>{
+      const src=b.source==='walkin'?' ⚡':'';
+      body+=`<div class="slot-detail-item">
+        <span><strong>${b.nutzer}</strong>${src}<br>
+          <span style="color:var(--muted);font-size:11px">
+            ${b.start_time.slice(11,16)}–${b.end_time?b.end_time.slice(11,16):'offen'}</span></span>
+        <span class="status-tag" style="background:${statusColors[b.status]}">${statusLabels[b.status]||b.status}</span>
+      </div>`;
+    });
+    document.getElementById('m-body').innerHTML=body;
+    document.getElementById('modal').classList.add('open');
+  }
+
+  function closeModal(){document.getElementById('modal').classList.remove('open');selectedBookingId=null;}
+
+  async function confirmCancel(){
+    if(!selectedBookingId)return;
+    try{
+      const res=await fetch('/api/stornieren',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({buchung_id:selectedBookingId})});
+      const data=await res.json();closeModal();
+      if(res.ok){showToast('Buchung storniert.','success');refreshAll();}
+      else{showToast(data.detail||'Fehler.','error');}
+    }catch(e){showToast('Verbindungsfehler.','error');}
+  }
+
+  function selectRoom(id){
+    document.querySelectorAll('.room-item').forEach(el=>el.classList.toggle('active',el.id===`ri-${id}`));
+    document.getElementById('f-room').value=id;
+  }
+
+  function showToast(msg,type='success'){
+    const t=document.getElementById('toast');t.textContent=msg;t.className=`show ${type}`;
+    setTimeout(()=>t.className='',3500);
+  }
+
+  init();
+</script>
+</body>
+</html>
