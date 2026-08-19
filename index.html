@@ -1,195 +1,278 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Raumbuchungssystem</title>
-  <style>
-    :root{
-      --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3250;
-      --accent:#4f6ef7;--purple:#7c3aed;--green:#22c55e;--red:#ef4444;
-      --amber:#f59e0b;--text:#e8eaf6;--muted:#8891b4;--r:12px;
-    }
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;}
-    header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;
-      display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
-    .logo{display:flex;align-items:center;gap:10px;}
-    .logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--purple));
-      border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
-    .logo h1{font-size:17px;font-weight:700;}
-    .logo span{font-size:12px;color:var(--muted);}
-    .date-nav{display:flex;align-items:center;gap:10px;}
-    .date-nav button{background:var(--surface2);border:1px solid var(--border);color:var(--text);
-      padding:7px 13px;border-radius:8px;cursor:pointer;font-size:13px;transition:.15s;}
-    .date-nav button:hover{background:var(--border);}
-    .btn-today{background:var(--accent)!important;border-color:var(--accent)!important;}
-    #current-date{font-size:15px;font-weight:600;min-width:200px;text-align:center;}
-    .wrap{display:grid;grid-template-columns:300px 1fr;gap:20px;padding:20px 28px;max-width:1500px;margin:0 auto;}
-    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:16px;}
-    .card h2{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;}
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Raumbuchungssystem</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3250;
+    --accent:#4f6ef7;--purple:#7c3aed;--green:#22c55e;--red:#ef4444;
+    --amber:#f59e0b;--text:#e8eaf6;--muted:#8891b4;--r:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif}
+  body{background:var(--bg);color:var(--text);min-height:100vh}
 
-    /* Räume */
-    .room-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;
-      cursor:pointer;transition:.15s;border:2px solid transparent;margin-bottom:6px;}
-    .room-item:hover{background:var(--surface2);}
-    .room-item.active{background:var(--surface2);border-color:var(--accent);}
-    .room-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
-    .room-info{flex:1;min-width:0;}
-    .room-info strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .room-info span{font-size:11px;color:var(--muted);}
-    .cap-badge{font-size:12px;padding:3px 9px;border-radius:12px;font-weight:700;white-space:nowrap;}
-    .cap-free{background:rgba(34,197,94,.15);color:#4ade80;}
-    .cap-partial{background:rgba(245,158,11,.15);color:#fbbf24;}
-    .cap-full{background:rgba(239,68,68,.15);color:#f87171;}
-    .cap-bar-wrap{margin-top:5px;}
-    .cap-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
-    .cap-bar-fill{height:100%;border-radius:2px;transition:width .4s ease;}
+  /* ── Login-Screen ── */
+  #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .login-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:360px;
+    box-shadow:0 10px 40px rgba(0,0,0,.4)}
+  .login-logo{width:52px;height:52px;background:linear-gradient(135deg,var(--accent),var(--purple));
+    border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 18px}
+  .login-box h1{text-align:center;font-size:20px;margin-bottom:6px}
+  .login-sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:24px}
+  .login-box label{font-size:12px;color:var(--muted);display:block;margin:12px 0 4px}
+  .login-box input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);
+    padding:10px 12px;border-radius:8px;font-size:14px;outline:none}
+  .login-box input:focus{border-color:var(--accent)}
+  .login-box button{width:100%;background:linear-gradient(135deg,var(--accent),var(--purple));border:none;color:#fff;
+    padding:11px;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;margin-top:18px}
+  .login-box button:hover{opacity:.9}
+  .login-error{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);
+    border-radius:8px;padding:10px 12px;font-size:13px;margin-top:14px;display:none}
+  .login-error.show{display:block}
+  .login-hint{color:var(--muted);font-size:11px;margin-top:14px;text-align:center;line-height:1.6}
+  .login-hint code{background:var(--surface2);padding:2px 6px;border-radius:4px;color:var(--text)}
 
-    /* Formular */
-    .form-grid{display:grid;gap:10px;}
-    label{font-size:12px;color:var(--muted);display:block;margin-bottom:3px;}
-    select,input[type=date],input[type=time]{width:100%;background:var(--surface2);
-      border:1px solid var(--border);color:var(--text);padding:8px 11px;border-radius:8px;
-      font-size:13px;outline:none;transition:.15s;}
-    select:focus,input:focus{border-color:var(--accent);}
-    .time-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-    .open-end-row{display:flex;align-items:center;gap:8px;padding:6px 0;}
-    .open-end-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;}
-    .open-end-row label{font-size:13px;color:var(--text);margin:0;cursor:pointer;}
-    .btn-book{width:100%;padding:10px;background:linear-gradient(135deg,var(--accent),var(--purple));
-      border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;}
-    .btn-book:hover{opacity:.88;}
+  /* ── Konfig-Banner ── */
+  #config-banner{display:none;background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.35);
+    border-radius:10px;padding:14px 18px;font-size:13px;line-height:1.6;max-width:520px;margin-top:16px}
+  #config-banner code{background:var(--surface2);padding:2px 6px;border-radius:4px;color:var(--text)}
 
-    /* Kalender */
-    .legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
-    .legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);}
-    .legend-dot{width:11px;height:11px;border-radius:3px;}
-    .cal-wrap{overflow-x:auto;}
-    .calendar{display:grid;gap:1px;background:var(--border);border:1px solid var(--border);
-      border-radius:var(--r);overflow:hidden;min-width:520px;}
-    .cal-header{display:grid;background:var(--surface);}
-    .cal-room-header{background:var(--surface);padding:12px 14px;font-size:12px;font-weight:600;
-      text-align:center;border-left:1px solid var(--border);}
-    .cal-room-header .cap-info{font-size:11px;color:var(--muted);font-weight:400;margin-top:3px;}
-    .cal-body{position:relative;}
-    .cal-row{display:grid;background:var(--bg);}
-    .cal-time{width:60px;padding:0 8px;font-size:11px;color:var(--muted);line-height:48px;
-      text-align:right;border-right:1px solid var(--border);flex-shrink:0;}
-    .cal-cell{height:48px;border-left:1px solid var(--border);position:relative;transition:.1s;}
-    .cal-cell.half{border-top:1px dashed rgba(46,50,80,.6);}
+  /* ── App ── */
+  #app{display:none;padding:20px 28px;max-width:1500px;margin:0 auto}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+  h1{font-size:20px}
+  .top .sub{color:var(--muted);font-size:12px}
+  button{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 14px;
+    border-radius:8px;cursor:pointer;font-size:13px}
+  button:hover{background:var(--border)}
+  .btn-today{background:var(--accent)!important;border-color:var(--accent)!important}
 
-    /* Einzelbuchungs-Block (capacity=1) */
-    .booking-block{position:absolute;left:3px;right:3px;border-radius:6px;padding:3px 7px;
-      font-size:11px;font-weight:600;cursor:pointer;overflow:hidden;z-index:2;transition:.15s;
-      box-shadow:0 2px 6px rgba(0,0,0,.3);}
-    .booking-block:hover{opacity:.82;}
-    .bk-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .bk-time{font-size:10px;opacity:.8;}
-    .bk-badge{font-size:9px;opacity:.9;}
-    .st-booked{background:linear-gradient(135deg,#3b4fd4,#6d28d9);color:#fff;}
-    .st-checked_in{background:linear-gradient(135deg,#15803d,#166534);color:#fff;}
-    .st-completed{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+  .user-info{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);
+    padding:8px 14px;border-radius:8px;font-size:13px}
+  .user-info .avatar{width:26px;height:26px;background:linear-gradient(135deg,var(--accent),var(--purple));
+    border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
 
-    /* Kapazitäts-Badge pro Slot (capacity>1) */
-    .cap-slot{position:absolute;left:3px;right:3px;border-radius:6px;padding:3px 6px;
-      font-size:11px;font-weight:700;cursor:pointer;z-index:2;display:flex;align-items:center;
-      justify-content:space-between;transition:.15s;overflow:hidden;}
-    .cap-slot:hover{opacity:.85;}
-    .cap-slot .slot-mini-bar{position:absolute;bottom:0;left:0;height:3px;border-radius:0 2px 2px 0;}
-    .cap-slot-free{background:rgba(34,197,94,.22);color:#86efac;border:1px solid rgba(34,197,94,.35);}
-    .cap-slot-partial{background:rgba(245,158,11,.22);color:#fcd34d;border:1px solid rgba(245,158,11,.35);}
-    .cap-slot-full{background:rgba(239,68,68,.22);color:#fca5a5;border:1px solid rgba(239,68,68,.35);}
+  .datenav{display:flex;gap:8px;align-items:center;margin-bottom:16px}
+  #datum{font-size:15px;font-weight:600;min-width:220px;text-align:center}
 
-    .now-line{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:5;pointer-events:none;}
-    .now-line::before{content:'';position:absolute;left:-4px;top:-4px;width:10px;height:10px;
-      background:var(--red);border-radius:50%;}
+  .tabs-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  .view-tabs,.etage-tabs{display:flex;gap:6px;background:var(--surface2);padding:6px;border-radius:10px}
+  .view-tabs button,.etage-tabs button{flex:1;background:transparent;border:none;color:var(--muted);
+    padding:9px 15px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;transition:.15s;white-space:nowrap}
+  .view-tabs button.active,.etage-tabs button.active{background:var(--accent);color:#fff}
 
-    /* Modal */
-    .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;
-      align-items:center;justify-content:center;}
-    .modal-bg.open{display:flex;}
-    .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;
-      padding:24px;width:400px;max-width:95vw;max-height:85vh;overflow-y:auto;}
-    .modal h3{font-size:16px;margin-bottom:14px;}
-    .modal p{font-size:13px;color:var(--muted);margin-bottom:6px;}
-    .modal p strong{color:var(--text);}
-    .slot-detail-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;
-      padding:8px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;font-size:13px;}
-    .slot-detail-item .status-tag{font-size:11px;padding:2px 8px;border-radius:10px;}
-    .modal-actions{display:flex;gap:8px;margin-top:18px;}
-    .btn-cancel{flex:1;padding:9px;background:var(--surface2);border:1px solid var(--border);
-      color:var(--text);border-radius:8px;cursor:pointer;font-size:13px;}
-    .btn-danger{flex:1;padding:9px;background:var(--red);border:none;color:#fff;border-radius:8px;
-      cursor:pointer;font-size:13px;font-weight:600;}
+  .container{display:grid;grid-template-columns:320px 1fr;gap:20px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:16px}
+  .card h2{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+  label{font-size:12px;color:var(--muted);display:block;margin:8px 0 3px}
+  select,input[type=date],input[type=time]{width:100%;background:var(--surface2);border:1px solid var(--border);
+    color:var(--text);padding:8px 10px;border-radius:8px;font-size:13px;outline:none}
+  .zeit-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .btn-book{width:100%;background:linear-gradient(135deg,var(--accent),var(--purple));border:none;color:#fff;
+    padding:10px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;margin-top:12px}
 
-    #toast{position:fixed;bottom:22px;right:22px;padding:11px 18px;border-radius:10px;font-size:13px;
-      font-weight:600;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;z-index:999;}
-    #toast.show{opacity:1;transform:translateY(0);}
-    #toast.success{background:var(--green);color:#fff;}
-    #toast.error{background:var(--red);color:#fff;}
-    #toast.info{background:var(--accent);color:#fff;}
-  </style>
+  /* ── Agenda (v.a. Mobile) ── */
+  #agenda-card{display:none}
+  .agenda-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+  .agenda-row:last-child{border-bottom:none}
+  .agenda-time{color:var(--accent);font-weight:700;min-width:88px}
+  .agenda-raum{color:var(--text);font-weight:600;flex:1}
+  .agenda-nutzer{color:var(--muted)}
+  .agenda-empty{color:var(--muted);font-size:12px;padding:6px 0}
+
+  /* ── Kalender (Liste) ── */
+  .cal-wrap{overflow-x:auto}
+  .cal{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;min-width:700px}
+  .cal-header{display:grid;background:var(--surface2);font-size:11px;font-weight:600}
+  .cal-header div{padding:12px 6px;text-align:center;border-left:1px solid var(--border)}
+  .cal-header div:first-child{border-left:none}
+  .cal-body{position:relative}
+  .cal-row{display:grid;height:48px}
+  .cal-time{padding:0 8px;font-size:11px;color:var(--muted);line-height:48px;text-align:right;border-right:1px solid var(--border)}
+  .cal-cell{border-left:1px solid var(--border);border-top:1px solid var(--surface2);position:relative}
+  .cal-cell.half{border-top:1px dashed rgba(46,50,80,.5)}
+
+  .block{position:absolute;left:2px;right:2px;border-radius:5px;padding:4px 6px;color:#fff;font-size:11px;
+    cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,.3);z-index:2;overflow:hidden}
+  .block.web{background:linear-gradient(135deg,#3b4fd4,#6d28d9)}
+  .block.nfc{background:linear-gradient(135deg,#15803d,#166534)}
+  .block.mine{outline:2px solid var(--amber);outline-offset:-2px}
+  .block .b-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+  .block .b-time,.block .b-src{font-size:9px;opacity:.85}
+
+  .now{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:3;pointer-events:none}
+  .now::before{content:'';position:absolute;left:-4px;top:-4px;width:10px;height:10px;background:var(--red);border-radius:50%}
+
+  #toast{position:fixed;bottom:20px;right:20px;padding:12px 18px;border-radius:10px;color:#fff;font-size:13px;
+    font-weight:600;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;z-index:100}
+  #toast.show{opacity:1;transform:translateY(0)}
+  #toast.success{background:var(--green)}
+  #toast.error{background:var(--red)}
+
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center}
+  .modal-bg.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;width:340px}
+  .modal h3{margin-bottom:12px;font-size:16px}
+  .modal p{color:var(--muted);font-size:13px;margin-bottom:6px}
+  .modal p strong{color:var(--text)}
+  .modal-actions{display:flex;gap:8px;margin-top:16px}
+
+  .live{position:fixed;top:20px;right:20px;background:var(--green);color:#fff;padding:6px 12px;border-radius:6px;
+    font-size:11px;display:flex;align-items:center;gap:6px;z-index:50}
+  .live .dot{width:7px;height:7px;background:#fff;border-radius:50%;animation:pulse 1.5s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* ── Grundriss ── */
+  .plan-wrap{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px}
+  .plan-svg{width:100%;height:auto;display:block}
+  .plan-room{cursor:pointer;transition:.15s}
+  .plan-room:hover .plan-fill{filter:brightness(1.25)}
+  .plan-fill{fill:var(--surface2);stroke:var(--accent);stroke-width:2}
+  .plan-fill.selected{fill:var(--accent);stroke:var(--purple);stroke-width:3}
+  .plan-fill.status-free{fill:var(--surface2);stroke:var(--accent)}
+  .plan-fill.status-partial{fill:#3b3d5c;stroke:var(--purple)}
+  .plan-fill.status-busy{fill:#5c2d3c;stroke:var(--red)}
+  .plan-label{fill:var(--text);font-size:12px;font-weight:700;pointer-events:none;text-anchor:middle}
+  .plan-sub{fill:var(--muted);font-size:9px;pointer-events:none;text-anchor:middle;font-style:italic}
+  .plan-flur{fill:#161923;stroke:var(--border);stroke-width:1;stroke-dasharray:3 3}
+  .plan-flur-label{fill:var(--muted);font-size:11px;text-anchor:middle;font-style:italic}
+  .plan-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--muted)}
+  .plan-legend span{display:flex;align-items:center;gap:6px}
+  .plan-legend .sw{width:14px;height:14px;border-radius:3px;border:1px solid var(--border)}
+
+  /* ── Mobile ── */
+  @media (max-width:720px){
+    #app{padding:14px}
+    .container{grid-template-columns:1fr}
+    #agenda-card{display:block;order:-1}
+    .cal{min-width:520px}
+  }
+</style>
 </head>
 <body>
 
-<header>
-  <div class="logo">
-    <div class="logo-icon">🏢</div>
-    <div><h1>Raumbuchungssystem</h1><span id="header-status">Lade...</span></div>
+<!-- ══════════ LOGIN ══════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">🏢</div>
+    <h1>Raumbuchungssystem</h1>
+    <div class="login-sub">Bitte anmelden</div>
+    <label>Nutzername</label>
+    <input type="text" id="login-name" placeholder="z.B. Dion Müller" autofocus/>
+    <label>Passwort</label>
+    <input type="password" id="login-pw" placeholder="123"/>
+    <button onclick="anmelden()">Anmelden</button>
+    <div class="login-error" id="login-err"></div>
+    <div class="login-hint">Verfügbare Nutzer:<br>
+      Berta Langenhahn · Familienvater Mayer · Dion Müller<br>
+      Luca Guinness · Eric Nicefield<br>
+      Passwort: <code>123</code></div>
+    <div id="config-banner"></div>
   </div>
-  <div class="date-nav">
-    <button onclick="changeDay(-1)">← Zurück</button>
-    <div id="current-date"></div>
-    <button onclick="changeDay(1)">Weiter →</button>
-    <button class="btn-today" onclick="goToday()">Heute</button>
-  </div>
-</header>
+</div>
 
-<div class="wrap">
-  <div>
-    <div class="card">
-      <h2>Räume &amp; Live-Belegung</h2>
-      <div id="room-list">Lade...</div>
+<!-- ══════════ APP ══════════ -->
+<div id="app">
+  <div class="live"><div class="dot"></div>Live</div>
+
+  <div class="top">
+    <div>
+      <h1>🏢 Raumbuchungssystem</h1>
+      <div class="sub">Hausmesse-Präsentation · Fachinformatik Systemintegration</div>
     </div>
-    <div class="card">
-      <h2>Neue Buchung</h2>
-      <div class="form-grid">
-        <div><label>Raum</label><select id="f-room"></select></div>
-        <div><label>Nutzer</label><select id="f-user"></select></div>
-        <div><label>Datum</label><input type="date" id="f-date"/></div>
-        <div class="time-row">
+    <div class="user-info">
+      <div class="avatar" id="avatar">?</div>
+      <div>
+        <div style="font-weight:600" id="user-name">Lade...</div>
+        <div style="color:var(--muted);font-size:11px">eingeloggt</div>
+      </div>
+      <button onclick="abmelden()">Abmelden</button>
+    </div>
+  </div>
+
+  <div class="datenav">
+    <button onclick="tag(-1)">← Zurück</button>
+    <div id="datum"></div>
+    <button onclick="tag(1)">Weiter →</button>
+    <button class="btn-today" onclick="heute()">Heute</button>
+  </div>
+
+  <div class="tabs-row">
+    <div class="view-tabs">
+      <button id="view-cal" class="active" onclick="switchView('cal')">📋 Liste</button>
+      <button id="view-office" onclick="switchView('office')">🗺 Grundriss</button>
+    </div>
+    <div class="etage-tabs">
+      <button id="etage-1" class="active" onclick="switchEtage(1)">Etage 1</button>
+      <button id="etage-2" onclick="switchEtage(2)">Etage 2</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div>
+      <div class="card">
+        <h2>Neue Buchung</h2>
+        <label>Raum</label>
+        <select id="f-raum"></select>
+        <label>Datum</label>
+        <input type="date" id="f-datum"/>
+        <div class="zeit-row">
           <div><label>Von</label><input type="time" id="f-start" value="09:00" step="1800"/></div>
-          <div><label>Bis</label><input type="time" id="f-end" value="10:00" step="1800"/></div>
+          <div><label>Bis</label><input type="time" id="f-ende" value="10:00" step="1800"/></div>
         </div>
-        <div class="open-end-row">
-          <input type="checkbox" id="f-openend" onchange="toggleOpenEnd()"/>
-          <label for="f-openend">Offenes Ende (Desksharing)</label>
-        </div>
-        <button class="btn-book" onclick="submitBooking()">✓ Buchen</button>
+        <button class="btn-book" onclick="buchen()">✓ Buchen</button>
+      </div>
+
+      <div class="card">
+        <h2>Info</h2>
+        <p style="color:var(--muted);font-size:12px;line-height:1.6">
+          <span style="color:var(--purple);font-weight:600">■</span> Web-Buchung<br>
+          <span style="color:#16a34a;font-weight:600">■</span> NFC-Buchung<br>
+          <span style="color:var(--amber);font-weight:600">▭</span> Deine Buchungen<br><br>
+          Meetingräume: 1 Person gleichzeitig · ShareDesks: 2 Personen gleichzeitig.<br><br>
+          <strong style="color:var(--text)">NFC:</strong> Karte am Reader (Besprechungsraum/Konferenzraum) auflegen → automatische 60-Min-Buchung.
+        </p>
+      </div>
+
+      <div class="card" id="agenda-card">
+        <h2>Agenda heute</h2>
+        <div id="agenda-list"><div class="agenda-empty">Lade...</div></div>
       </div>
     </div>
-  </div>
 
-  <div>
-    <div class="legend">
-      <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(135deg,#3b4fd4,#6d28d9)"></div>Gebucht</div>
-      <div class="legend-item"><div class="legend-dot" style="background:linear-gradient(135deg,#15803d,#166534)"></div>Eingecheckt</div>
-      <div class="legend-item"><div class="legend-dot" style="background:rgba(34,197,94,.22);border:1px solid rgba(34,197,94,.35)"></div>Plätze frei</div>
-      <div class="legend-item"><div class="legend-dot" style="background:rgba(239,68,68,.22);border:1px solid rgba(239,68,68,.35)"></div>Voll belegt</div>
-      <div class="legend-item" style="margin-left:auto;font-size:11px;">🔄 Auto-Refresh</div>
+    <div id="main-area">
+      <div id="cal-view" class="cal-wrap">
+        <div class="cal" id="kalender">Lade...</div>
+      </div>
+
+      <div id="office-view" style="display:none">
+        <div class="plan-wrap">
+          <svg class="plan-svg" viewBox="0 0 800 550" id="floorplan"></svg>
+        </div>
+        <div class="plan-legend">
+          <span><span class="sw" style="background:#22263a;border-color:#4f6ef7"></span>frei</span>
+          <span><span class="sw" style="background:#3b3d5c;border-color:#7c3aed"></span>teilweise belegt</span>
+          <span><span class="sw" style="background:#5c2d3c;border-color:#ef4444"></span>voll belegt</span>
+          <span><span class="sw" style="background:#4f6ef7"></span>ausgewählt</span>
+        </div>
+      </div>
     </div>
-    <div class="cal-wrap"><div class="calendar" id="calendar">Lade Kalender...</div></div>
   </div>
 </div>
 
 <div class="modal-bg" id="modal">
   <div class="modal">
-    <h3 id="m-title">Details</h3>
-    <div id="m-body"></div>
+    <h3>Buchung</h3>
+    <p>Raum: <strong id="m-raum"></strong></p>
+    <p>Nutzer: <strong id="m-nutzer"></strong></p>
+    <p>Zeit: <strong id="m-zeit"></strong></p>
+    <p>Quelle: <strong id="m-quelle"></strong></p>
     <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal()">Schließen</button>
-      <button class="btn-danger" id="m-cancel-btn" onclick="confirmCancel()" style="display:none">Stornieren</button>
+      <button onclick="modalClose()" style="flex:1">Schließen</button>
+      <button id="m-delete" onclick="modalDelete()" style="flex:1;background:var(--red);border-color:var(--red);display:none">Löschen</button>
     </div>
   </div>
 </div>
@@ -197,266 +280,380 @@
 <div id="toast"></div>
 
 <script>
-  let currentDate = new Date();
-  let rooms = [], users = [], selectedBookingId = null;
-  const H_START = 7, H_END = 20;
-  const COLORS = ['#4f6ef7','#7c3aed','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899'];
+// ══════════════════════════════════════════════════════════
+// KONFIGURATION — hier Supabase-Zugangsdaten eintragen
+// (Projekteinstellungen → API → Project URL / anon public key)
+// ══════════════════════════════════════════════════════════
+const SUPABASE_URL = 'DEINE-SUPABASE-URL';       // z.B. https://xxxx.supabase.co
+const SUPABASE_ANON_KEY = 'DEIN-ANON-KEY';       // öffentlicher anon key, kein Secret
+const STANDARD_PASSWORT = '123';
+const H_START = 7, H_ENDE = 20;
 
-  async function init(){
-    setDateLabel();
-    await loadRooms();
-    await loadUsers();
-    await renderCalendar();
-    setInterval(refreshAll, 15000);   // alle 15s Live-Update
-    setInterval(updateNowLine, 30000);
+const CONFIGURED = SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20;
+const supa = CONFIGURED ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+// 12 Räume auf 2 Etagen. Meetingräume: Kapazität 1, ShareDesks: Kapazität 2.
+const ROOMS = [
+  {name:'Besprechungsraum', etage:1, kapazitaet:1},
+  {name:'Konferenzraum',    etage:1, kapazitaet:1},
+  {name:'ShareDesk 1',      etage:1, kapazitaet:2},
+  {name:'ShareDesk 2',      etage:1, kapazitaet:2},
+  {name:'ShareDesk 3',      etage:1, kapazitaet:2},
+  {name:'ShareDesk 4',      etage:1, kapazitaet:2},
+  {name:'ShareDesk 5',      etage:1, kapazitaet:2},
+  {name:'ShareDesk 6',      etage:2, kapazitaet:2},
+  {name:'ShareDesk 7',      etage:2, kapazitaet:2},
+  {name:'ShareDesk 8',      etage:2, kapazitaet:2},
+  {name:'ShareDesk 9',      etage:2, kapazitaet:2},
+  {name:'ShareDesk 10',     etage:2, kapazitaet:2},
+];
+
+// Grundriss-Geometrie je Etage (SVG-Koordinaten, wie in raumbuchung.py)
+const FLOORS = {
+  1: {
+    outer:{x:30,y:30,w:740,h:490}, flur:{x:290,y:60,w:220,h:430}, flurLabel:'Flur',
+    rooms:{
+      'Besprechungsraum':{x:60,y:60,w:210,h:200,sub:'8 Plätze',furn:'conf'},
+      'Konferenzraum':   {x:530,y:60,w:210,h:200,sub:'12 Plätze',furn:'conf'},
+      'ShareDesk 1':{x:60,y:280,w:100,h:210,sub:'2 Plätze',furn:'desk-double'},
+      'ShareDesk 2':{x:170,y:280,w:100,h:210,sub:'2 Plätze',furn:'desk-double'},
+      'ShareDesk 3':{x:530,y:280,w:100,h:210,sub:'2 Plätze',furn:'desk-double'},
+      'ShareDesk 4':{x:640,y:280,w:100,h:100,sub:'2 Plätze',furn:'desk-double'},
+      'ShareDesk 5':{x:640,y:390,w:100,h:100,sub:'2 Plätze',furn:'desk-double'},
+    }
+  },
+  2: {
+    outer:{x:30,y:30,w:740,h:490}, flur:{x:290,y:60,w:220,h:430}, flurLabel:'Flur',
+    rooms:{
+      'ShareDesk 6': {x:60,y:60,w:210,h:200,sub:'2 Plätze',furn:'desk-double'},
+      'ShareDesk 7': {x:60,y:280,w:100,h:210,sub:'2 Plätze',furn:'desk-double'},
+      'ShareDesk 8': {x:170,y:280,w:100,h:210,sub:'2 Plätze',furn:'desk-double'},
+      'ShareDesk 9': {x:530,y:60,w:210,h:200,sub:'2 Plätze',furn:'desk-double'},
+      'ShareDesk 10':{x:530,y:280,w:210,h:210,sub:'2 Plätze',furn:'desk-double'},
+    }
   }
+};
 
-  function dateStr(d){return d.toISOString().split('T')[0];}
-  function formatDE(d){return d.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});}
-  function setDateLabel(){
-    document.getElementById('current-date').textContent=formatDE(currentDate);
-    document.getElementById('f-date').value=dateStr(currentDate);
+let aktDatum = new Date();
+let currentUser = null, modalBid = null, modalOwnerId = null;
+let currentEtage = 1, currentView = 'cal';
+let allBookings = [];
+
+function ds(d){ return d.toISOString().split('T')[0]; }
+function deDatum(d){ return d.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}); }
+function setDatum(){
+  document.getElementById('datum').textContent = deDatum(aktDatum);
+  document.getElementById('f-datum').value = ds(aktDatum);
+}
+function tag(n){ aktDatum.setDate(aktDatum.getDate()+n); setDatum(); render(); }
+function heute(){ aktDatum = new Date(); setDatum(); render(); }
+function roomsForEtage(){ return ROOMS.filter(r => r.etage === currentEtage); }
+
+// ── Login / Session (kein Server → localStorage) ──
+async function anmelden(){
+  const name = document.getElementById('login-name').value.trim();
+  const pw = document.getElementById('login-pw').value;
+  const err = document.getElementById('login-err');
+  err.className = 'login-error';
+  if(!name || !pw){ err.textContent = 'Bitte alle Felder ausfüllen.'; err.className = 'login-error show'; return; }
+  if(pw !== STANDARD_PASSWORT){ err.textContent = 'Falsches Passwort'; err.className = 'login-error show'; return; }
+  if(!CONFIGURED){ err.textContent = 'Supabase ist noch nicht konfiguriert.'; err.className = 'login-error show'; return; }
+  const { data, error } = await supa.from('nutzer').select('id,name').ilike('name', name).maybeSingle();
+  if(error || !data){ err.textContent = `Nutzer '${name}' existiert nicht`; err.className = 'login-error show'; return; }
+  currentUser = data;
+  localStorage.setItem('rb_user', JSON.stringify(currentUser));
+  zeigeApp();
+}
+function abmelden(){
+  localStorage.removeItem('rb_user');
+  currentUser = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+function zeigeApp(){
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('user-name').textContent = currentUser.name;
+  document.getElementById('avatar').textContent = currentUser.name.split(' ').map(w=>w[0]).join('').slice(0,2);
+  setDatum();
+  switchEtage(1);
+  render();
+  setInterval(render, 5000);
+}
+
+// ── Räume / Ansicht ──
+function initRaumDropdown(){
+  const raeume = roomsForEtage();
+  const sel = document.getElementById('f-raum');
+  const bisher = sel.value;
+  sel.innerHTML = raeume.map(r => `<option value="${r.name}">${r.name} (${r.kapazitaet} Plätze)</option>`).join('');
+  if(!raeume.some(r => r.name === bisher)) sel.value = raeume[0].name;
+  sel.onchange = drawFloor;
+}
+function switchEtage(nr){
+  currentEtage = nr;
+  document.getElementById('etage-1').classList.toggle('active', nr===1);
+  document.getElementById('etage-2').classList.toggle('active', nr===2);
+  initRaumDropdown();
+  render();
+}
+function switchView(which){
+  currentView = which;
+  document.getElementById('cal-view').style.display = which === 'cal' ? 'block' : 'none';
+  document.getElementById('office-view').style.display = which === 'office' ? 'block' : 'none';
+  document.getElementById('view-cal').classList.toggle('active', which === 'cal');
+  document.getElementById('view-office').classList.toggle('active', which === 'office');
+  if(which === 'office') drawFloor();
+}
+function selectRoomFromPlan(name){
+  document.getElementById('f-raum').value = name;
+  drawFloor();
+  toast('Raum ausgewählt: ' + name, 'success');
+}
+
+// ── Belegungsstatus (kapazitätsbewusst) ──
+function isBookingActive(b){
+  const now = new Date();
+  const nowStr = ds(now) + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  return b.start <= nowStr && b.ende > nowStr;
+}
+function roomStatus(name){
+  const room = ROOMS.find(r => r.name === name);
+  const bs = allBookings.filter(b => b.raum === name);
+  const isToday = ds(aktDatum) === ds(new Date());
+  const relevante = isToday ? bs.filter(isBookingActive) : bs;
+  if(relevante.length === 0) return 'free';
+  return relevante.length >= room.kapazitaet ? 'busy' : 'partial';
+}
+
+// ── Möbel-Zeichenfunktionen ──
+const FURN_TABLE='fill:#2e3250;stroke:#4f6ef7;stroke-width:1';
+const FURN_CHAIR='fill:#161923;stroke:#4f6ef7;stroke-width:0.8';
+const FURN_DESK='fill:#2e3250;stroke:#4f6ef7;stroke-width:1';
+const FURN_MON='fill:#4f6ef7';
+
+function furnConf(r){
+  const tx=r.x+r.w/2-45, ty=r.y+r.h/2-20;
+  let s=`<rect style="${FURN_TABLE}" x="${tx}" y="${ty}" width="90" height="40" rx="4"/>`;
+  for(let i=0;i<4;i++){
+    const cx=tx+15+i*20;
+    s+=`<rect style="${FURN_CHAIR}" x="${cx-7}" y="${ty-11}" width="14" height="8" rx="1"/>`;
+    s+=`<rect style="${FURN_CHAIR}" x="${cx-7}" y="${ty+43}" width="14" height="8" rx="1"/>`;
   }
-  function changeDay(d){currentDate.setDate(currentDate.getDate()+d);setDateLabel();renderCalendar();}
-  function goToday(){currentDate=new Date();setDateLabel();renderCalendar();}
-  async function refreshAll(){await loadRooms();await renderCalendar();}
+  return s;
+}
+function furnDeskSingle(cx, cy){
+  const dw=54, dh=26;
+  const dx=cx-dw/2, dy=cy-dh/2;
+  let s=`<rect style="${FURN_DESK}" x="${dx}" y="${dy}" width="${dw}" height="${dh}" rx="3"/>`;
+  s+=`<rect style="${FURN_MON}" x="${dx+dw/2-7}" y="${dy+3}" width="14" height="8" rx="1"/>`;
+  s+=`<rect style="${FURN_CHAIR}" x="${dx+dw/2-7}" y="${dy+dh+3}" width="14" height="8" rx="1"/>`;
+  return s;
+}
+function furnDeskDouble(r){
+  const midY = r.y + r.h/2;
+  if(r.w >= r.h){
+    return furnDeskSingle(r.x+r.w*0.28, midY) + furnDeskSingle(r.x+r.w*0.72, midY);
+  }
+  return furnDeskSingle(r.x+r.w/2, r.y+r.h*0.32) + furnDeskSingle(r.x+r.w/2, r.y+r.h*0.72);
+}
 
-  async function loadRooms(){
-    const res=await fetch('/api/raeume');
-    rooms=await res.json();
-    document.getElementById('room-list').innerHTML=rooms.map((r,i)=>{
-      const {plaetze_belegt:bel,plaetze_frei:frei,plaetze_gesamt:ges}=r;
-      const pct=ges>0?(bel/ges*100):0;
-      const barColor=frei===0?'#ef4444':frei<=Math.ceil(ges/2)?'#f59e0b':'#22c55e';
-      const badgeClass=frei===0?'cap-full':frei<=Math.ceil(ges/2)?'cap-partial':'cap-free';
-      const badgeText=frei===0?'VOLL':`${bel}/${ges}`;
-      return `<div class="room-item" onclick="selectRoom(${r.id})" id="ri-${r.id}">
-        <div class="room-dot" style="background:${COLORS[i%COLORS.length]}"></div>
-        <div class="room-info">
-          <strong>${r.name}</strong>
-          <span>${r.type==='meeting'?'Besprechung':'Desksharing'} · ${ges} Platz${ges>1?'ätze':''}</span>
-          <div class="cap-bar-wrap"><div class="cap-bar">
-            <div class="cap-bar-fill" style="width:${pct}%;background:${barColor}"></div>
-          </div></div>
-        </div>
-        <span class="cap-badge ${badgeClass}">${badgeText}</span>
+function drawFloor(){
+  const svg = document.getElementById('floorplan');
+  if(!svg) return;
+  const floor = FLOORS[currentEtage];
+  const selected = document.getElementById('f-raum').value;
+  const outer = floor.outer;
+  let s = '';
+  s += `<rect fill="#fff" stroke="#333" stroke-width="4" x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}"/>`;
+  s += `<rect class="plan-flur" x="${floor.flur.x}" y="${floor.flur.y}" width="${floor.flur.w}" height="${floor.flur.h}"/>`;
+  s += `<text class="plan-flur-label" x="${floor.flur.x+floor.flur.w/2}" y="${floor.flur.y+floor.flur.h/2}">${floor.flurLabel}</text>`;
+
+  Object.entries(floor.rooms).forEach(([name, r]) => {
+    const status = roomStatus(name);
+    const isSelected = name === selected;
+    const cls = isSelected ? 'selected' : `status-${status}`;
+    s += `<g class="plan-room" onclick="selectRoomFromPlan('${name}')">`;
+    s += `<rect class="plan-fill ${cls}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`;
+    if(r.furn === 'conf') s += furnConf(r);
+    else if(r.furn === 'desk-double') s += furnDeskDouble(r);
+    s += `<text class="plan-label" x="${r.x+r.w/2}" y="${r.y+12}">${name}</text>`;
+    s += `<text class="plan-sub" x="${r.x+r.w/2}" y="${r.y+r.h-4}">${r.sub}</text>`;
+    s += `</g>`;
+  });
+  svg.innerHTML = s;
+}
+
+// ── Daten laden (Supabase) ──
+async function ladeBuchungen(datum){
+  if(!CONFIGURED) return [];
+  const { data, error } = await supa.from('buchungen')
+    .select('*, nutzer:nutzer_id(name)')
+    .like('start', datum + '%')
+    .order('start');
+  if(error){ console.error(error); toast('Fehler beim Laden: ' + error.message, 'error'); return []; }
+  return data.map(b => ({...b, name: b.nutzer ? b.nutzer.name : '?'}));
+}
+
+async function pruefeKapazitaet(raum, start, ende){
+  const room = ROOMS.find(r => r.name === raum);
+  const { data, error } = await supa.from('buchungen')
+    .select('id')
+    .eq('raum', raum)
+    .lt('start', ende)
+    .gt('ende', start);
+  if(error) return { ok:false, msg:'Fehler bei Kapazitätsprüfung: ' + error.message };
+  if(data.length >= room.kapazitaet){
+    return { ok:false, msg:`Raum ausgebucht (${data.length}/${room.kapazitaet} belegt)` };
+  }
+  return { ok:true };
+}
+
+// ── Rendern ──
+async function render(){
+  if(!CONFIGURED){
+    document.getElementById('kalender').innerHTML = '<div style="padding:20px;color:var(--muted)">Supabase noch nicht konfiguriert.</div>';
+    return;
+  }
+  const datum = ds(aktDatum);
+  const buchungen = await ladeBuchungen(datum);
+  allBookings = buchungen;
+  renderAgenda(buchungen);
+  drawFloor();
+
+  const raeume = roomsForEtage();
+  const heuteFlag = datum === ds(new Date());
+  const cols = `60px repeat(${raeume.length}, 1fr)`;
+
+  let html = `<div class="cal-header" style="display:grid;grid-template-columns:${cols}">
+    <div></div>
+    ${raeume.map(r => `<div>${r.name}</div>`).join('')}
+  </div><div class="cal-body">`;
+
+  for(let h = H_START; h < H_ENDE; h++){
+    for(let half = 0; half < 2; half++){
+      html += `<div class="cal-row" style="display:grid;grid-template-columns:${cols}">
+        <div class="cal-time">${half===0 ? String(h).padStart(2,'0')+':00' : ''}</div>
+        ${raeume.map(() => `<div class="cal-cell${half?' half':''}"></div>`).join('')}
       </div>`;
-    }).join('');
-
-    document.getElementById('f-room').innerHTML=rooms.map(r=>
-      `<option value="${r.id}">${r.name} (${r.plaetze_frei}/${r.plaetze_gesamt} frei)</option>`).join('');
-
-    const ges=rooms.reduce((s,r)=>s+r.plaetze_gesamt,0);
-    const frei=rooms.reduce((s,r)=>s+r.plaetze_frei,0);
-    document.getElementById('header-status').textContent=`${rooms.length} Räume · ${frei}/${ges} Plätze frei`;
+    }
   }
 
-  async function loadUsers(){
-    const res=await fetch('/api/nutzer');
-    users=await res.json();
-    document.getElementById('f-user').innerHTML=users.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
-  }
-
-  async function loadBookings(date){return await (await fetch(`/api/buchungen?datum=${date}`)).json();}
-  async function loadBelegung(date){return await (await fetch(`/api/belegung?datum=${date}`)).json();}
-
-  async function renderCalendar(){
-    const date=dateStr(currentDate);
-    const [buchungen,belegung]=await Promise.all([loadBookings(date),loadBelegung(date)]);
-    const isToday=date===dateStr(new Date());
-    const cal=document.getElementById('calendar');
-    const cols=`60px ${rooms.map(()=>'1fr').join(' ')}`;
-
-    // Header
-    let html=`<div class="cal-header" style="display:grid;grid-template-columns:${cols}">
-      <div style="width:60px"></div>
-      ${rooms.map((r,i)=>{
-        const {plaetze_belegt:bel,plaetze_frei:frei,plaetze_gesamt:ges}=r;
-        const pct=ges>0?(bel/ges*100):0;
-        const barColor=frei===0?'#ef4444':frei<=Math.ceil(ges/2)?'#f59e0b':'#22c55e';
-        return `<div class="cal-room-header" style="border-top:3px solid ${COLORS[i%COLORS.length]}">
-          ${r.name}
-          <div class="cap-info">${bel}/${ges} belegt
-            <div class="cap-bar" style="margin-top:4px"><div class="cap-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
-          </div>
-        </div>`;
-      }).join('')}
+  html += `<div style="position:absolute;inset:0;pointer-events:none"><div style="position:relative;width:100%;height:100%;pointer-events:auto">`;
+  buchungen.forEach(b => {
+    const ri = raeume.findIndex(r => r.name === b.raum);
+    if(ri === -1) return;
+    const st = new Date(b.start.replace(' ','T'));
+    const et = new Date(b.ende.replace(' ','T'));
+    const sMin = st.getHours()*60 + st.getMinutes();
+    const eMin = et.getHours()*60 + et.getMinutes();
+    const top = (sMin - H_START*60) / 30 * 48;
+    const height = Math.max((eMin - sMin) / 30 * 48 - 2, 22);
+    const src = b.quelle === 'nfc' ? 'nfc' : 'web';
+    const srcLabel = b.quelle === 'nfc' ? '📡 NFC' : '🖥 Web';
+    const mine = currentUser && b.nutzer_id === currentUser.id ? ' mine' : '';
+    html += `<div class="block ${src}${mine}"
+      style="top:${top}px;height:${height}px;
+        left:calc(60px + ${ri} * ((100% - 60px) / ${raeume.length}) + 2px);
+        width:calc((100% - 60px) / ${raeume.length} - 4px)"
+      onclick="modalOpen(${b.id},${b.nutzer_id},'${b.raum}','${b.name}','${b.start}','${b.ende}','${b.quelle}')">
+      <div class="b-name">${b.name}</div>
+      <div class="b-time">${b.start.slice(11,16)}–${b.ende.slice(11,16)}</div>
+      <div class="b-src">${srcLabel}</div>
     </div>`;
+  });
+  html += `</div></div>`;
 
-    // Raster
-    html+=`<div class="cal-body" style="position:relative">`;
-    for(let h=H_START;h<H_END;h++){
-      for(let half=0;half<2;half++){
-        html+=`<div class="cal-row" style="display:grid;grid-template-columns:${cols}">
-          <div class="cal-time">${half===0?String(h).padStart(2,'0')+':00':''}</div>
-          ${rooms.map(()=>`<div class="cal-cell${half?' half':''}"></div>`).join('')}
-        </div>`;
-      }
-    }
-
-    // Overlay: pro Raum entweder Einzelblöcke (Kap 1) oder Kapazitäts-Slots (Kap>1)
-    let overlay='';
-    rooms.forEach((r,ri)=>{
-      const leftCalc=`calc(60px + ${ri} * ((100% - 60px) / ${rooms.length}) + 3px)`;
-      const widthCalc=`calc((100% - 60px) / ${rooms.length} - 6px)`;
-
-      if(r.capacity===1){
-        // Einzelbuchungen als Blöcke
-        buchungen.filter(b=>b.raum_id===r.id).forEach(b=>{
-          const st=new Date(b.start_time.replace(' ','T'));
-          const et=b.end_time?new Date(b.end_time.replace(' ','T')):new Date(st.getTime()+3600000);
-          const sMin=st.getHours()*60+st.getMinutes(), eMin=et.getHours()*60+et.getMinutes();
-          const top=(sMin-H_START*60)/30*48;
-          const height=Math.max((eMin-sMin)/30*48-2,22);
-          const openBadge=b.open_end?'<div class="bk-badge">🔓 offen</div>':'';
-          const walkinBadge=b.source==='walkin'?'<div class="bk-badge">⚡ Walk-In</div>':'';
-          overlay+=`<div class="booking-block st-${b.status}"
-            style="top:${top}px;height:${height}px;left:${leftCalc};width:${widthCalc}"
-            onclick="openBookingModal(${b.id},'${r.name}','${b.nutzer}','${b.start_time}','${b.end_time||''}','${b.status}',${b.open_end})">
-            <div class="bk-name">${b.nutzer}</div>
-            <div class="bk-time">${b.start_time.slice(11,16)}–${b.end_time?b.end_time.slice(11,16):'offen'}</div>
-            ${walkinBadge}${openBadge}
-          </div>`;
-        });
-      } else {
-        // Kapazitäts-Slots als Zähler-Badges
-        const slots=belegung[r.id]||{};
-        Object.entries(slots).forEach(([slotKey,info])=>{
-          const [hh,mm]=slotKey.split(':').map(Number);
-          const top=((hh*60+mm)-H_START*60)/30*48;
-          const {belegt,kapazitaet}=info;
-          const frei=kapazitaet-belegt;
-          const cls=frei===0?'cap-slot-full':frei<=Math.ceil(kapazitaet/2)?'cap-slot-partial':'cap-slot-free';
-          const barColor=frei===0?'#ef4444':frei<=Math.ceil(kapazitaet/2)?'#f59e0b':'#22c55e';
-          const barPct=belegt/kapazitaet*100;
-          overlay+=`<div class="cap-slot ${cls}"
-            style="top:${top+1}px;height:46px;left:${leftCalc};width:${widthCalc}"
-            onclick="openSlotModal(${r.id},'${r.name}','${slotKey}','${dateStr(currentDate)}')">
-            <span>${slotKey}</span>
-            <span>${belegt}/${kapazitaet} belegt</span>
-            <div class="slot-mini-bar" style="width:${barPct}%;background:${barColor}"></div>
-          </div>`;
-        });
-      }
-    });
-
-    html+=`<div style="position:absolute;inset:0;pointer-events:none">
-      <div style="position:relative;width:100%;height:100%;pointer-events:auto">${overlay}</div></div>`;
-
-    if(isToday){
-      const now=new Date();
-      const top=(now.getHours()*60+now.getMinutes()-H_START*60)/30*48;
-      if(top>=0)html+=`<div class="now-line" id="now-line" style="top:${top}px"></div>`;
-    }
-    html+='</div>';
-    cal.innerHTML=html;
+  if(heuteFlag){
+    const now = new Date();
+    const top = (now.getHours()*60 + now.getMinutes() - H_START*60) / 30 * 48;
+    if(top >= 0 && top <= (H_ENDE-H_START)*96) html += `<div class="now" style="top:${top}px"></div>`;
   }
+  html += `</div>`;
+  document.getElementById('kalender').innerHTML = html;
+}
 
-  function updateNowLine(){
-    const l=document.getElementById('now-line');if(!l)return;
-    const now=new Date();
-    l.style.top=`${(now.getHours()*60+now.getMinutes()-H_START*60)/30*48}px`;
-  }
+function renderAgenda(buchungen){
+  const list = document.getElementById('agenda-list');
+  if(buchungen.length === 0){ list.innerHTML = '<div class="agenda-empty">Keine Buchungen an diesem Tag.</div>'; return; }
+  const sorted = [...buchungen].sort((a,b) => a.start.localeCompare(b.start));
+  list.innerHTML = sorted.map(b => `
+    <div class="agenda-row">
+      <span class="agenda-time">${b.start.slice(11,16)}–${b.ende.slice(11,16)}</span>
+      <span class="agenda-raum">${b.raum}</span>
+      <span class="agenda-nutzer">${b.name}${b.quelle === 'nfc' ? ' · 📡' : ''}</span>
+    </div>`).join('');
+}
 
-  function toggleOpenEnd(){
-    const cb=document.getElementById('f-openend');
-    const end=document.getElementById('f-end');
-    end.disabled=cb.checked;end.style.opacity=cb.checked?'0.4':'1';
-  }
+// ── Buchen / Löschen ──
+async function buchen(){
+  const raum = document.getElementById('f-raum').value;
+  const datum = document.getElementById('f-datum').value;
+  const start = document.getElementById('f-start').value;
+  const ende = document.getElementById('f-ende').value;
 
-  async function submitBooking(){
-    const room_id=parseInt(document.getElementById('f-room').value);
-    const user_id=parseInt(document.getElementById('f-user').value);
-    const date=document.getElementById('f-date').value;
-    const start=document.getElementById('f-start').value;
-    const end=document.getElementById('f-end').value;
-    const open_end=document.getElementById('f-openend').checked;
+  if(!datum || !start || !ende){ toast('Bitte alle Felder ausfüllen.', 'error'); return; }
+  if(start >= ende){ toast('Startzeit muss vor Endzeit liegen.', 'error'); return; }
 
-    if(!date||!start){showToast('Bitte Datum und Startzeit ausfüllen.','error');return;}
-    if(!open_end&&!end){showToast('Endzeit angeben oder "Offenes Ende" aktivieren.','error');return;}
-    if(!open_end&&start>=end){showToast('Startzeit muss vor Endzeit liegen.','error');return;}
+  const startVoll = datum + ' ' + start;
+  const endeVoll = datum + ' ' + ende;
 
-    try{
-      const res=await fetch('/api/buchen',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({raum_id:room_id,nutzer_id:user_id,start_time:`${date} ${start}`,
-          end_time:open_end?null:`${date} ${end}`,open_end})});
-      const data=await res.json();
-      if(res.ok){showToast(`✓ Buchung #${data.buchung_id} erstellt!`,'success');refreshAll();}
-      else{showToast(data.detail||'Fehler beim Buchen.','error');}
-    }catch(e){showToast('Verbindungsfehler.','error');}
-  }
+  const kap = await pruefeKapazitaet(raum, startVoll, endeVoll);
+  if(!kap.ok){ toast('✗ ' + kap.msg, 'error'); return; }
 
-  function openBookingModal(id,room,user,start,end,status,openEnd){
-    selectedBookingId=id;
-    document.getElementById('m-title').textContent='Buchung';
-    const endText=openEnd&&!end?'offen':(end?end.slice(11,16):'–');
-    const statusLabels={booked:'Gebucht',checked_in:'Eingecheckt',completed:'Abgeschlossen'};
-    document.getElementById('m-body').innerHTML=`
-      <p>Raum: <strong>${room}</strong></p>
-      <p>Nutzer: <strong>${user}</strong></p>
-      <p>Zeit: <strong>${start.slice(11,16)} – ${endText} Uhr</strong></p>
-      <p>Status: <strong>${statusLabels[status]||status}</strong></p>`;
-    const btn=document.getElementById('m-cancel-btn');
-    btn.style.display=status==='booked'?'block':'none';
-    document.getElementById('modal').classList.add('open');
-  }
+  const { error } = await supa.from('buchungen').insert({
+    raum, nutzer_id: currentUser.id, start: startVoll, ende: endeVoll, quelle: 'web'
+  });
+  if(error){ toast('✗ Fehler: ' + error.message, 'error'); return; }
+  toast('✓ Buchung erstellt', 'success');
+  render();
+}
 
-  async function openSlotModal(roomId,roomName,slot,date){
-    selectedBookingId=null;
-    document.getElementById('m-title').textContent=`${roomName} · ${slot} Uhr`;
-    document.getElementById('m-cancel-btn').style.display='none';
-    // Buchungen für diesen Slot laden
-    const buchungen=await loadBookings(date);
-    const slotDt=`${date} ${slot}:00`;
-    const belegt=buchungen.filter(b=>{
-      if(b.raum_id!==roomId)return false;
-      let s=b.start_time.length===16?b.start_time+':00':b.start_time;
-      let e=b.end_time?(b.end_time.length===16?b.end_time+':00':b.end_time):null;
-      if(s>slotDt)return false;
-      if(e)return e>slotDt;
-      return b.open_end&&!b.checkout_at;
-    });
-    const statusLabels={booked:'Gebucht',checked_in:'Eingecheckt',completed:'Fertig'};
-    const statusColors={booked:'rgba(79,110,247,.25)',checked_in:'rgba(34,197,94,.25)',completed:'rgba(136,145,180,.25)'};
-    let body=`<p style="margin-bottom:10px">${belegt.length} Person${belegt.length!==1?'en':''} in diesem Zeitfenster:</p>`;
-    if(belegt.length===0){body+='<p style="color:var(--muted)">Niemand eingecheckt.</p>';}
-    belegt.forEach(b=>{
-      const src=b.source==='walkin'?' ⚡':'';
-      body+=`<div class="slot-detail-item">
-        <span><strong>${b.nutzer}</strong>${src}<br>
-          <span style="color:var(--muted);font-size:11px">
-            ${b.start_time.slice(11,16)}–${b.end_time?b.end_time.slice(11,16):'offen'}</span></span>
-        <span class="status-tag" style="background:${statusColors[b.status]}">${statusLabels[b.status]||b.status}</span>
-      </div>`;
-    });
-    document.getElementById('m-body').innerHTML=body;
-    document.getElementById('modal').classList.add('open');
-  }
+function modalOpen(id, ownerId, raum, nutzer, start, ende, quelle){
+  modalBid = id;
+  modalOwnerId = ownerId;
+  document.getElementById('m-raum').textContent = raum;
+  document.getElementById('m-nutzer').textContent = nutzer;
+  document.getElementById('m-zeit').textContent = start.slice(11,16) + ' – ' + ende.slice(11,16) + ' Uhr';
+  document.getElementById('m-quelle').textContent = quelle === 'nfc' ? '📡 NFC-Buchung' : '🖥 Web-Buchung';
+  document.getElementById('m-delete').style.display = (currentUser && ownerId === currentUser.id) ? 'block' : 'none';
+  document.getElementById('modal').classList.add('open');
+}
+function modalClose(){ document.getElementById('modal').classList.remove('open'); modalBid = null; }
 
-  function closeModal(){document.getElementById('modal').classList.remove('open');selectedBookingId=null;}
+async function modalDelete(){
+  if(!modalBid) return;
+  const { error } = await supa.from('buchungen').delete().eq('id', modalBid).eq('nutzer_id', currentUser.id);
+  modalClose();
+  if(error){ toast('✗ ' + error.message, 'error'); return; }
+  toast('Buchung gelöscht', 'success');
+  render();
+}
 
-  async function confirmCancel(){
-    if(!selectedBookingId)return;
-    try{
-      const res=await fetch('/api/stornieren',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({buchung_id:selectedBookingId})});
-      const data=await res.json();closeModal();
-      if(res.ok){showToast('Buchung storniert.','success');refreshAll();}
-      else{showToast(data.detail||'Fehler.','error');}
-    }catch(e){showToast('Verbindungsfehler.','error');}
-  }
+function toast(msg, typ){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + typ;
+  setTimeout(() => t.className = '', 3500);
+}
 
-  function selectRoom(id){
-    document.querySelectorAll('.room-item').forEach(el=>el.classList.toggle('active',el.id===`ri-${id}`));
-    document.getElementById('f-room').value=id;
-  }
+// ── Init ──
+document.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') anmelden();
+});
 
-  function showToast(msg,type='success'){
-    const t=document.getElementById('toast');t.textContent=msg;t.className=`show ${type}`;
-    setTimeout(()=>t.className='',3500);
-  }
+if(!CONFIGURED){
+  document.getElementById('config-banner').style.display = 'block';
+  document.getElementById('config-banner').innerHTML =
+    '⚠ Supabase ist noch nicht konfiguriert. Trage <code>SUPABASE_URL</code> und <code>SUPABASE_ANON_KEY</code> ' +
+    'im &lt;script&gt;-Block von index.html ein (siehe supabase_setup.sql).';
+}
 
-  init();
+const gespeicherterUser = localStorage.getItem('rb_user');
+if(gespeicherterUser && CONFIGURED){
+  currentUser = JSON.parse(gespeicherterUser);
+  zeigeApp();
+}
 </script>
 </body>
 </html>

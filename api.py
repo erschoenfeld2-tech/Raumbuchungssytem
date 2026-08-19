@@ -61,9 +61,9 @@ class CheckinAnfrage(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
+    html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index_lokal_modular.html")
     if not os.path.exists(html_path):
-        return HTMLResponse("<h1>index.html nicht gefunden</h1>", status_code=404)
+        return HTMLResponse("<h1>index_lokal_modular.html nicht gefunden</h1>", status_code=404)
     with open(html_path, encoding="utf-8") as f:
         return HTMLResponse(f.read())
 
