@@ -6,8 +6,12 @@
 create table if not exists nutzer (
   id bigint generated always as identity primary key,
   name text not null unique,
-  nfc_uid text unique
+  nfc_uid text unique,
+  ist_admin boolean not null default false
 );
+
+-- Falls die Tabelle schon vorher ohne diese Spalte angelegt wurde:
+alter table nutzer add column if not exists ist_admin boolean not null default false;
 
 create table if not exists buchungen (
   id bigint generated always as identity primary key,
@@ -28,6 +32,11 @@ insert into nutzer (name, nfc_uid) values
   ('Luca Guinness',       'B851FBE7'),
   ('Eric Nicefield',      'B8F3F9EF')
 on conflict (name) do nothing;
+
+-- Administrator: darf jede Buchung jedes Nutzers löschen (Passwort ist im
+-- Frontend hinterlegt, nicht in der DB – siehe ADMIN_PASSWORT in index.html)
+insert into nutzer (name, ist_admin) values ('Admin_Universal', true)
+on conflict (name) do update set ist_admin = true;
 
 -- Row-Level-Security aktivieren
 alter table nutzer enable row level security;

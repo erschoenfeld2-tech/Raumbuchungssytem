@@ -32,8 +32,6 @@
   .login-error{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);
     border-radius:8px;padding:10px 12px;font-size:13px;margin-top:14px;display:none}
   .login-error.show{display:block}
-  .login-hint{color:var(--muted);font-size:11px;margin-top:14px;text-align:center;line-height:1.6}
-  .login-hint code{background:var(--surface2);padding:2px 6px;border-radius:4px;color:var(--text)}
 
   /* ── Konfig-Banner ── */
   #config-banner{display:none;background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.35);
@@ -71,6 +69,7 @@
   select,input[type=date],input[type=time]{width:100%;background:var(--surface2);border:1px solid var(--border);
     color:var(--text);padding:8px 10px;border-radius:8px;font-size:13px;outline:none}
   .zeit-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .ganztag-row{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:10px;cursor:pointer}
   .btn-book{width:100%;background:linear-gradient(135deg,var(--accent),var(--purple));border:none;color:#fff;
     padding:10px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;margin-top:12px}
 
@@ -161,15 +160,11 @@
     <h1>Raumbuchungssystem</h1>
     <div class="login-sub">Bitte anmelden</div>
     <label>Nutzername</label>
-    <input type="text" id="login-name" placeholder="z.B. Dion Müller" autofocus/>
+    <input type="text" id="login-name" placeholder="Nutzername" autofocus/>
     <label>Passwort</label>
-    <input type="password" id="login-pw" placeholder="123"/>
+    <input type="password" id="login-pw" placeholder="Passwort"/>
     <button onclick="anmelden()">Anmelden</button>
     <div class="login-error" id="login-err"></div>
-    <div class="login-hint">Verfügbare Nutzer:<br>
-      Berta Langenhahn · Familienvater Mayer · Dion Müller<br>
-      Luca Guinness · Eric Nicefield<br>
-      Passwort: <code>123</code></div>
     <div id="config-banner"></div>
   </div>
 </div>
@@ -223,6 +218,9 @@
           <div><label>Von</label><input type="time" id="f-start" value="09:00" step="1800"/></div>
           <div><label>Bis</label><input type="time" id="f-ende" value="10:00" step="1800"/></div>
         </div>
+        <label class="ganztag-row" id="ganztag-row" style="display:none">
+          <input type="checkbox" id="f-ganztag" onchange="toggleGanztag()"/> Ganztägig buchen (0–24 Uhr)
+        </label>
         <button class="btn-book" onclick="buchen()">✓ Buchen</button>
       </div>
 
@@ -287,6 +285,8 @@
 const SUPABASE_URL = 'https://yugjccgblqsfjasienwa.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1Z2pjY2dibHFzZmphc2llbndhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNDQ3NDMsImV4cCI6MjEwMDcyMDc0M30.LW2n0hkDPqbP2HGQF6jPL2_Ma66EeO6kG5A2huvFuPM'; // öffentlicher anon key, kein Secret
 const STANDARD_PASSWORT = '123';
+const ADMIN_NAME = 'Admin_Universal';
+const ADMIN_PASSWORT = 'System-2026!';
 const H_START = 7, H_ENDE = 20;
 
 const CONFIGURED = SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20;
@@ -356,9 +356,11 @@ async function anmelden(){
   const err = document.getElementById('login-err');
   err.className = 'login-error';
   if(!name || !pw){ err.textContent = 'Bitte alle Felder ausfüllen.'; err.className = 'login-error show'; return; }
-  if(pw !== STANDARD_PASSWORT){ err.textContent = 'Falsches Passwort'; err.className = 'login-error show'; return; }
+  const istAdminLogin = name.toLowerCase() === ADMIN_NAME.toLowerCase();
+  const erwartetesPasswort = istAdminLogin ? ADMIN_PASSWORT : STANDARD_PASSWORT;
+  if(pw !== erwartetesPasswort){ err.textContent = 'Falsches Passwort'; err.className = 'login-error show'; return; }
   if(!CONFIGURED){ err.textContent = 'Supabase ist noch nicht konfiguriert.'; err.className = 'login-error show'; return; }
-  const { data, error } = await supa.from('nutzer').select('id,name').ilike('name', name).maybeSingle();
+  const { data, error } = await supa.from('nutzer').select('id,name,ist_admin').ilike('name', name).maybeSingle();
   if(error || !data){ err.textContent = `Nutzer '${name}' existiert nicht`; err.className = 'login-error show'; return; }
   currentUser = data;
   localStorage.setItem('rb_user', JSON.stringify(currentUser));
@@ -373,7 +375,7 @@ function abmelden(){
 async function zeigeApp(){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  document.getElementById('user-name').textContent = currentUser.name;
+  document.getElementById('user-name').textContent = currentUser.name + (currentUser.ist_admin ? ' (Administrator)' : '');
   document.getElementById('avatar').textContent = currentUser.name.split(' ').map(w=>w[0]).join('').slice(0,2);
   setDatum();
   await ladeNutzerMap();
@@ -389,7 +391,25 @@ function initRaumDropdown(){
   const bisher = sel.value;
   sel.innerHTML = raeume.map(r => `<option value="${r.name}">${r.name} (${r.kapazitaet} Plätze)</option>`).join('');
   if(!raeume.some(r => r.name === bisher)) sel.value = raeume[0].name;
-  sel.onchange = drawFloor;
+  sel.onchange = () => { drawFloor(); updateGanztagVisibility(); };
+  updateGanztagVisibility();
+}
+
+// ShareDesks (Kapazität 2) dürfen ganztägig gebucht werden, Meetingräume nicht.
+function updateGanztagVisibility(){
+  const raum = ROOMS.find(r => r.name === document.getElementById('f-raum').value);
+  const row = document.getElementById('ganztag-row');
+  const istShareDesk = raum && raum.kapazitaet > 1;
+  row.style.display = istShareDesk ? 'flex' : 'none';
+  if(!istShareDesk){
+    document.getElementById('f-ganztag').checked = false;
+    toggleGanztag();
+  }
+}
+function toggleGanztag(){
+  const an = document.getElementById('f-ganztag').checked;
+  document.getElementById('f-start').disabled = an;
+  document.getElementById('f-ende').disabled = an;
 }
 function switchEtage(nr){
   currentEtage = nr;
@@ -409,6 +429,7 @@ function switchView(which){
 function selectRoomFromPlan(name){
   document.getElementById('f-raum').value = name;
   drawFloor();
+  updateGanztagVisibility();
   toast('Raum ausgewählt: ' + name, 'success');
 }
 
@@ -561,8 +582,11 @@ async function render(){
     const et = new Date(b.ende.replace(' ','T'));
     const sMin = st.getHours()*60 + st.getMinutes();
     const eMin = et.getHours()*60 + et.getMinutes();
-    const top = (sMin - H_START*60) / 30 * 48;
-    const height = Math.max((eMin - sMin) / 30 * 48 - 2, 22);
+    const gridHoehe = (H_ENDE - H_START) * 96;
+    let top = (sMin - H_START*60) / 30 * 48;
+    let height = Math.max((eMin - sMin) / 30 * 48 - 2, 22);
+    if(top < 0){ height += top; top = 0; }
+    height = Math.max(Math.min(height, gridHoehe - top), 10);
     const src = b.quelle === 'nfc' ? 'nfc' : 'web';
     const srcLabel = b.quelle === 'nfc' ? '📡 NFC' : '🖥 Web';
     const mine = currentUser && b.nutzer_id === currentUser.id ? ' mine' : '';
@@ -603,14 +627,22 @@ function renderAgenda(buchungen){
 async function buchen(){
   const raum = document.getElementById('f-raum').value;
   const datum = document.getElementById('f-datum').value;
-  const start = document.getElementById('f-start').value;
-  const ende = document.getElementById('f-ende').value;
+  const ganztag = document.getElementById('f-ganztag').checked;
 
-  if(!datum || !start || !ende){ toast('Bitte alle Felder ausfüllen.', 'error'); return; }
-  if(start >= ende){ toast('Startzeit muss vor Endzeit liegen.', 'error'); return; }
+  if(!datum){ toast('Bitte ein Datum wählen.', 'error'); return; }
 
-  const startVoll = datum + ' ' + start;
-  const endeVoll = datum + ' ' + ende;
+  let startVoll, endeVoll;
+  if(ganztag){
+    startVoll = datum + ' 00:00';
+    endeVoll = datum + ' 23:59';
+  } else {
+    const start = document.getElementById('f-start').value;
+    const ende = document.getElementById('f-ende').value;
+    if(!start || !ende){ toast('Bitte alle Felder ausfüllen.', 'error'); return; }
+    if(start >= ende){ toast('Startzeit muss vor Endzeit liegen.', 'error'); return; }
+    startVoll = datum + ' ' + start;
+    endeVoll = datum + ' ' + ende;
+  }
 
   const kap = await pruefeKapazitaet(raum, startVoll, endeVoll);
   if(!kap.ok){ toast('✗ ' + kap.msg, 'error'); return; }
@@ -631,14 +663,17 @@ function modalOpen(id, ownerId, raum, nutzer, start, ende, quelle){
   document.getElementById('m-nutzer').textContent = nutzer;
   document.getElementById('m-zeit').textContent = start.slice(11,16) + ' – ' + ende.slice(11,16) + ' Uhr';
   document.getElementById('m-quelle').textContent = quelle === 'nfc' ? '📡 NFC-Buchung' : '🖥 Web-Buchung';
-  document.getElementById('m-delete').style.display = (currentUser && ownerId === currentUser.id) ? 'block' : 'none';
+  const darfLoeschen = currentUser && (ownerId === currentUser.id || currentUser.ist_admin);
+  document.getElementById('m-delete').style.display = darfLoeschen ? 'block' : 'none';
   document.getElementById('modal').classList.add('open');
 }
 function modalClose(){ document.getElementById('modal').classList.remove('open'); modalBid = null; }
 
 async function modalDelete(){
   if(!modalBid) return;
-  const { error } = await supa.from('buchungen').delete().eq('id', modalBid).eq('nutzer_id', currentUser.id);
+  let query = supa.from('buchungen').delete().eq('id', modalBid);
+  if(!currentUser.ist_admin) query = query.eq('nutzer_id', currentUser.id);
+  const { error } = await query;
   modalClose();
   if(error){ toast('✗ ' + error.message, 'error'); return; }
   toast('Buchung gelöscht', 'success');
