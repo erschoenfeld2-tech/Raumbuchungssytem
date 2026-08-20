@@ -370,12 +370,13 @@ function abmelden(){
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
 }
-function zeigeApp(){
+async function zeigeApp(){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('user-name').textContent = currentUser.name;
   document.getElementById('avatar').textContent = currentUser.name.split(' ').map(w=>w[0]).join('').slice(0,2);
   setDatum();
+  await ladeNutzerMap();
   switchEtage(1);
   render();
   setInterval(render, 5000);
@@ -485,14 +486,27 @@ function drawFloor(){
 }
 
 // ── Daten laden (Supabase) ──
+// Namen werden bewusst separat geladen und im Browser zugeordnet, statt über
+// eine eingebettete Supabase-Relation (nutzer:nutzer_id(name)) – das würde
+// eine erkannte Fremdschlüssel-Beziehung im Schema-Cache voraussetzen, die
+// je nach Anlage der Tabellen nicht immer vorhanden ist.
+let nutzerMap = {};
+
+async function ladeNutzerMap(){
+  const { data, error } = await supa.from('nutzer').select('id,name');
+  if(error){ console.error(error); return; }
+  nutzerMap = {};
+  data.forEach(n => nutzerMap[n.id] = n.name);
+}
+
 async function ladeBuchungen(datum){
   if(!CONFIGURED) return [];
   const { data, error } = await supa.from('buchungen')
-    .select('*, nutzer:nutzer_id(name)')
+    .select('*')
     .like('start', datum + '%')
     .order('start');
   if(error){ console.error(error); toast('Fehler beim Laden: ' + error.message, 'error'); return []; }
-  return data.map(b => ({...b, name: b.nutzer ? b.nutzer.name : '?'}));
+  return data.map(b => ({...b, name: nutzerMap[b.nutzer_id] || '?'}));
 }
 
 async function pruefeKapazitaet(raum, start, ende){
