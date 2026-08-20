@@ -13,6 +13,7 @@ create table if not exists buchungen (
   id bigint generated always as identity primary key,
   raum text not null,
   nutzer_id bigint not null references nutzer(id),
+  name text not null,    -- Name des buchenden Nutzers (Redundanz zu nutzer_id)
   start text not null,   -- Format 'YYYY-MM-DD HH:MM'
   ende text not null,    -- Format 'YYYY-MM-DD HH:MM'
   quelle text not null default 'web' check (quelle in ('web','nfc')),

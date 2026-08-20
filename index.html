@@ -616,7 +616,8 @@ async function buchen(){
   if(!kap.ok){ toast('✗ ' + kap.msg, 'error'); return; }
 
   const { error } = await supa.from('buchungen').insert({
-    raum, nutzer_id: currentUser.id, start: startVoll, ende: endeVoll, quelle: 'web'
+    raum, nutzer_id: currentUser.id, name: currentUser.name,
+    start: startVoll, ende: endeVoll, quelle: 'web'
   });
   if(error){ toast('✗ Fehler: ' + error.message, 'error'); return; }
   toast('✓ Buchung erstellt', 'success');
