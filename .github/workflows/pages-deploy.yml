@@ -1,0 +1,59 @@
+name: Deploy to GitHub Pages
+
+# Deployt die statische Web-App (index.html) über GitHub Actions statt
+# über den klassischen "Deploy from a branch"-Mechanismus. Läuft nur
+# nach erfolgreichem Quality-Gate.
+#
+# WICHTIG – manuelle Einrichtung nötig: Repo-Settings → Pages → Source
+# muss auf "GitHub Actions" umgestellt werden (aktuell auf
+# "Deploy from a branch"). Bis dahin bleibt die bisherige klassische
+# Auslieferung aktiv, dieser Workflow läuft aber schon mit und zeigt
+# im Actions-Tab, ob er erfolgreich wäre.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  quality:
+    uses: ./.github/workflows/quality.yml
+
+  deploy:
+    needs: quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: GitHub Pages konfigurieren
+        uses: actions/configure-pages@v5
+
+      - name: Deploy-Verzeichnis vorbereiten
+        # Nur die Live-App wird veröffentlicht, nicht der gesamte
+        # Projektordner (Legacy-Python-Skripte, Doku etc. sollen nicht
+        # als abrufbare Dateien auf der Pages-Seite landen).
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp .nojekyll _site/
+
+      - name: Artefakt hochladen
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "_site"
+
+      - name: Auf GitHub Pages deployen
+        id: deployment
+        uses: actions/deploy-pages@v4
