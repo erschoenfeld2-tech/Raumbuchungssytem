@@ -1,6 +1,13 @@
 -- ══════════════════════════════════════════════════════════
 -- Raumbuchungssystem – Supabase Tabellen + RLS-Policies
--- Einmalig im Supabase-Projekt unter "SQL Editor" ausführen.
+-- Migration #1 (Ausgangsschema). Wird automatisch per CI/CD-Pipeline
+-- (.github/workflows/supabase-deploy.yml) angewendet, sobald diese
+-- Datei nach main gepusht wird. Alle Anweisungen sind idempotent
+-- (if not exists / on conflict), daher gefahrlos mehrfach ausführbar.
+--
+-- WICHTIG für künftige Schema-Änderungen: Diese Datei NICHT mehr
+-- bearbeiten, sondern eine NEUE Datei in supabase/migrations/ anlegen,
+-- z.B. 20260822120000_neue_spalte.sql – siehe CICD_ANLEITUNG.md.
 -- ══════════════════════════════════════════════════════════
 
 create table if not exists nutzer (

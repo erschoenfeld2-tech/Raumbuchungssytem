@@ -1,0 +1,5 @@
+# Minimale Supabase-CLI-Konfiguration für dieses Projekt.
+# Wird nur gebraucht, damit "supabase link" / "supabase db push" das
+# Projekt in der CI/CD-Pipeline finden – kein lokaler Supabase-Stack
+# ("supabase start") im Einsatz, daher keine weiteren Sektionen nötig.
+project_id = "yugjccgblqsfjasienwa"
