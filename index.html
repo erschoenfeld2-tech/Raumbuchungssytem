@@ -159,9 +159,9 @@
     <div class="login-logo">🏢</div>
     <h1>Raumbuchungssystem</h1>
     <div class="login-sub">Bitte anmelden</div>
-    <label>Nutzername</label>
+    <label for="login-name">Nutzername</label>
     <input type="text" id="login-name" placeholder="Nutzername" autofocus/>
-    <label>Passwort</label>
+    <label for="login-pw">Passwort</label>
     <input type="password" id="login-pw" placeholder="Passwort"/>
     <button onclick="anmelden()">Anmelden</button>
     <div class="login-error" id="login-err"></div>
@@ -210,13 +210,13 @@
     <div>
       <div class="card">
         <h2>Neue Buchung</h2>
-        <label>Raum</label>
+        <label for="f-raum">Raum</label>
         <select id="f-raum"></select>
-        <label>Datum</label>
+        <label for="f-datum">Datum</label>
         <input type="date" id="f-datum"/>
         <div class="zeit-row">
-          <div><label>Von</label><input type="time" id="f-start" value="09:00" step="1800"/></div>
-          <div><label>Bis</label><input type="time" id="f-ende" value="10:00" step="1800"/></div>
+          <div><label for="f-start">Von</label><input type="time" id="f-start" value="09:00" step="1800"/></div>
+          <div><label for="f-ende">Bis</label><input type="time" id="f-ende" value="10:00" step="1800"/></div>
         </div>
         <label class="ganztag-row" id="ganztag-row" style="display:none">
           <input type="checkbox" id="f-ganztag" onchange="toggleGanztag()"/> Ganztägig buchen (0–24 Uhr)
@@ -335,7 +335,7 @@ const FLOORS = {
 };
 
 let aktDatum = new Date();
-let currentUser = null, modalBid = null, modalOwnerId = null;
+let currentUser = null, modalBid = null;
 let currentEtage = 1, currentView = 'cal';
 let allBookings = [];
 
@@ -360,7 +360,7 @@ async function anmelden(){
   const erwartetesPasswort = istAdminLogin ? ADMIN_PASSWORT : STANDARD_PASSWORT;
   if(pw !== erwartetesPasswort){ err.textContent = 'Falsches Passwort'; err.className = 'login-error show'; return; }
   if(!CONFIGURED){ err.textContent = 'Supabase ist noch nicht konfiguriert.'; err.className = 'login-error show'; return; }
-  const { data, error } = await supa.from('nutzer').select('id,name,ist_admin').ilike('name', name).maybeSingle();
+  const { data, error } = await supa.from('nutzer_public').select('id,name,ist_admin').ilike('name', name).maybeSingle();
   if(error || !data){ err.textContent = `Nutzer '${name}' existiert nicht`; err.className = 'login-error show'; return; }
   currentUser = data;
   localStorage.setItem('rb_user', JSON.stringify(currentUser));
@@ -514,7 +514,7 @@ function drawFloor(){
 let nutzerMap = {};
 
 async function ladeNutzerMap(){
-  const { data, error } = await supa.from('nutzer').select('id,name');
+  const { data, error } = await supa.from('nutzer_public').select('id,name');
   if(error){ console.error(error); return; }
   nutzerMap = {};
   data.forEach(n => nutzerMap[n.id] = n.name);
@@ -658,7 +658,6 @@ async function buchen(){
 
 function modalOpen(id, ownerId, raum, nutzer, start, ende, quelle){
   modalBid = id;
-  modalOwnerId = ownerId;
   document.getElementById('m-raum').textContent = raum;
   document.getElementById('m-nutzer').textContent = nutzer;
   document.getElementById('m-zeit').textContent = start.slice(11,16) + ' – ' + ende.slice(11,16) + ' Uhr';
