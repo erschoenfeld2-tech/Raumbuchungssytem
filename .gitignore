@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+
+# Von den lokalen Legacy-Prototypen erzeugte SQLite-Datenbanken
+raumbuchung.db
+nfc_test.db
+
+# Editor/OS
+.DS_Store
