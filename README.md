@@ -159,10 +159,10 @@ geheim, da sie ohnehin Teil der öffentlichen Supabase-URL in `index.html` ist.
 ## Erforderliche manuelle Repository-Einstellungen
 
 - **Settings → Secrets and variables → Actions**: die beiden Secrets oben anlegen
-  (empfohlen: in einem Environment `production`, siehe nächster Punkt)
-- **Settings → Environments**: Environment `production` anlegen, damit
-  `supabase-deploy.yml` produktive Deployments darüber absichern kann (z. B. Reviewer
-  vorschreiben) — ohne dieses Environment läuft die Pipeline trotzdem, nur ungeschützt
+- **Settings → Environments**: optional, für dieses Team bewusst nicht eingerichtet.
+  Ein Environment `production` würde `supabase-deploy.yml` erlauben, produktive
+  Deployments abzusichern (z. B. Reviewer vorschreiben) — ohne dieses Environment läuft
+  die Pipeline ganz normal automatisch weiter, wie aktuell eingerichtet
 - **Settings → Pages**: Source auf "GitHub Actions" umstellen (siehe oben)
 - Repo-Sichtbarkeit muss **öffentlich** sein, damit GitHub Pages ohne kostenpflichtigen
   Plan funktioniert (bereits erledigt)

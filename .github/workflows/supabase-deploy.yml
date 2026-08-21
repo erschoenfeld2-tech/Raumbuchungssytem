@@ -5,11 +5,10 @@ name: Supabase Schema Deploy
 #
 # WICHTIG – manuelle Einrichtung nötig (siehe CICD_ANLEITUNG.md):
 #   - Repo-Secrets SUPABASE_ACCESS_TOKEN und SUPABASE_DB_PASSWORD
-#   - Empfohlen: GitHub Environment "production" anlegen (Settings →
-#     Environments) und die beiden Secrets dort statt auf Repo-Ebene
-#     hinterlegen, um Deployment-Regeln (z.B. Reviewer) zu ermöglichen.
-#     Ohne angelegtes Environment läuft der Job trotzdem, nur ohne
-#     zusätzlichen Schutz.
+#   - Optional: GitHub Environment "production" anlegen (Settings →
+#     Environments), um Deployment-Regeln (z.B. Pflicht-Reviewer) aktiv
+#     zu nutzen. Für dieses Projekt bewusst nicht eingerichtet – ohne
+#     angelegtes Environment läuft der Job ganz normal automatisch.
 
 on:
   push:

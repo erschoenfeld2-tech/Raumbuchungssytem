@@ -49,13 +49,16 @@ Das ist **nicht** der anon key, sondern das Postgres-Passwort:
 
 Das war's – die Pipeline ist danach einsatzbereit.
 
-### 4. Optional, aber empfohlen: GitHub Environment "production"
+### 4. Optional: GitHub Environment "production"
 
-Der Deploy-Job ist an ein Environment namens `production` gebunden
-(`environment: production` in `supabase-deploy.yml`). Ohne dieses
-Environment läuft die Pipeline trotzdem ganz normal – erst wenn du es
-anlegst, kannst du zusätzliche Schutzregeln aktivieren (z.B. dass ein
-Mitglied den Lauf erst bestätigen muss, bevor Migrationen wirklich auf
+Für dieses Projekt bewusst **nicht eingerichtet** – für ein Team dieser
+Größe nicht nötig. Der Deploy-Job ist an ein Environment namens
+`production` gebunden (`environment: production` in
+`supabase-deploy.yml`), ohne angelegtes Environment läuft die Pipeline
+ganz normal automatisch weiter, wie bisher. Falls ihr es euch später
+anders überlegt: sobald du es anlegst, kannst du zusätzliche
+Schutzregeln aktivieren (z.B. dass ein Mitglied den Lauf erst
+bestätigen muss, bevor Migrationen wirklich auf
 der produktiven Datenbank landen):
 
 1. Im Repo: **Settings → Environments → New environment**
