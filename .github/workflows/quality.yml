@@ -1,0 +1,154 @@
+name: Quality Checks
+
+# Wiederverwendbarer Workflow (workflow_call) – wird von ci.yml (PR/Push)
+# und von pages-deploy.yml (Gate vor dem Deployment) aufgerufen, damit
+# die Prüf-Logik nur an einer Stelle gepflegt werden muss.
+#
+# Dieses Projekt hat bewusst keinen Build-Schritt, keinen Package-Manager
+# und kein Test-Framework (siehe CLAUDE.md) – die Prüfungen hier sind
+# das, was für ein reines Vanilla-JS/Python-Skript-Projekt sinnvoll und
+# ohne zusätzliche Abhängigkeiten möglich ist: Syntaxvalidierung statt
+# TypeScript/ESLint/Jest, die es hier nicht gibt.
+
+on:
+  workflow_call:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Alle Python-Dateien kompilieren (Syntaxprüfung)
+        run: python -m py_compile *.py
+
+      - name: Eingebettetes <script> in index.html auf Syntaxfehler prüfen
+        run: |
+          python3 -c "
+          import re, sys
+          html = open('index.html', encoding='utf-8').read()
+          m = re.search(r'<script>(.*)</script>\s*</body>', html, re.S)
+          if not m:
+              sys.exit('Konnte <script>-Block in index.html nicht finden')
+          open('/tmp/index_script.js', 'w', encoding='utf-8').write(m.group(1))
+          "
+          node --check /tmp/index_script.js
+
+      - name: Eingebettetes <script> in index_lokal_modular.html auf Syntaxfehler prüfen
+        run: |
+          python3 -c "
+          import re, sys
+          html = open('index_lokal_modular.html', encoding='utf-8').read()
+          m = re.search(r'<script>(.*)</script>', html, re.S)
+          if not m:
+              sys.exit('Konnte <script>-Block in index_lokal_modular.html nicht finden')
+          open('/tmp/legacy_script.js', 'w', encoding='utf-8').write(m.group(1))
+          "
+          node --check /tmp/legacy_script.js
+
+      - name: HTML-Dateien auf Wohlgeformtheit prüfen
+        run: |
+          python3 -c "
+          import sys
+          from html.parser import HTMLParser
+
+          class P(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.errors = []
+              def error(self, msg):
+                  self.errors.append(msg)
+
+          fehler = False
+          for datei in ['index.html', 'index_lokal_modular.html']:
+              p = P()
+              p.feed(open(datei, encoding='utf-8').read())
+              if p.errors:
+                  fehler = True
+                  print(f'{datei}: {p.errors}')
+              else:
+                  print(f'{datei}: OK')
+          sys.exit(1 if fehler else 0)
+          "
+
+      - name: YAML-Syntax der Workflows prüfen
+        run: |
+          pip install --quiet pyyaml
+          python3 -c "
+          import glob, sys, yaml
+          fehler = False
+          for datei in glob.glob('.github/workflows/*.yml'):
+              try:
+                  with open(datei) as f:
+                      yaml.safe_load(f)
+                  print(f'{datei}: OK')
+              except yaml.YAMLError as e:
+                  fehler = True
+                  print(f'{datei}: FEHLER {e}')
+          sys.exit(1 if fehler else 0)
+          "
+
+      - name: TOML-Syntax der Supabase-Konfiguration prüfen
+        run: |
+          python3 -c "
+          import tomllib
+          tomllib.load(open('supabase/config.toml', 'rb'))
+          print('supabase/config.toml ist gültiges TOML')
+          "
+
+      - name: Migrationsdateien auf Namenskonvention und Duplikate prüfen
+        run: |
+          python3 -c "
+          import re, sys
+          from pathlib import Path
+
+          dateien = sorted(Path('supabase/migrations').glob('*.sql'))
+          if not dateien:
+              sys.exit('Keine Migrationsdateien gefunden')
+
+          muster = re.compile(r'^(\d{14})_[a-z0-9_]+\.sql$')
+          zeitstempel = []
+          fehler = False
+          for f in dateien:
+              m = muster.match(f.name)
+              if not m:
+                  fehler = True
+                  print(f'✗ {f.name}: entspricht nicht YYYYMMDDHHMMSS_beschreibung.sql')
+                  continue
+              ts = m.group(1)
+              if ts in zeitstempel:
+                  fehler = True
+                  print(f'✗ {f.name}: Zeitstempel {ts} ist nicht eindeutig (Duplikat)')
+              zeitstempel.append(ts)
+              print(f'✓ {f.name}')
+
+          sys.exit(1 if fehler else 0)
+          "
+
+      - name: Migrationen auf riskante Statements prüfen (Warnung, kein Abbruch)
+        run: |
+          python3 -c "
+          import re
+          from pathlib import Path
+
+          riskant = re.compile(r'\b(DROP\s+TABLE|DROP\s+DATABASE|TRUNCATE)\b', re.IGNORECASE)
+          delete_ohne_where = re.compile(r'\bDELETE\s+FROM\s+\w+\s*;', re.IGNORECASE)
+
+          for f in sorted(Path('supabase/migrations').glob('*.sql')):
+              inhalt = f.read_text(encoding='utf-8')
+              for treffer in riskant.finditer(inhalt):
+                  print(f'⚠ {f.name}: enthält {treffer.group(0)} – bitte manuell prüfen, ob das beabsichtigt ist')
+              for treffer in delete_ohne_where.finditer(inhalt):
+                  print(f'⚠ {f.name}: DELETE FROM ohne WHERE-Klausel gefunden')
+          "

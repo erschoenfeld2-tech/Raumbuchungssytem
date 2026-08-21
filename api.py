@@ -32,7 +32,7 @@ from database import (
 )
 
 try:
-    from notify import send_buchungsbestaetigung, send_stornierungsbestaetigung
+    from notify import sende_buchungsbestaetigung
     EMAIL_AKTIV = True
 except ImportError:
     EMAIL_AKTIV = False
@@ -210,7 +210,7 @@ def buchen(data: BuchungErstellen):
             u = conn.execute("SELECT * FROM users WHERE id=?", (data.nutzer_id,)).fetchone()
             r = conn.execute("SELECT * FROM rooms WHERE id=?",  (data.raum_id,)).fetchone()
             conn.close()
-            send_buchungsbestaetigung(
+            sende_buchungsbestaetigung(
                 u["email"], u["name"], r["name"],
                 data.start_time, data.end_time or "offen", bid)
         except Exception:

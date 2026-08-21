@@ -2,6 +2,14 @@ name: Supabase Schema Deploy
 
 # Wendet neue Datenbank-Migrationen (supabase/migrations/*.sql)
 # automatisch auf das Supabase-Projekt an, sobald main aktualisiert wird.
+#
+# WICHTIG – manuelle Einrichtung nötig (siehe CICD_ANLEITUNG.md):
+#   - Repo-Secrets SUPABASE_ACCESS_TOKEN und SUPABASE_DB_PASSWORD
+#   - Optional: GitHub Environment "production" anlegen (Settings →
+#     Environments), um Deployment-Regeln (z.B. Pflicht-Reviewer) aktiv
+#     zu nutzen. Für dieses Projekt bewusst nicht eingerichtet – ohne
+#     angelegtes Environment läuft der Job ganz normal automatisch.
+
 on:
   push:
     branches: [main]
@@ -9,9 +17,20 @@ on:
       - "supabase/migrations/**"
   workflow_dispatch: {}
 
+concurrency:
+  group: supabase-deploy
+  cancel-in-progress: false
+
 jobs:
+  validate:
+    uses: ./.github/workflows/quality.yml
+
   deploy:
+    needs: validate
     runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
     steps:
       - name: Code auschecken
         uses: actions/checkout@v4
