@@ -6,8 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 School project (Fachinformatik Systemintegration, Walther-Rathenau-Gewerbeschule) — a room booking
 system with NFC check-in and a graphical floor-plan view, built for a "Hausmesse" presentation
-(deadline 24.11.2026). Full background, team, and working-style notes are in `CLAUDE_CODE_PROMPT.md`
-— read it first when picking up new work here. `Projektdokumentation_Raumbuchungssystem.docx`,
+(deadline 24.11.2026). `README.md` is the human-facing setup/reference doc (secrets, CI/CD,
+troubleshooting) — this file is Claude-specific guidance and doesn't repeat what's there. Full
+background, team, and working-style notes are in `CLAUDE_CODE_PROMPT.md` — read it first when
+picking up new work here. `Projektdokumentation_Raumbuchungssystem.docx`,
 `Sitzungsprotokolle_Raumbuchungssystem.docx`, and `Mitarbeiter_Anleitung_Raumbuchung.docx` are the
 project's own documentation/handover artifacts, not code references.
 
@@ -29,29 +31,50 @@ Only one is real. Always check which file you're touching before assuming it aff
   Etage 2: ShareDesk 6–10). `kapazitaet` is 1 for meeting rooms, 2 for ShareDesks, and drives both
   the floor-plan occupancy coloring and the overlap/capacity check on booking.
 - There is no real auth. Login is a client-side password check against hardcoded constants
-  (`STANDARD_PASSWORT` for normal users, a separate `ADMIN_PASSWORT` for the one admin account)
-  followed by a lookup of the entered name in the `nutzer` table; the resulting user object
-  (including `ist_admin`) is cached in `localStorage`. `ist_admin` is the only thing that lets a
-  user delete other people's bookings — regular users can only delete their own.
+  (`STANDARD_PASSWORT` for normal users, a separate `ADMIN_PASSWORT` for the one admin account,
+  `Admin_Universal`) followed by a lookup of the entered name in the `nutzer_public` view (not the
+  `nutzer` table directly — see below); the resulting user object (including `ist_admin`) is
+  cached in `localStorage`. `ist_admin` is the only thing that lets a user delete other people's
+  bookings — regular users can only delete their own. **Known, accepted limitation:** because
+  there's no real per-user Supabase session, RLS on `buchungen` can't distinguish "this specific
+  logged-in user" — the delete/insert/update policies are `using (true)`, so the ownership check is
+  UI-only, not DB-enforced. Anyone with the (public) anon key could bypass it via the REST API
+  directly. Fixing that properly means adding real Supabase Auth, which is a deliberate
+  out-of-scope tradeoff for this project's size — don't "fix" it without discussing it first.
+- `nutzer_public` is a **view**, not the base table — created in
+  `supabase/migrations/20260821120000_harden_nutzer_exposure.sql` to keep `nfc_uid` (NFC card
+  UIDs) out of reach of the anon key; the base `nutzer` table has no anon/authenticated select
+  policy left. Always query `nutzer_public` from the frontend, never `nutzer` directly, unless you
+  also add the column you need to the view (and think about whether it's safe to expose).
 - DB schema is **not** hand-applied anymore — `supabase/migrations/*.sql` is the source of truth,
   deployed automatically by `.github/workflows/supabase-deploy.yml` (Supabase CLI `supabase db
-  push`) on every push to `main` that touches `supabase/migrations/**`. **Never edit an existing
-  migration file** — add a new timestamped one (`YYYYMMDDHHMMSS_description.sql`) instead;
-  `supabase/migrations/20260821000000_init_schema.sql` (the `nutzer`/`buchungen` tables + RLS
-  policies) has very likely already been applied to the live project. Setup/secrets for this
-  pipeline are documented in `CICD_ANLEITUNG.md`.
+  push`) on every push to `main` that touches `supabase/migrations/**`, gated behind the reusable
+  `quality.yml` checks and (if set up) a `production` GitHub Environment. **Never edit an existing
+  migration file** — add a new timestamped one (`YYYYMMDDHHMMSS_description.sql`) instead. Setup/
+  secrets for this pipeline are documented in `CICD_ANLEITUNG.md` and `README.md`.
+- GitHub Pages deployment is being migrated from the classic "Deploy from a branch" mechanism to
+  an Actions-based one (`.github/workflows/pages-deploy.yml`, gated behind the same `quality.yml`
+  checks). This requires a one-time manual switch in Settings → Pages → Source → "GitHub Actions";
+  until that's flipped, the classic branch-based deploy keeps serving the site as a fallback.
 
 ### Legacy/reference code (not connected to Supabase, not deployed anywhere)
 
 - `raumbuchung.py` — the oldest version: a single Python file combining login, SQLite, a built-in
   `http.server`, and NFC polling. Superseded, kept only as logic reference.
 - `database.py` + `api.py` (FastAPI/uvicorn) + `admin.py` + `demo.py` + `notify.py` + `config.py` +
-  `index_lokal_modular.html` + `api_ergaenzung.py` + `checkin_ergaenzung.py` — a later, more
-  elaborate local-only prototype: SQLite (`rooms`/`users`/`bookings`, numeric `room_id`s, per-room
-  `capacity`), FastAPI endpoints, walk-in bookings, check-in/check-out with open end times, and
-  optional email notifications via `notify.py` (needs SMTP creds in `config.py`). `api.py` serves
-  `index_lokal_modular.html` as its frontend — a completely different HTML file from the live
-  `index.html`, with its own `/api/...` endpoints instead of Supabase calls.
+  `index_lokal_modular.html` — a later, more elaborate local-only prototype: SQLite
+  (`rooms`/`users`/`bookings`, numeric `room_id`s, per-room `capacity`), FastAPI endpoints, walk-in
+  bookings, check-in/check-out with open end times, and optional email notifications via
+  `notify.py` (needs SMTP creds in `config.py`; `config.py`'s own header warns not to commit real
+  credentials into a public repo — this repo is public now, keep that in mind if anyone ever fills
+  in real SMTP values there). `api.py` serves `index_lokal_modular.html` as its frontend — a
+  completely different HTML file from the live `index.html`, with its own `/api/...` endpoints
+  instead of Supabase calls.
+- `api_ergaenzung.py` and `checkin_ergaenzung.py` are **not runnable scripts** — despite the `.py`
+  extension, they're copy-paste snippet notes ("füge diese Zeilen in api.py/checkin.py ein") that
+  were apparently never actually merged in. Orphaned/dead, kept only as a record of intent. If you
+  need the email-on-cancel behavior they sketch out, write it directly into `api.py` instead of
+  trying to "integrate" these files.
 - None of the Python files have a `requirements.txt`/`pyproject.toml`; dependencies are only named
   in each file's docstring (`fastapi`, `uvicorn`, `pydantic`, `pyscard`). Install ad hoc with pip.
 
@@ -70,14 +93,20 @@ at the time this was written.
 
 ## Running things
 
-There's no build, lint, or test tooling anywhere in this repo — nothing to run before committing
-beyond manually checking the page in a browser.
+There's no build, lint, or test tooling in the traditional sense (no package manager, no
+TypeScript, no test framework — see `README.md`'s Tests section for why). What exists instead:
+`.github/workflows/quality.yml` is a reusable (`workflow_call`) syntax/consistency check —
+`py_compile` on every `.py` file, `node --check` on the embedded `<script>` in both HTML files,
+HTML well-formedness, YAML/TOML validation, and migration filename/safety checks. `ci.yml` runs it
+on every push/PR; `pages-deploy.yml` and `supabase-deploy.yml` both gate their deploy job behind
+it. Run the same checks locally before committing — see the exact commands in `README.md`'s
+"Tests, Linting und Formatierung" section.
 
 - **Live app**: no local run step; open `index.html` directly, or push to `main` and GitHub Pages
-  rebuilds automatically (build status: repo's Actions tab, "pages build and deployment").
+  rebuilds automatically once quality checks pass (build status: repo's Actions tab).
 - **DB schema changes**: add a new file under `supabase/migrations/`, push to `main`; the
-  `Supabase Schema Deploy` Actions workflow applies it. Can also be triggered manually
-  (`workflow_dispatch`) from the Actions tab.
+  `Supabase Schema Deploy` Actions workflow validates and then applies it. Can also be triggered
+  manually (`workflow_dispatch`) from the Actions tab.
 - **Legacy modular prototype**: `py database.py` once to create `raumbuchung.db`, then `py api.py`
   (serves on the port printed by the script) or `py admin.py` for the CLI admin tool.
 - **Legacy all-in-one prototype**: `py raumbuchung.py` (creates its own `raumbuchung.db`, opens a

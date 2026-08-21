@@ -16,8 +16,13 @@ die Datenbank (Tabellen, Spalten, Rechte).
   und wird **genau einmal** angewendet
 - Bei jedem Push nach `main`, der Dateien in `supabase/migrations/`
   ändert, läuft automatisch der GitHub-Actions-Workflow
-  `.github/workflows/supabase-deploy.yml` und führt
-  `supabase db push` gegen dein Projekt aus
+  `.github/workflows/supabase-deploy.yml`: zuerst ein Validierungs-Job
+  (Namenskonvention, riskante Statements wie `DROP TABLE`/`TRUNCATE`),
+  danach erst `supabase db push` gegen dein Projekt
+- Parallele Deployments sind über eine `concurrency`-Gruppe blockiert –
+  zwei gleichzeitige Pushes können sich nicht gegenseitig überholen
+- Kein automatischer `db reset`, kein automatisches Seed-Deployment auf
+  Produktion – die Pipeline wendet ausschließlich neue Migrationen an
 
 ## Einmalige Einrichtung (das musst du tun)
 
@@ -43,6 +48,23 @@ Das ist **nicht** der anon key, sondern das Postgres-Passwort:
    - Name: `SUPABASE_DB_PASSWORD` → Wert: Passwort aus Schritt 2
 
 Das war's – die Pipeline ist danach einsatzbereit.
+
+### 4. Optional, aber empfohlen: GitHub Environment "production"
+
+Der Deploy-Job ist an ein Environment namens `production` gebunden
+(`environment: production` in `supabase-deploy.yml`). Ohne dieses
+Environment läuft die Pipeline trotzdem ganz normal – erst wenn du es
+anlegst, kannst du zusätzliche Schutzregeln aktivieren (z.B. dass ein
+Mitglied den Lauf erst bestätigen muss, bevor Migrationen wirklich auf
+der produktiven Datenbank landen):
+
+1. Im Repo: **Settings → Environments → New environment**
+2. Name exakt `production` eingeben, erstellen
+3. Optional: unter "Deployment protection rules" einen Reviewer
+   festlegen
+4. Optional: Die beiden Secrets aus Schritt 3 stattdessen hier im
+   Environment hinterlegen statt auf Repo-Ebene (dann gelten sie nur
+   für Jobs, die dieses Environment nutzen)
 
 ## Zukünftige Schema-Änderungen
 
