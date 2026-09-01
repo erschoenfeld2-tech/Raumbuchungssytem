@@ -30,7 +30,7 @@ STANDARD_RAUM = None
 
 # Länge einer NFC-Buchung in Minuten (Check-in = jetzt, Ende = jetzt + Dauer).
 # Das Live-Schema kennt keine "offenen" Buchungen ohne Endzeit (anders als
-# die alte SQLite-Version) – ein zweites Auflegen derselben Karte vor
-# Ablauf dieser Zeit verkürzt die Buchung auf die tatsächliche Verweildauer
-# (Check-out).
+# die alte SQLite-Version) – ein erneutes Auflegen derselben Karte vor
+# Ablauf dieser Zeit gilt nicht als Check-out, sondern verlängert die
+# laufende Buchung um weitere BUCHUNGSDAUER_MINUTEN.
 BUCHUNGSDAUER_MINUTEN = 60
