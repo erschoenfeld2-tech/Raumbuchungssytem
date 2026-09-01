@@ -20,8 +20,8 @@ Datei angepasst werden.
 
 # Zuordnung: Reader-Name (aus list_readers.py) → Raumname (aus index.html)
 READER_ZU_RAUM = {
-    "ACS ACR122 0": "ShareDesk 1",
-    "ACS ACR122 1": "ShareDesk 2",
+    "ASCACR1220": "Besprechungsraum",
+    "ASCACR1221": "Konferenzraum",
 }
 
 # Fallback wenn ein angeschlossener Reader nicht in der Liste steht:
