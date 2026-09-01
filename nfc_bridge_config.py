@@ -20,8 +20,8 @@ Datei angepasst werden.
 
 # Zuordnung: Reader-Name (aus list_readers.py) → Raumname (aus index.html)
 READER_ZU_RAUM = {
-    "ACS ACR122 0": "ShareDesk 1",
-    "ACS ACR122 1": "ShareDesk 2",
+    "ASCACR1220": "Besprechungsraum",
+    "ASCACR1221": "Konferenzraum",
 }
 
 # Fallback wenn ein angeschlossener Reader nicht in der Liste steht:
@@ -30,7 +30,7 @@ STANDARD_RAUM = None
 
 # Länge einer NFC-Buchung in Minuten (Check-in = jetzt, Ende = jetzt + Dauer).
 # Das Live-Schema kennt keine "offenen" Buchungen ohne Endzeit (anders als
-# die alte SQLite-Version) – ein zweites Auflegen derselben Karte vor
-# Ablauf dieser Zeit verkürzt die Buchung auf die tatsächliche Verweildauer
-# (Check-out).
+# die alte SQLite-Version) – ein erneutes Auflegen derselben Karte vor
+# Ablauf dieser Zeit gilt nicht als Check-out, sondern verlängert die
+# laufende Buchung um weitere BUCHUNGSDAUER_MINUTEN.
 BUCHUNGSDAUER_MINUTEN = 60

@@ -17,10 +17,14 @@ Ablauf pro Karte:
      die Karten-UID selbst ist über den anon key sonst nicht lesbar)
   2. Unbekannte Karte → ablehnen (rote LED)
   3. Läuft für diesen Nutzer in diesem Raum gerade schon eine
-     NFC-Buchung? → Check-OUT (Buchung wird auf jetzt verkürzt)
+     NFC-Buchung? → VERLÄNGERN (Ende der Buchung um
+     nfc_bridge_config.BUCHUNGSDAUER_MINUTEN nach hinten schieben,
+     kein Check-out über NFC)
   4. Sonst → Kapazität prüfen (wie index.html: pruefeKapazitaet) und
      Check-IN (neue Buchung, quelle='nfc', Dauer siehe
-     nfc_bridge_config.BUCHUNGSDAUER_MINUTEN)
+     nfc_bridge_config.BUCHUNGSDAUER_MINUTEN). Bei Besprechungsraum/
+     Konferenzraum (Kapazität 1) sperrt das jede weitere Karte für den
+     Raum, solange die Buchung läuft.
 
 Voraussetzungen:
     pip install pyscard requests
@@ -155,12 +159,12 @@ def checkin(nutzer, raum, start, ende):
     return r.json()[0]
 
 
-def checkout(buchung_id, jetzt):
+def verlaengern(buchung_id, neues_ende):
     r = requests.patch(
         f'{SUPABASE_URL}/rest/v1/buchungen',
         headers=HEADERS,
         params={'id': f'eq.{buchung_id}'},
-        json={'ende': jetzt},
+        json={'ende': neues_ende},
         timeout=5,
     )
     r.raise_for_status()
@@ -204,15 +208,18 @@ def process_card(uid, raum, connection, reader_name):
         led_red(connection)
         return
 
-    # Schon eingecheckt → CHECK-OUT (Buchung auf jetzt verkürzen)
+    # Schon eingecheckt → VERLÄNGERN (Ende um BUCHUNGSDAUER_MINUTEN nach hinten schieben)
     if laufend:
+        neues_ende = (datetime.strptime(laufend['ende'], FMT)
+                      + timedelta(minutes=BUCHUNGSDAUER_MINUTEN)).strftime(FMT)
         try:
-            checkout(laufend['id'], jetzt)
+            verlaengern(laufend['id'], neues_ende)
         except requests.RequestException as e:
-            print(f'  [{raum}] ✗ Check-out fehlgeschlagen: {e}')
+            print(f'  [{raum}] ✗ Verlängerung fehlgeschlagen: {e}')
             led_red(connection)
             return
-        print(f'  [{raum}] 🔴 CHECK-OUT – {nutzer["name"]} (Buchung #{laufend["id"]})')
+        print(f'  [{raum}] 🔵 VERLÄNGERT – {nutzer["name"]} '
+              f'(Buchung #{laufend["id"]}) bis {neues_ende[11:]}')
         led_green(connection)
         return
 

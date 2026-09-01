@@ -22,10 +22,16 @@ für den Grundriss, kein Build-Schritt, kein Framework), die direkt mit Supabase
 öffentlichen `anon key` spricht. Zugriffsrechte werden über Postgres
 Row-Level-Security-Policies geregelt, nicht durch Geheimhaltung des Keys.
 
-Zusätzlich gibt es ein **NFC-Toolkit** (`checkin.py`, `nfc_test.py`, `reader_config.py` u. a.)
-für ACR122U-Kartenleser. Wichtige Einschränkung: Diese Skripte schreiben aktuell noch in die
-alte lokale SQLite-Datenbank (`database.py`), **nicht** in die Live-Supabase-Tabelle
-`buchungen`. Diese Brücke existiert noch nicht.
+Zusätzlich gibt es ein **NFC-Legacy-Toolkit** (`checkin.py`, `nfc_test.py`, `reader_config.py`
+u. a.) für ACR122U-Kartenleser. Wichtige Einschränkung: Diese Skripte schreiben in die alte
+lokale SQLite-Datenbank (`database.py`), **nicht** in die Live-Supabase-Tabelle `buchungen` —
+sie dienen nur noch als Logik-Referenz.
+
+Die tatsächliche **NFC-Anbindung ans Live-System** ist `nfc_supabase_bridge.py` +
+`nfc_bridge_config.py`: derselbe Reader-Polling-Ablauf wie `checkin.py`, aber die Karten-UID
+wird über die Postgres-Funktion `nutzer_by_nfc()` aufgelöst und Check-ins landen direkt per
+PostgREST (mit demselben `anon key` wie `index.html`) in `buchungen` mit `quelle='nfc'` —
+sichtbar in der Live-Website beim nächsten Reload.
 
 ## Voraussetzungen
 
@@ -67,9 +73,13 @@ py api.py           # startet FastAPI-Server auf Port 8000
 # Älteste Einzeldatei-Version
 py raumbuchung.py   # eigene SQLite-DB, eingebauter Server, Port 8000
 
-# NFC-Skripte (Hardware nötig)
+# NFC-Legacy-Toolkit (Hardware nötig, schreibt in lokale SQLite-DB)
 py list_readers.py  # Reader-Namen ermitteln, in reader_config.py eintragen
 py checkin.py
+
+# NFC-Brücke zum Live-System (Hardware nötig, schreibt live in Supabase)
+py list_readers.py  # Reader-Namen ermitteln, in nfc_bridge_config.py eintragen
+py nfc_supabase_bridge.py
 ```
 
 ## Build
@@ -199,6 +209,13 @@ egal, aber der Name muss exakt existieren). Tippfehler oder fehlender Nutzer in 
 sind die häufigste Ursache.
 
 **NFC-Karte wird nicht erkannt**
-Betrifft nur die Legacy-Skripte (`checkin.py` etc.), nicht die Live-Website — dort ist NFC
-noch nicht angebunden (siehe oben). `py list_readers.py` prüft, ob der Reader überhaupt
-erkannt wird.
+`py list_readers.py` prüft, ob der Reader überhaupt erkannt wird (USB-Verbindung, Treiber).
+Betrifft sowohl das Legacy-Toolkit (`checkin.py` etc., lokale SQLite-DB) als auch die
+Live-Brücke (`nfc_supabase_bridge.py`) — beide nutzen dieselbe PC/SC-Anbindung über `pyscard`.
+
+**Karte wird erkannt, aber Check-in schlägt fehl / Nutzer "unbekannt"**
+Betrifft `nfc_supabase_bridge.py`. Prüfen: (1) Ist die Karten-UID in der `nutzer`-Tabelle
+hinterlegt (`nfc_uid`-Spalte)? (2) Ist die Migration
+`supabase/migrations/20260831140000_add_nfc_lookup_rpc.sql` deployt (RPC `nutzer_by_nfc`
+muss existieren)? (3) Steht der Raumname in `nfc_bridge_config.py` (`READER_ZU_RAUM`) exakt
+so wie in der `ROOMS`-Konstante in `index.html`?

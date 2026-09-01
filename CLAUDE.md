@@ -78,15 +78,30 @@ Only one is real. Always check which file you're touching before assuming it aff
 - None of the Python files have a `requirements.txt`/`pyproject.toml`; dependencies are only named
   in each file's docstring (`fastapi`, `uvicorn`, `pydantic`, `pyscard`). Install ad hoc with pip.
 
-### NFC toolkit — currently talks to the legacy DB, not to the live system
+### NFC toolkit — two separate bridges, only one talks to the live system
 
 `checkin.py`, `checkin_debug.py`, `nfc_test.py`, `list_readers.py`, `reader_config.py`,
 `test_nfc_read.py` drive ACR122U readers over PC/SC via `pyscard`. **Gotcha:** `checkin.py` imports
-from the legacy `database.py` (SQLite), so as it stands today the NFC scripts write check-ins into
-the old local SQLite DB, *not* into the live Supabase `buchungen` table. There is currently no
-script that bridges NFC reads to Supabase — if asked to "make NFC check-in work with the live
-site," that bridge has to be built, not just fixed. `reader_config.py` maps reader name → numeric
-`room_id` (the legacy room model), which does not correspond to the live app's room *names*.
+from the legacy `database.py` (SQLite), so those scripts write check-ins into the old local SQLite
+DB, *not* into the live Supabase `buchungen` table. `reader_config.py` maps reader name → numeric
+`room_id` (the legacy room model), which does not correspond to the live app's room *names*. Keep
+this toolkit only as logic reference — don't try to make it talk to Supabase, that's what the
+bridge below is for.
+
+`nfc_supabase_bridge.py` + `nfc_bridge_config.py` are the **live bridge**: same ACR122U/pyscard
+polling loop as `checkin.py`, but resolve the card UID via the `nutzer_by_nfc(p_nfc_uid)` Postgres
+RPC (`supabase/migrations/20260831140000_add_nfc_lookup_rpc.sql`, security-definer so the anon key
+can resolve one known UID without ever bulk-reading `nutzer.nfc_uid`) and write straight into
+`buchungen` over the PostgREST API with `quelle='nfc'`, using the same public anon key as
+`index.html`. Capacity check (`freie_plaetze`) mirrors `pruefeKapazitaet()` in `index.html`
+exactly (same overlap query: `raum` match, `start < ende` and `ende > start`) — keep them in sync
+if either changes. First card scan on a room = check-in (new booking, end = now +
+`BUCHUNGSDAUER_MINUTEN`, default 60); scanning the same card again while that booking is still
+running = check-out (shortens `ende` to now). `nfc_bridge_config.py`'s `READER_ZU_RAUM` maps
+reader name (from `list_readers.py`) → **room name string**, which must match a `ROOMS` entry in
+`index.html` exactly (case-sensitive) since it's written verbatim into `buchungen.raum` — update
+this file, not the toolkit above, when readers move rooms or more readers are added. Requires
+`pip install pyscard requests` in addition to the toolkit's own deps.
 
 Python version constraint for anything using `pyscard`: **3.13, not 3.14** — no wheels for 3.14 yet
 at the time this was written.
@@ -111,9 +126,13 @@ it. Run the same checks locally before committing — see the exact commands in 
   (serves on the port printed by the script) or `py admin.py` for the CLI admin tool.
 - **Legacy all-in-one prototype**: `py raumbuchung.py` (creates its own `raumbuchung.db`, opens a
   browser to `http://127.0.0.1:8000`).
-- **NFC scripts**: `py list_readers.py` to see connected reader names first, set those in
+- **NFC legacy toolkit**: `py list_readers.py` to see connected reader names first, set those in
   `reader_config.py`, then `py checkin.py` (or `py nfc_test.py` / `py test_nfc_read.py` for
   simpler standalone tests). Requires physical ACR122U hardware and `pip install pyscard`.
+- **NFC live bridge**: `py list_readers.py` first, set reader names → room names in
+  `nfc_bridge_config.py`, then `py nfc_supabase_bridge.py`. Requires physical ACR122U hardware and
+  `pip install pyscard requests`. Writes directly into the live Supabase `buchungen` table — new
+  check-ins show up in `index.html` on the next poll/reload.
 
 ## Conventions specific to this project
 
