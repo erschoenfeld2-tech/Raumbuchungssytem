@@ -94,13 +94,13 @@
   .cal-cell{border-left:1px solid var(--border);border-top:1px solid var(--surface2);position:relative}
   .cal-cell.half{border-top:1px dashed rgba(46,50,80,.5)}
 
-  .block{position:absolute;left:2px;right:2px;border-radius:5px;padding:4px 6px;color:#fff;font-size:11px;
-    cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,.3);z-index:2;overflow:hidden}
-  .block.web{background:linear-gradient(135deg,#3b4fd4,#6d28d9)}
-  .block.nfc{background:linear-gradient(135deg,#15803d,#166534)}
-  .block.mine{outline:2px solid var(--amber);outline-offset:-2px}
-  .block .b-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
-  .block .b-time,.block .b-src{font-size:9px;opacity:.85}
+  .cal-cell{cursor:pointer}
+  .cal-cell:hover{background:rgba(79,110,247,.08)}
+  .cal-cell.cal-blocker{display:flex;align-items:center;justify-content:center;font-size:12px;
+    font-weight:700;color:#fff;cursor:pointer}
+  .cal-cell.cal-blocker.status-partial{background:#3b3d5c}
+  .cal-cell.cal-blocker.status-busy{background:#5c2d3c}
+  .cal-cell.cal-blocker.mine{outline:2px solid var(--amber);outline-offset:-2px}
 
   .now{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:3;pointer-events:none}
   .now::before{content:'';position:absolute;left:-4px;top:-4px;width:10px;height:10px;background:var(--red);border-radius:50%}
@@ -127,11 +127,12 @@
   /* ── Grundriss ── */
   .plan-wrap{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px}
   .plan-svg{width:100%;height:auto;display:block}
+  .plan-outer{fill:#12141c;stroke:var(--border);stroke-width:3}
   .plan-room{cursor:pointer;transition:.15s}
-  .plan-room:hover .plan-fill{filter:brightness(1.25)}
-  .plan-fill{fill:var(--surface2);stroke:var(--accent);stroke-width:2}
-  .plan-fill.selected{fill:var(--accent);stroke:var(--purple);stroke-width:3}
-  .plan-fill.status-free{fill:var(--surface2);stroke:var(--accent)}
+  .plan-room:hover .plan-fill{filter:brightness(1.3)}
+  .plan-fill{fill:var(--surface2);stroke:var(--border);stroke-width:1.5}
+  .plan-fill.selected{fill:#2a2f52;stroke:var(--accent);stroke-width:2.5}
+  .plan-fill.status-free{fill:var(--surface2);stroke:var(--border)}
   .plan-fill.status-partial{fill:#3b3d5c;stroke:var(--purple)}
   .plan-fill.status-busy{fill:#5c2d3c;stroke:var(--red)}
   .plan-label{fill:var(--text);font-size:12px;font-weight:700;pointer-events:none;text-anchor:middle}
@@ -141,6 +142,17 @@
   .plan-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--muted)}
   .plan-legend span{display:flex;align-items:center;gap:6px}
   .plan-legend .sw{width:14px;height:14px;border-radius:3px;border:1px solid var(--border)}
+  .plan-legend .dot{width:12px;height:12px;border-radius:50%}
+
+  /* ── Einzelne Tische im Grundriss ── */
+  .plan-desk{cursor:pointer;transition:.15s}
+  .plan-desk:hover{filter:brightness(1.25)}
+  .desk-badge{stroke:#0f1117;stroke-width:1.5}
+  .desk-badge.frei{fill:var(--green)}
+  .desk-badge.belegt{fill:var(--red)}
+  .plan-desk.selected .desk-badge{stroke:var(--amber);stroke-width:2.5}
+  .desk-plus{fill:#fff;font-size:11px;font-weight:800;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+  .desk-code{fill:var(--muted);font-size:8px;text-anchor:middle;pointer-events:none}
 
   /* ── Mobile ── */
   @media (max-width:720px){
@@ -212,6 +224,8 @@
         <h2>Neue Buchung</h2>
         <label for="f-raum">Raum</label>
         <select id="f-raum"></select>
+        <label for="f-tisch" id="f-tisch-label" style="display:none">Tisch</label>
+        <select id="f-tisch" style="display:none"></select>
         <label for="f-datum">Datum</label>
         <input type="date" id="f-datum"/>
         <div class="zeit-row">
@@ -227,10 +241,14 @@
       <div class="card">
         <h2>Info</h2>
         <p style="color:var(--muted);font-size:12px;line-height:1.6">
-          <span style="color:var(--purple);font-weight:600">■</span> Web-Buchung<br>
-          <span style="color:#16a34a;font-weight:600">■</span> NFC-Buchung<br>
+          Jeder Tisch ist einzeln buchbar und durchnummeriert:
+          <strong style="color:var(--text)">Etage.RaumTisch</strong>, z.B.
+          <strong style="color:var(--text)">1.203</strong> = Etage 1, 2. Raum, 3. Tisch.<br><br>
+          In der Listenansicht zeigt eine Zelle nur die Belegung
+          (z.B. <strong style="color:var(--text)">1/2</strong>) – anklicken zeigt Details
+          und erlaubt die Buchung eines freien Tisches.<br><br>
           <span style="color:var(--amber);font-weight:600">▭</span> Deine Buchungen<br><br>
-          Meetingräume: 1 Person gleichzeitig · ShareDesks: 2 Personen gleichzeitig.<br><br>
+          Meetingräume: 1 Tisch (der ganze Raum) · ShareDesks: 2 Einzeltische.<br><br>
           <strong style="color:var(--text)">NFC:</strong> Karte am Reader (Besprechungsraum/Konferenzraum) auflegen → automatische 60-Min-Buchung.
         </p>
       </div>
@@ -251,10 +269,11 @@
           <svg class="plan-svg" viewBox="0 0 800 550" id="floorplan"></svg>
         </div>
         <div class="plan-legend">
-          <span><span class="sw" style="background:#22263a;border-color:#4f6ef7"></span>frei</span>
-          <span><span class="sw" style="background:#3b3d5c;border-color:#7c3aed"></span>teilweise belegt</span>
-          <span><span class="sw" style="background:#5c2d3c;border-color:#ef4444"></span>voll belegt</span>
-          <span><span class="sw" style="background:#4f6ef7"></span>ausgewählt</span>
+          <span><span class="dot" style="background:#22c55e"></span>Tisch frei</span>
+          <span><span class="dot" style="background:#ef4444"></span>Tisch belegt</span>
+          <span><span class="sw" style="background:#5c2d3c;border-color:#ef4444"></span>Meetingraum belegt</span>
+          <span><span class="sw" style="background:#2a2f52;border-color:#4f6ef7"></span>ausgewählt</span>
+          <span>Klick auf einen Tisch = Raum + Tisch im Formular auswählen</span>
         </div>
       </div>
     </div>
@@ -265,12 +284,23 @@
   <div class="modal">
     <h3>Buchung</h3>
     <p>Raum: <strong id="m-raum"></strong></p>
+    <p id="m-tisch-row">Tisch: <strong id="m-tisch"></strong></p>
     <p>Nutzer: <strong id="m-nutzer"></strong></p>
     <p>Zeit: <strong id="m-zeit"></strong></p>
     <p>Quelle: <strong id="m-quelle"></strong></p>
     <div class="modal-actions">
       <button onclick="modalClose()" style="flex:1">Schließen</button>
       <button id="m-delete" onclick="modalDelete()" style="flex:1;background:var(--red);border-color:var(--red);display:none">Löschen</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="slot-modal">
+  <div class="modal" style="width:380px">
+    <h3 id="slot-title">Zeitfenster</h3>
+    <div id="slot-body"></div>
+    <div class="modal-actions">
+      <button onclick="slotModalClose()" style="flex:1">Schließen</button>
     </div>
   </div>
 </div>
@@ -292,44 +322,64 @@ const H_START = 7, H_ENDE = 20;
 const CONFIGURED = SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20;
 const supa = CONFIGURED ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-// 12 Räume auf 2 Etagen. Meetingräume: Kapazität 1, ShareDesks: Kapazität 2.
-const ROOMS = [
-  {name:'Besprechungsraum', etage:1, kapazitaet:1},
-  {name:'Konferenzraum',    etage:1, kapazitaet:1},
-  {name:'ShareDesk 1',      etage:1, kapazitaet:2},
-  {name:'ShareDesk 2',      etage:1, kapazitaet:2},
-  {name:'ShareDesk 3',      etage:1, kapazitaet:2},
-  {name:'ShareDesk 4',      etage:1, kapazitaet:2},
-  {name:'ShareDesk 5',      etage:1, kapazitaet:2},
-  {name:'ShareDesk 6',      etage:2, kapazitaet:2},
-  {name:'ShareDesk 7',      etage:2, kapazitaet:2},
-  {name:'ShareDesk 8',      etage:2, kapazitaet:2},
-  {name:'ShareDesk 9',      etage:2, kapazitaet:2},
-  {name:'ShareDesk 10',     etage:2, kapazitaet:2},
+// 12 Räume auf 2 Etagen. Meetingräume: 1 Tisch (= der ganze Raum),
+// ShareDesks: 2 Einzeltische. Kapazität eines Raums = Anzahl seiner Tische.
+const ROOM_DEFS = [
+  {name:'Besprechungsraum', etage:1, typ:'meeting',   tische:1},
+  {name:'Konferenzraum',    etage:1, typ:'meeting',   tische:1},
+  {name:'ShareDesk 1',      etage:1, typ:'sharedesk', tische:2},
+  {name:'ShareDesk 2',      etage:1, typ:'sharedesk', tische:2},
+  {name:'ShareDesk 3',      etage:1, typ:'sharedesk', tische:2},
+  {name:'ShareDesk 4',      etage:1, typ:'sharedesk', tische:2},
+  {name:'ShareDesk 5',      etage:1, typ:'sharedesk', tische:2},
+  {name:'ShareDesk 6',      etage:2, typ:'sharedesk', tische:2},
+  {name:'ShareDesk 7',      etage:2, typ:'sharedesk', tische:2},
+  {name:'ShareDesk 8',      etage:2, typ:'sharedesk', tische:2},
+  {name:'ShareDesk 9',      etage:2, typ:'sharedesk', tische:2},
+  {name:'ShareDesk 10',     etage:2, typ:'sharedesk', tische:2},
 ];
+
+// Tisch-Nummerierung: <Etage>.<Raum-Nr><Tisch-Nr, 2-stellig>.
+// Beispiel 1.203 = Etage 1, 2. Raum dieser Etage, 3. Tisch.
+function tischCode(etage, raumNr, tischNr){
+  return `${etage}.${raumNr}${String(tischNr).padStart(2,'0')}`;
+}
+function baueRaeume(){
+  const raumZaehler = {};
+  return ROOM_DEFS.map(def => {
+    raumZaehler[def.etage] = (raumZaehler[def.etage] || 0) + 1;
+    const raumNr = raumZaehler[def.etage];
+    const tische = [];
+    for(let t = 1; t <= def.tische; t++){
+      tische.push({ nr:t, code: tischCode(def.etage, raumNr, t) });
+    }
+    return { ...def, raumNr, kapazitaet: def.tische, tische };
+  });
+}
+const ROOMS = baueRaeume();
 
 // Grundriss-Geometrie je Etage (SVG-Koordinaten, wie in raumbuchung.py)
 const FLOORS = {
   1: {
     outer:{x:30,y:30,w:740,h:490}, flur:{x:290,y:60,w:220,h:430}, flurLabel:'Flur',
     rooms:{
-      'Besprechungsraum':{x:60,y:60,w:210,h:200,sub:'8 Plätze',furn:'conf'},
-      'Konferenzraum':   {x:530,y:60,w:210,h:200,sub:'12 Plätze',furn:'conf'},
-      'ShareDesk 1':{x:60,y:280,w:100,h:210,sub:'2 Plätze',furn:'desk-double'},
-      'ShareDesk 2':{x:170,y:280,w:100,h:210,sub:'2 Plätze',furn:'desk-double'},
-      'ShareDesk 3':{x:530,y:280,w:100,h:210,sub:'2 Plätze',furn:'desk-double'},
-      'ShareDesk 4':{x:640,y:280,w:100,h:100,sub:'2 Plätze',furn:'desk-double'},
-      'ShareDesk 5':{x:640,y:390,w:100,h:100,sub:'2 Plätze',furn:'desk-double'},
+      'Besprechungsraum':{x:60,y:60,w:210,h:200,sub:'8 Plätze'},
+      'Konferenzraum':   {x:530,y:60,w:210,h:200,sub:'12 Plätze'},
+      'ShareDesk 1':{x:60,y:280,w:100,h:210},
+      'ShareDesk 2':{x:170,y:280,w:100,h:210},
+      'ShareDesk 3':{x:530,y:280,w:100,h:210},
+      'ShareDesk 4':{x:640,y:280,w:100,h:100},
+      'ShareDesk 5':{x:640,y:390,w:100,h:100},
     }
   },
   2: {
     outer:{x:30,y:30,w:740,h:490}, flur:{x:290,y:60,w:220,h:430}, flurLabel:'Flur',
     rooms:{
-      'ShareDesk 6': {x:60,y:60,w:210,h:200,sub:'2 Plätze',furn:'desk-double'},
-      'ShareDesk 7': {x:60,y:280,w:100,h:210,sub:'2 Plätze',furn:'desk-double'},
-      'ShareDesk 8': {x:170,y:280,w:100,h:210,sub:'2 Plätze',furn:'desk-double'},
-      'ShareDesk 9': {x:530,y:60,w:210,h:200,sub:'2 Plätze',furn:'desk-double'},
-      'ShareDesk 10':{x:530,y:280,w:210,h:210,sub:'2 Plätze',furn:'desk-double'},
+      'ShareDesk 6': {x:60,y:60,w:210,h:200},
+      'ShareDesk 7': {x:60,y:280,w:100,h:210},
+      'ShareDesk 8': {x:170,y:280,w:100,h:210},
+      'ShareDesk 9': {x:530,y:60,w:210,h:200},
+      'ShareDesk 10':{x:530,y:280,w:210,h:210},
     }
   }
 };
@@ -389,10 +439,34 @@ function initRaumDropdown(){
   const raeume = roomsForEtage();
   const sel = document.getElementById('f-raum');
   const bisher = sel.value;
-  sel.innerHTML = raeume.map(r => `<option value="${r.name}">${r.name} (${r.kapazitaet} Plätze)</option>`).join('');
+  sel.innerHTML = raeume.map(r => `<option value="${r.name}">${r.name} (${r.kapazitaet} Tisch${r.kapazitaet>1?'e':''})</option>`).join('');
   if(!raeume.some(r => r.name === bisher)) sel.value = raeume[0].name;
-  sel.onchange = () => { drawFloor(); updateGanztagVisibility(); };
+  sel.onchange = () => { initTischDropdown(); drawFloor(); updateGanztagVisibility(); };
+  initTischDropdown();
   updateGanztagVisibility();
+}
+
+// Tisch-Dropdown: nur bei Räumen mit mehreren Tischen sichtbar, sonst
+// wird der einzige Tisch (z.B. bei Meetingräumen) automatisch übernommen.
+function initTischDropdown(){
+  const raum = ROOMS.find(r => r.name === document.getElementById('f-raum').value);
+  const label = document.getElementById('f-tisch-label');
+  const sel = document.getElementById('f-tisch');
+  if(!raum) return;
+  if(raum.tische.length <= 1){
+    label.style.display = 'none';
+    sel.style.display = 'none';
+    sel.innerHTML = `<option value="${raum.tische[0].code}">${raum.tische[0].code}</option>`;
+    return;
+  }
+  label.style.display = 'block';
+  sel.style.display = 'block';
+  const bisher = sel.value;
+  sel.innerHTML = raum.tische.map(t => {
+    const status = tischStatus(raum.name, t.code);
+    return `<option value="${t.code}">Tisch ${t.code}${status==='belegt' ? ' – aktuell belegt' : ''}</option>`;
+  }).join('');
+  if(raum.tische.some(t => t.code === bisher)) sel.value = bisher;
 }
 
 // ShareDesks (Kapazität 2) dürfen ganztägig gebucht werden, Meetingräume nicht.
@@ -426,11 +500,14 @@ function switchView(which){
   document.getElementById('view-office').classList.toggle('active', which === 'office');
   if(which === 'office') drawFloor();
 }
-function selectRoomFromPlan(name){
-  document.getElementById('f-raum').value = name;
+function waehleTisch(raumName, tischCode){
+  document.getElementById('f-raum').value = raumName;
+  initTischDropdown();
+  const tischSel = document.getElementById('f-tisch');
+  if([...tischSel.options].some(o => o.value === tischCode)) tischSel.value = tischCode;
   drawFloor();
   updateGanztagVisibility();
-  toast('Raum ausgewählt: ' + name, 'success');
+  toast('Ausgewählt: Tisch ' + tischCode, 'success');
 }
 
 // ── Belegungsstatus (kapazitätsbewusst) ──
@@ -439,13 +516,28 @@ function isBookingActive(b){
   const nowStr = ds(now) + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
   return b.start <= nowStr && b.ende > nowStr;
 }
-function roomStatus(name){
-  const room = ROOMS.find(r => r.name === name);
-  const bs = allBookings.filter(b => b.raum === name);
+// Buchungen eines Raums, die für die aktuelle Ansicht relevant sind:
+// heute nur die gerade laufenden, an anderen Tagen alle des Tages.
+function raumBuchungenRelevant(raumName){
+  const bs = allBookings.filter(b => b.raum === raumName);
   const isToday = ds(aktDatum) === ds(new Date());
-  const relevante = isToday ? bs.filter(isBookingActive) : bs;
+  return isToday ? bs.filter(isBookingActive) : bs;
+}
+function raumStatus(name){
+  const room = ROOMS.find(r => r.name === name);
+  const relevante = raumBuchungenRelevant(name);
   if(relevante.length === 0) return 'free';
   return relevante.length >= room.kapazitaet ? 'busy' : 'partial';
+}
+// Status eines einzelnen Tisches. Buchungen ohne tisch-Wert (z.B. übers
+// NFC-Skript, das nur den Raum kennt) können keinem konkreten Tisch
+// zugeordnet werden – sie zählen konservativ gegen die Gesamtkapazität,
+// damit kein Tisch als "frei" angezeigt wird, wenn der Raum voll ist.
+function tischStatus(raumName, code){
+  const room = ROOMS.find(r => r.name === raumName);
+  const relevante = raumBuchungenRelevant(raumName);
+  if(relevante.some(b => b.tisch === code)) return 'belegt';
+  return relevante.length >= room.kapazitaet ? 'belegt' : 'frei';
 }
 
 // ── Möbel-Zeichenfunktionen ──
@@ -472,36 +564,57 @@ function furnDeskSingle(cx, cy){
   s+=`<rect style="${FURN_CHAIR}" x="${dx+dw/2-7}" y="${dy+dh+3}" width="14" height="8" rx="1"/>`;
   return s;
 }
-function furnDeskDouble(r){
-  const midY = r.y + r.h/2;
+// Mittelpunkte für 1-2 Einzeltische innerhalb einer Raum-Bounding-Box,
+// nebeneinander bei breiten Räumen, übereinander bei hohen.
+function deskCenters(r, n){
+  if(n <= 1) return [{x:r.x+r.w/2, y:r.y+r.h/2}];
   if(r.w >= r.h){
-    return furnDeskSingle(r.x+r.w*0.28, midY) + furnDeskSingle(r.x+r.w*0.72, midY);
+    return [{x:r.x+r.w*0.28, y:r.y+r.h/2}, {x:r.x+r.w*0.72, y:r.y+r.h/2}];
   }
-  return furnDeskSingle(r.x+r.w/2, r.y+r.h*0.32) + furnDeskSingle(r.x+r.w/2, r.y+r.h*0.72);
+  return [{x:r.x+r.w/2, y:r.y+r.h*0.32}, {x:r.x+r.w/2, y:r.y+r.h*0.72}];
 }
 
 function drawFloor(){
   const svg = document.getElementById('floorplan');
   if(!svg) return;
   const floor = FLOORS[currentEtage];
-  const selected = document.getElementById('f-raum').value;
+  const selRaum = document.getElementById('f-raum').value;
+  const selTisch = document.getElementById('f-tisch').value;
   const outer = floor.outer;
   let s = '';
-  s += `<rect fill="#fff" stroke="#333" stroke-width="4" x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}"/>`;
-  s += `<rect class="plan-flur" x="${floor.flur.x}" y="${floor.flur.y}" width="${floor.flur.w}" height="${floor.flur.h}"/>`;
+  s += `<rect class="plan-outer" x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}" rx="6"/>`;
+  s += `<rect class="plan-flur" x="${floor.flur.x}" y="${floor.flur.y}" width="${floor.flur.w}" height="${floor.flur.h}" rx="4"/>`;
   s += `<text class="plan-flur-label" x="${floor.flur.x+floor.flur.w/2}" y="${floor.flur.y+floor.flur.h/2}">${floor.flurLabel}</text>`;
 
   Object.entries(floor.rooms).forEach(([name, r]) => {
-    const status = roomStatus(name);
-    const isSelected = name === selected;
-    const cls = isSelected ? 'selected' : `status-${status}`;
-    s += `<g class="plan-room" onclick="selectRoomFromPlan('${name}')">`;
-    s += `<rect class="plan-fill ${cls}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`;
-    if(r.furn === 'conf') s += furnConf(r);
-    else if(r.furn === 'desk-double') s += furnDeskDouble(r);
-    s += `<text class="plan-label" x="${r.x+r.w/2}" y="${r.y+12}">${name}</text>`;
-    s += `<text class="plan-sub" x="${r.x+r.w/2}" y="${r.y+r.h-4}">${r.sub}</text>`;
-    s += `</g>`;
+    const room = ROOMS.find(x => x.name === name);
+    const isSelectedRoom = name === selRaum;
+
+    if(room.typ === 'meeting'){
+      const status = raumStatus(name);
+      const cls = isSelectedRoom ? 'selected' : `status-${status}`;
+      s += `<g class="plan-room" onclick="waehleTisch('${name}','${room.tische[0].code}')">`;
+      s += `<rect class="plan-fill ${cls}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="6"/>`;
+      s += furnConf(r);
+      s += `<text class="plan-label" x="${r.x+r.w/2}" y="${r.y+16}">${name}</text>`;
+      s += `<text class="plan-sub" x="${r.x+r.w/2}" y="${r.y+r.h-6}">${r.sub} · Tisch ${room.tische[0].code}</text>`;
+      s += `</g>`;
+    } else {
+      s += `<rect class="plan-fill${isSelectedRoom ? ' selected' : ''}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="6"/>`;
+      s += `<text class="plan-label" x="${r.x+r.w/2}" y="${r.y+16}">${name}</text>`;
+      const zentren = deskCenters(r, room.tische.length);
+      room.tische.forEach((t, i) => {
+        const c = zentren[i];
+        const status = tischStatus(name, t.code);
+        const istSelektiert = isSelectedRoom && t.code === selTisch;
+        s += `<g class="plan-desk${istSelektiert ? ' selected' : ''}" onclick="waehleTisch('${name}','${t.code}')">`;
+        s += furnDeskSingle(c.x, c.y);
+        s += `<circle class="desk-badge ${status}" cx="${c.x+22}" cy="${c.y-16}" r="8"/>`;
+        s += `<text class="desk-plus" x="${c.x+22}" y="${c.y-16}">+</text>`;
+        s += `<text class="desk-code" x="${c.x}" y="${c.y+27}">${t.code}</text>`;
+        s += `</g>`;
+      });
+    }
   });
   svg.innerHTML = s;
 }
@@ -530,10 +643,10 @@ async function ladeBuchungen(datum){
   return data.map(b => ({...b, name: nutzerMap[b.nutzer_id] || '?'}));
 }
 
-async function pruefeKapazitaet(raum, start, ende){
+async function pruefeKapazitaet(raum, start, ende, tisch){
   const room = ROOMS.find(r => r.name === raum);
   const { data, error } = await supa.from('buchungen')
-    .select('id')
+    .select('id,tisch')
     .eq('raum', raum)
     .lt('start', ende)
     .gt('ende', start);
@@ -541,10 +654,34 @@ async function pruefeKapazitaet(raum, start, ende){
   if(data.length >= room.kapazitaet){
     return { ok:false, msg:`Raum ausgebucht (${data.length}/${room.kapazitaet} belegt)` };
   }
+  if(tisch && data.some(b => b.tisch === tisch)){
+    return { ok:false, msg:`Tisch ${tisch} ist in diesem Zeitraum bereits belegt` };
+  }
   return { ok:true };
 }
 
 // ── Rendern ──
+function minutenZuUhrzeit(m){
+  return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+}
+
+// Eine Kalenderzelle (Raum × Halbstunde) zeigt keine einzelnen Buchungen
+// mehr, sondern nur einen Belegungs-"Blocker" (z.B. "1/2"). Klick öffnet
+// die Detailliste inkl. Schnellbuchung eines freien Tisches.
+function zelleHtml(raum, buchungen, datum, minuten){
+  const start = datum + ' ' + minutenZuUhrzeit(minuten);
+  const ende = datum + ' ' + minutenZuUhrzeit(minuten + 30);
+  const halfCls = (minuten % 60 !== 0) ? ' half' : '';
+  const treffer = buchungen.filter(b => b.raum === raum.name && b.start < ende && b.ende > start);
+  if(treffer.length === 0){
+    return `<div class="cal-cell${halfCls}" onclick="zelleOeffnen('${raum.name}','${start}','${ende}')"></div>`;
+  }
+  const belegt = Math.min(treffer.length, raum.kapazitaet);
+  const status = belegt >= raum.kapazitaet ? 'busy' : 'partial';
+  const mine = currentUser && treffer.some(b => b.nutzer_id === currentUser.id) ? ' mine' : '';
+  return `<div class="cal-cell cal-blocker status-${status}${mine}${halfCls}" onclick="zelleOeffnen('${raum.name}','${start}','${ende}')">${belegt}/${raum.kapazitaet}</div>`;
+}
+
 async function render(){
   if(!CONFIGURED){
     document.getElementById('kalender').innerHTML = '<div style="padding:20px;color:var(--muted)">Supabase noch nicht konfiguriert.</div>';
@@ -555,6 +692,7 @@ async function render(){
   allBookings = buchungen;
   renderAgenda(buchungen);
   drawFloor();
+  initTischDropdown();
 
   const raeume = roomsForEtage();
   const heuteFlag = datum === ds(new Date());
@@ -563,44 +701,17 @@ async function render(){
   let html = `<div class="cal-header" style="display:grid;grid-template-columns:${cols}">
     <div></div>
     ${raeume.map(r => `<div>${r.name}</div>`).join('')}
-  </div><div class="cal-body">`;
+  </div><div class="cal-body" style="position:relative">`;
 
   for(let h = H_START; h < H_ENDE; h++){
     for(let half = 0; half < 2; half++){
+      const minuten = h*60 + half*30;
       html += `<div class="cal-row" style="display:grid;grid-template-columns:${cols}">
         <div class="cal-time">${half===0 ? String(h).padStart(2,'0')+':00' : ''}</div>
-        ${raeume.map(() => `<div class="cal-cell${half?' half':''}"></div>`).join('')}
+        ${raeume.map(r => zelleHtml(r, buchungen, datum, minuten)).join('')}
       </div>`;
     }
   }
-
-  html += `<div style="position:absolute;inset:0;pointer-events:none"><div style="position:relative;width:100%;height:100%;pointer-events:auto">`;
-  buchungen.forEach(b => {
-    const ri = raeume.findIndex(r => r.name === b.raum);
-    if(ri === -1) return;
-    const st = new Date(b.start.replace(' ','T'));
-    const et = new Date(b.ende.replace(' ','T'));
-    const sMin = st.getHours()*60 + st.getMinutes();
-    const eMin = et.getHours()*60 + et.getMinutes();
-    const gridHoehe = (H_ENDE - H_START) * 96;
-    let top = (sMin - H_START*60) / 30 * 48;
-    let height = Math.max((eMin - sMin) / 30 * 48 - 2, 22);
-    if(top < 0){ height += top; top = 0; }
-    height = Math.max(Math.min(height, gridHoehe - top), 10);
-    const src = b.quelle === 'nfc' ? 'nfc' : 'web';
-    const srcLabel = b.quelle === 'nfc' ? '📡 NFC' : '🖥 Web';
-    const mine = currentUser && b.nutzer_id === currentUser.id ? ' mine' : '';
-    html += `<div class="block ${src}${mine}"
-      style="top:${top}px;height:${height}px;
-        left:calc(60px + ${ri} * ((100% - 60px) / ${raeume.length}) + 2px);
-        width:calc((100% - 60px) / ${raeume.length} - 4px)"
-      onclick="modalOpen(${b.id},${b.nutzer_id},'${b.raum}','${b.name}','${b.start}','${b.ende}','${b.quelle}')">
-      <div class="b-name">${b.name}</div>
-      <div class="b-time">${b.start.slice(11,16)}–${b.ende.slice(11,16)}</div>
-      <div class="b-src">${srcLabel}</div>
-    </div>`;
-  });
-  html += `</div></div>`;
 
   if(heuteFlag){
     const now = new Date();
@@ -618,7 +729,7 @@ function renderAgenda(buchungen){
   list.innerHTML = sorted.map(b => `
     <div class="agenda-row">
       <span class="agenda-time">${b.start.slice(11,16)}–${b.ende.slice(11,16)}</span>
-      <span class="agenda-raum">${b.raum}</span>
+      <span class="agenda-raum">${b.raum}${b.tisch ? ' · '+b.tisch : ''}</span>
       <span class="agenda-nutzer">${b.name}${b.quelle === 'nfc' ? ' · 📡' : ''}</span>
     </div>`).join('');
 }
@@ -626,6 +737,7 @@ function renderAgenda(buchungen){
 // ── Buchen / Löschen ──
 async function buchen(){
   const raum = document.getElementById('f-raum').value;
+  const tisch = document.getElementById('f-tisch').value || null;
   const datum = document.getElementById('f-datum').value;
   const ganztag = document.getElementById('f-ganztag').checked;
 
@@ -644,11 +756,11 @@ async function buchen(){
     endeVoll = datum + ' ' + ende;
   }
 
-  const kap = await pruefeKapazitaet(raum, startVoll, endeVoll);
+  const kap = await pruefeKapazitaet(raum, startVoll, endeVoll, tisch);
   if(!kap.ok){ toast('✗ ' + kap.msg, 'error'); return; }
 
   const { error } = await supa.from('buchungen').insert({
-    raum, nutzer_id: currentUser.id, name: currentUser.name,
+    raum, tisch, nutzer_id: currentUser.id, name: currentUser.name,
     start: startVoll, ende: endeVoll, quelle: 'web'
   });
   if(error){ toast('✗ Fehler: ' + error.message, 'error'); return; }
@@ -656,9 +768,12 @@ async function buchen(){
   render();
 }
 
-function modalOpen(id, ownerId, raum, nutzer, start, ende, quelle){
+function modalOpen(id, ownerId, raum, tisch, nutzer, start, ende, quelle){
   modalBid = id;
   document.getElementById('m-raum').textContent = raum;
+  const tischRow = document.getElementById('m-tisch-row');
+  if(tisch){ tischRow.style.display = 'block'; document.getElementById('m-tisch').textContent = tisch; }
+  else tischRow.style.display = 'none';
   document.getElementById('m-nutzer').textContent = nutzer;
   document.getElementById('m-zeit').textContent = start.slice(11,16) + ' – ' + ende.slice(11,16) + ' Uhr';
   document.getElementById('m-quelle').textContent = quelle === 'nfc' ? '📡 NFC-Buchung' : '🖥 Web-Buchung';
@@ -676,6 +791,53 @@ async function modalDelete(){
   modalClose();
   if(error){ toast('✗ ' + error.message, 'error'); return; }
   toast('Buchung gelöscht', 'success');
+  render();
+}
+
+// ── Zeitfenster-Detailmodal (Listenansicht) ──
+// Zeigt, welche Tische in einem Raum während einer Halbstunde belegt
+// sind, und erlaubt die Direktbuchung eines freien Tisches per Klick.
+function zelleOeffnen(raumName, slotStart, slotEnde){
+  const room = ROOMS.find(r => r.name === raumName);
+  const treffer = allBookings.filter(b => b.raum === raumName && b.start < slotEnde && b.ende > slotStart);
+  document.getElementById('slot-title').textContent = `${raumName} · ${slotStart.slice(11)}–${slotEnde.slice(11)} Uhr`;
+
+  const belegt = Math.min(treffer.length, room.kapazitaet);
+  let html = `<p style="margin-bottom:10px"><strong style="color:var(--text)">${belegt}/${room.kapazitaet}</strong> Tische belegt</p>`;
+
+  if(treffer.length){
+    html += treffer.map(b => `
+      <div class="agenda-row" style="cursor:pointer" onclick="slotModalClose();modalOpen(${b.id},${b.nutzer_id},'${b.raum}','${b.tisch || ''}','${b.name}','${b.start}','${b.ende}','${b.quelle}')">
+        <span class="agenda-time">${b.tisch || raumName}</span>
+        <span class="agenda-nutzer">${b.name}${b.quelle === 'nfc' ? ' · 📡' : ''}</span>
+      </div>`).join('');
+  } else {
+    html += `<p>Alle Tische frei.</p>`;
+  }
+
+  const freieTische = room.tische.filter(t => !treffer.some(b => b.tisch === t.code));
+  if(currentUser && treffer.length < room.kapazitaet && freieTische.length){
+    html += `<label style="margin-top:12px">Freien Tisch buchen (${slotStart.slice(11)}–${slotEnde.slice(11)} Uhr)</label>
+      <select id="slot-tisch-sel">${freieTische.map(t => `<option value="${t.code}">Tisch ${t.code}</option>`).join('')}</select>
+      <button class="btn-book" onclick="slotSchnellbuchen('${raumName}','${slotStart}','${slotEnde}')">✓ Buchen</button>`;
+  }
+
+  document.getElementById('slot-body').innerHTML = html;
+  document.getElementById('slot-modal').classList.add('open');
+}
+function slotModalClose(){ document.getElementById('slot-modal').classList.remove('open'); }
+
+async function slotSchnellbuchen(raumName, slotStart, slotEnde){
+  const tisch = document.getElementById('slot-tisch-sel').value;
+  const kap = await pruefeKapazitaet(raumName, slotStart, slotEnde, tisch);
+  if(!kap.ok){ toast('✗ ' + kap.msg, 'error'); return; }
+  const { error } = await supa.from('buchungen').insert({
+    raum: raumName, tisch, nutzer_id: currentUser.id, name: currentUser.name,
+    start: slotStart, ende: slotEnde, quelle: 'web'
+  });
+  if(error){ toast('✗ Fehler: ' + error.message, 'error'); return; }
+  toast('✓ Buchung erstellt', 'success');
+  slotModalClose();
   render();
 }
 
