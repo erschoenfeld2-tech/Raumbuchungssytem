@@ -91,16 +91,17 @@
   .cal-body{position:relative}
   .cal-row{display:grid;height:48px}
   .cal-time{padding:0 8px;font-size:11px;color:var(--muted);line-height:48px;text-align:right;border-right:1px solid var(--border)}
-  .cal-cell{border-left:1px solid var(--border);border-top:1px solid var(--surface2);position:relative}
+  .cal-cell{border-left:1px solid var(--border);border-top:1px solid var(--surface2);position:relative;cursor:pointer}
   .cal-cell.half{border-top:1px dashed rgba(46,50,80,.5)}
-
-  .cal-cell{cursor:pointer}
   .cal-cell:hover{background:rgba(79,110,247,.08)}
-  .cal-cell.cal-blocker{display:flex;align-items:center;justify-content:center;font-size:12px;
-    font-weight:700;color:#fff;cursor:pointer}
-  .cal-cell.cal-blocker.status-partial{background:#3b3d5c}
-  .cal-cell.cal-blocker.status-busy{background:#5c2d3c}
-  .cal-cell.cal-blocker.mine{outline:2px solid var(--amber);outline-offset:-2px}
+
+  .block{position:absolute;border-radius:6px;padding:4px 6px;color:#fff;font-size:11px;
+    cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.35);z-index:2;overflow:hidden}
+  .block.web{background:linear-gradient(135deg,#3b4fd4,#6d28d9)}
+  .block.nfc{background:linear-gradient(135deg,#15803d,#166534)}
+  .block.mine{outline:2px solid var(--amber);outline-offset:-2px}
+  .block .b-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+  .block .b-meta{font-size:9px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
   .now{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:3;pointer-events:none}
   .now::before{content:'';position:absolute;left:-4px;top:-4px;width:10px;height:10px;background:var(--red);border-radius:50%}
@@ -244,9 +245,12 @@
           Jeder Tisch ist einzeln buchbar und durchnummeriert:
           <strong style="color:var(--text)">Etage.RaumTisch</strong>, z.B.
           <strong style="color:var(--text)">1.203</strong> = Etage 1, 2. Raum, 3. Tisch.<br><br>
-          In der Listenansicht zeigt eine Zelle nur die Belegung
-          (z.B. <strong style="color:var(--text)">1/2</strong>) – anklicken zeigt Details
-          und erlaubt die Buchung eines freien Tisches.<br><br>
+          In der Listenansicht zeigt jeder Block Name, Tisch-Nummer und Zeit;
+          nur echte Überschneidungen (z.B. beide ShareDesk-Tische gleichzeitig
+          belegt) teilen sich die Spalte. Klick auf eine freie Fläche bucht
+          einen freien Tisch für diese Zeit.<br><br>
+          <span style="color:var(--purple);font-weight:600">■</span> Web-Buchung ·
+          <span style="color:#16a34a;font-weight:600">■</span> NFC-Buchung ·
           <span style="color:var(--amber);font-weight:600">▭</span> Deine Buchungen<br><br>
           Meetingräume: 1 Tisch (der ganze Raum) · ShareDesks: 2 Einzeltische.<br><br>
           <strong style="color:var(--text)">NFC:</strong> Karte am Reader (Besprechungsraum/Konferenzraum) auflegen → automatische 60-Min-Buchung.
@@ -665,21 +669,78 @@ function minutenZuUhrzeit(m){
   return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
 }
 
-// Eine Kalenderzelle (Raum × Halbstunde) zeigt keine einzelnen Buchungen
-// mehr, sondern nur einen Belegungs-"Blocker" (z.B. "1/2"). Klick öffnet
-// die Detailliste inkl. Schnellbuchung eines freien Tisches.
-function zelleHtml(raum, buchungen, datum, minuten){
+// Leere Kalenderzelle (Raum × Halbstunde) – reine Zeitraster-Fläche, kein
+// Belegungstext mehr (der steht direkt im Buchungsblock). Klick öffnet die
+// Schnellbuchung eines freien Tisches für diese Halbstunde.
+function zelleHtml(raum, datum, minuten){
   const start = datum + ' ' + minutenZuUhrzeit(minuten);
   const ende = datum + ' ' + minutenZuUhrzeit(minuten + 30);
   const halfCls = (minuten % 60 !== 0) ? ' half' : '';
-  const treffer = buchungen.filter(b => b.raum === raum.name && b.start < ende && b.ende > start);
-  if(treffer.length === 0){
-    return `<div class="cal-cell${halfCls}" onclick="zelleOeffnen('${raum.name}','${start}','${ende}')"></div>`;
-  }
-  const belegt = Math.min(treffer.length, raum.kapazitaet);
-  const status = belegt >= raum.kapazitaet ? 'busy' : 'partial';
-  const mine = currentUser && treffer.some(b => b.nutzer_id === currentUser.id) ? ' mine' : '';
-  return `<div class="cal-cell cal-blocker status-${status}${mine}${halfCls}" onclick="zelleOeffnen('${raum.name}','${start}','${ende}')">${belegt}/${raum.kapazitaet}</div>`;
+  return `<div class="cal-cell${halfCls}" onclick="zelleOeffnen('${raum.name}','${start}','${ende}')"></div>`;
+}
+
+// Weist jeder Buchung eines Raums eine feste "Spur" (Lane) zu, eine Spur
+// pro Tisch. Buchungen mit bekanntem Tisch bekommen dessen Spur (Tisch 1 =
+// links, Tisch 2 = rechts – wie im Grundriss); Buchungen ohne Tisch (z.B.
+// über NFC, das nur den Raum kennt) bekommen die erste freie Spur zu ihrer
+// Zeit. Buchungen, die sich zeitlich NICHT überschneiden, bekommen die
+// volle Spaltenbreite (wie in gängigen Kalender-Apps) – nur echte
+// Überschneidungen teilen sich die Breite, damit Name/Tisch möglichst
+// lesbar bleiben.
+function ordneBuchungenAn(raumBuchungen){
+  const sortiert = [...raumBuchungen].sort((a, b) => a.start.localeCompare(b.start));
+  const gruppen = [];
+  let clusterEnde = null;
+  sortiert.forEach(b => {
+    if(gruppen.length === 0 || b.start >= clusterEnde){
+      gruppen.push([b]);
+      clusterEnde = b.ende;
+    } else {
+      gruppen[gruppen.length - 1].push(b);
+      if(b.ende > clusterEnde) clusterEnde = b.ende;
+    }
+  });
+
+  const ergebnis = [];
+  gruppen.forEach(gruppe => {
+    const spurEnde = [];
+    gruppe.forEach(b => {
+      let spur = spurEnde.findIndex(ende => ende <= b.start);
+      if(spur === -1) spur = spurEnde.length;
+      spurEnde[spur] = b.ende;
+      ergebnis.push({ ...b, spur, spurenGesamt: spurEnde.length });
+    });
+    const spurenGesamt = spurEnde.length;
+    ergebnis.slice(-gruppe.length).forEach(b => b.spurenGesamt = spurenGesamt);
+  });
+  return ergebnis;
+}
+
+function buchungsBlockHtml(b, ri, raeumeAnzahl){
+  const st = new Date(b.start.replace(' ','T'));
+  const et = new Date(b.ende.replace(' ','T'));
+  const sMin = st.getHours()*60 + st.getMinutes();
+  const eMin = et.getHours()*60 + et.getMinutes();
+  const gridHoehe = (H_ENDE - H_START) * 96;
+  let top = (sMin - H_START*60) / 30 * 48;
+  let height = Math.max((eMin - sMin) / 30 * 48 - 2, 22);
+  if(top < 0){ height += top; top = 0; }
+  height = Math.max(Math.min(height, gridHoehe - top), 10);
+
+  const spurBreite = 1 / b.spurenGesamt;
+  const spurOffset = ri + b.spur * spurBreite;
+  const src = b.quelle === 'nfc' ? 'nfc' : 'web';
+  const srcIcon = b.quelle === 'nfc' ? '📡' : '🖥';
+  const mine = currentUser && b.nutzer_id === currentUser.id ? ' mine' : '';
+
+  return `<div class="block ${src}${mine}"
+    style="top:${top}px;height:${height}px;
+      left:calc(60px + (${spurOffset}) * ((100% - 60px) / ${raeumeAnzahl}) + 2px);
+      width:calc((100% - 60px) / ${raeumeAnzahl} * ${spurBreite} - 4px)"
+    onclick="modalOpen(${b.id},${b.nutzer_id},'${b.raum}','${b.tisch || ''}','${b.name}','${b.start}','${b.ende}','${b.quelle}')">
+    <div class="b-name">${b.name}</div>
+    <div class="b-meta">${b.tisch ? b.tisch + ' · ' : ''}${b.start.slice(11,16)}–${b.ende.slice(11,16)} ${srcIcon}</div>
+  </div>`;
 }
 
 async function render(){
@@ -708,10 +769,19 @@ async function render(){
       const minuten = h*60 + half*30;
       html += `<div class="cal-row" style="display:grid;grid-template-columns:${cols}">
         <div class="cal-time">${half===0 ? String(h).padStart(2,'0')+':00' : ''}</div>
-        ${raeume.map(r => zelleHtml(r, buchungen, datum, minuten)).join('')}
+        ${raeume.map(r => zelleHtml(r, datum, minuten)).join('')}
       </div>`;
     }
   }
+
+  html += `<div style="position:absolute;inset:0;pointer-events:none"><div style="position:relative;width:100%;height:100%;pointer-events:auto">`;
+  raeume.forEach((raum, ri) => {
+    const raumBuchungen = buchungen.filter(b => b.raum === raum.name);
+    ordneBuchungenAn(raumBuchungen).forEach(b => {
+      html += buchungsBlockHtml(b, ri, raeume.length);
+    });
+  });
+  html += `</div></div>`;
 
   if(heuteFlag){
     const now = new Date();
