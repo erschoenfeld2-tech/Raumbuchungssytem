@@ -57,6 +57,18 @@ jobs:
           "
           node --check /tmp/legacy_script.js
 
+      - name: Eingebettetes <script> in teaser.html auf Syntaxfehler prüfen
+        run: |
+          python3 -c "
+          import re, sys
+          html = open('teaser.html', encoding='utf-8').read()
+          m = re.search(r'<script>(.*)</script>', html, re.S)
+          if not m:
+              sys.exit('Konnte <script>-Block in teaser.html nicht finden')
+          open('/tmp/teaser_script.js', 'w', encoding='utf-8').write(m.group(1))
+          "
+          node --check /tmp/teaser_script.js
+
       - name: HTML-Dateien auf Wohlgeformtheit prüfen
         run: |
           python3 -c "
@@ -71,7 +83,7 @@ jobs:
                   self.errors.append(msg)
 
           fehler = False
-          for datei in ['index.html', 'index_lokal_modular.html']:
+          for datei in ['index.html', 'index_lokal_modular.html', 'teaser.html']:
               p = P()
               p.feed(open(datei, encoding='utf-8').read())
               if p.errors:
