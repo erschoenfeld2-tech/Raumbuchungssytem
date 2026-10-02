@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ein Tap. Ein Raum. – Hausmesse Teaser</title>
-<meta name="description" content="Etwas Neues zieht in die Walther-Rathenau-Gewerbeschule ein. Besuchen Sie uns auf der Hausmesse an Stand 23.">
+<title>Raumbuchungssystem – Stand 23 · Hausmesse 2026</title>
+<meta name="description" content="Raumbuchungssystem mit NFC-Check-in und Live-Grundriss – ein Projekt der Fachinformatiker Systemintegration an der Walther-Rathenau-Gewerbeschule. Hausmesse 2026, Stand 23.">
 <style>
   :root{
     --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a; --border:#2e3250;
@@ -139,8 +139,6 @@
   .tile .ic svg{width:28px;height:28px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   .tile h3{font-size:1.5rem;margin-bottom:10px}
   .tile p{color:var(--muted);font-size:.98rem}
-  .tile .blur{filter:blur(6px);transition:filter .5s;user-select:none}
-  .tile:hover .blur{filter:blur(0)}
   .tile .no{position:absolute;right:22px;top:16px;font-size:3.4rem;font-weight:800;color:var(--surface2)}
 
   /* ---------- Countdown ---------- */
@@ -156,6 +154,54 @@
     background:linear-gradient(100deg,var(--accent),var(--purple));box-shadow:0 12px 40px -8px rgba(124,58,237,.6);
   }
   footer{position:relative;z-index:2;text-align:center;padding:40px 24px 60px;color:var(--muted);font-size:.85rem;border-top:1px solid var(--border);max-width:1100px;margin:0 auto}
+
+
+  /* ---------- Spoiler-Verpixelung ---------- */
+  .sp{position:relative;border-radius:16px}
+  .sp-content{transition:filter .9s ease}
+  .sp:not(.open) .sp-content{filter:blur(7px);pointer-events:none;user-select:none}
+  .sp-mosaic{position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);border-radius:18px;cursor:pointer;z-index:2}
+  .sp.open .sp-mosaic{pointer-events:none}
+  .sp-btn{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;
+    background:rgba(15,17,23,.82);color:var(--text);border:1px solid var(--accent);border-radius:999px;
+    padding:10px 20px;font:600 .85rem/1 inherit;font-family:inherit;cursor:pointer;white-space:nowrap;
+    backdrop-filter:blur(6px);transition:opacity .4s,background .2s,transform .2s;
+  }
+  .sp-btn:hover{background:var(--accent);transform:translate(-50%,-50%) scale(1.05)}
+  .sp.open .sp-btn{opacity:0;pointer-events:none}
+  #allBtn{
+    position:fixed;right:18px;bottom:18px;z-index:20;background:var(--surface2);color:var(--text);
+    border:1px solid var(--border);border-radius:999px;padding:12px 20px;font:600 .85rem/1 inherit;font-family:inherit;
+    cursor:pointer;box-shadow:0 10px 30px -8px rgba(0,0,0,.6);transition:border-color .2s,background .2s;
+  }
+  #allBtn:hover{border-color:var(--accent);background:var(--surface)}
+  .tiphint{margin-top:30px;font-size:.82rem;color:var(--muted);letter-spacing:.05em}
+
+  /* ---------- Infokarten ---------- */
+  .infos{margin-top:26px}
+  .infos p{color:var(--text);font-size:1.02rem}
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+  .chips span{padding:7px 14px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);font-size:.85rem}
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:34px;text-align:left}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px}
+  .step b{display:inline-flex;width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--purple));align-items:center;justify-content:center;font-size:.9rem;margin-bottom:12px}
+  .step h4{font-size:1.1rem;margin-bottom:6px}
+  .step p{color:var(--muted);font-size:.93rem}
+  #tech,#team{text-align:center}
+  #tech h2,#team h2{font-size:clamp(2rem,5vw,3.2rem);margin-bottom:34px}
+  #tech .chips{justify-content:center}
+  #tech .chips span{font-size:.95rem;padding:10px 18px}
+  .techtxt{color:var(--muted);max-width:620px;margin:22px auto 0}
+  .people{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:22px}
+  .person{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:34px 20px;transition:border-color .3s,transform .3s}
+  .person:hover{border-color:var(--purple);transform:translateY(-4px)}
+  .av{width:84px;height:84px;margin:0 auto 18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.7rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--purple));box-shadow:0 12px 36px -10px rgba(124,58,237,.7)}
+  .person h3{font-size:1.25rem}
+  .person p{color:var(--muted);font-size:.85rem;margin-top:4px}
+  .plan .nm{display:none;fill:var(--text);font-size:13px;font-weight:600;text-anchor:middle;pointer-events:none}
+  .plan.revealed .nm{display:block}
+  .plan.revealed .qm{display:none}
 
   @media (max-width:820px){
     section{padding:80px 20px}
@@ -177,7 +223,8 @@
   <canvas id="net" aria-hidden="true"></canvas>
   <div class="eyebrow rv"><i></i> Hausmesse 2026 · Stand 23</div>
   <h1 class="rv d1"><span>Ein Tap.</span><span class="grad">Ein Raum.</span></h1>
-  <p class="lead rv d2">Etwas Neues zieht bei uns ein. Es kennt jeden Raum, jede Minute – und weiß, wann Sie kommen.</p>
+  <p class="lead rv d2"><strong>Raumbuchungssystem</strong> – Etwas Neues zieht bei uns ein. Es kennt jeden Raum, jede Minute – und weiß, wann Sie kommen.</p>
+  <p class="tiphint rv d3">Tipp: Verpixelte Bereiche anklicken und den Spoiler aufdecken.</p>
   <div class="scroll" aria-hidden="true"></div>
 </section>
 
@@ -187,7 +234,14 @@
     <div>
       <div class="eyebrow rv">Kapitel 01</div>
       <h2 class="rv d1">Ein Haus, das<br><span class="grad">Auskunft gibt.</span></h2>
-      <p class="rv d2">Zwei Etagen. Zwölf Räume. Und jeder von ihnen hat gerade etwas zu erzählen. Was genau? Sehen Sie selbst – live bei uns am Stand.</p>
+      <p class="rv d2" style="color:var(--muted);font-size:1.08rem">Zwei Etagen. Zwölf Räume. Und jeder von ihnen hat gerade etwas zu erzählen.</p>
+      <div class="sp infos rv d3" data-reveal="planBox">
+        <div class="sp-content">
+          <p>Der <strong>interaktive Grundriss</strong> zeigt alle Räume auf einen Blick: Besprechungsraum, Konferenzraum und zehn ShareDesks auf zwei Etagen. Jeder Raum leuchtet je nach Auslastung grün, gelb oder rot und aktualisiert sich laufend.</p>
+          <div class="chips"><span>Besprechungsraum</span><span>Konferenzraum</span><span>10 × ShareDesk</span></div>
+        </div>
+        <button class="sp-btn" type="button">Spoiler aufdecken</button>
+      </div>
     </div>
     <div class="rv d2">
       <div class="plan" id="planBox">
@@ -202,6 +256,9 @@
           <text class="qm" x="135" y="86">?</text><text class="qm" x="385" y="86">?</text>
           <text class="qm" x="70" y="246">?</text><text class="qm" x="195" y="246">?</text>
           <text class="qm" x="325" y="246">?</text><text class="qm" x="450" y="246">?</text>
+          <text class="nm" x="135" y="86">Besprechungsraum</text><text class="nm" x="385" y="86">Konferenzraum</text>
+          <text class="nm" x="70" y="246">ShareDesk 1</text><text class="nm" x="195" y="246">ShareDesk 2</text>
+          <text class="nm" x="325" y="246">ShareDesk 3</text><text class="nm" x="450" y="246">ShareDesk 4</text>
         </svg>
         <div class="legend"><span><b style="background:var(--green)"></b>frei</span><span><b style="background:var(--amber)"></b>fast voll</span><span><b style="background:var(--red)"></b>belegt</span></div>
       </div>
@@ -223,49 +280,85 @@
     <div class="ok">✓</div>
   </div>
   <div class="hint">Tippen Sie auf die Bühne – und probieren Sie es selbst.</div>
+  <div class="sp rv" style="margin-top:20px">
+    <div class="sp-content">
+      <div class="steps">
+        <div class="step"><b>1</b><h4>Karte halten</h4><p>Die NFC-Karte an den Reader am Raum halten: Der Check-in startet automatisch eine Buchung (standardmäßig 60 Minuten).</p></div>
+        <div class="step"><b>2</b><h4>Nochmal halten</h4><p>Dieselbe Karte erneut vorhalten: Check-out. Die Buchung endet sofort und der Raum ist wieder frei.</p></div>
+        <div class="step"><b>3</b><h4>Automatisch geprüft</h4><p>Das System kontrolliert die freien Plätze und verhindert Doppelbuchungen.</p></div>
+      </div>
+    </div>
+    <button class="sp-btn" type="button">Spoiler aufdecken</button>
+  </div>
 </section>
 
 <!-- ===== Karten ===== -->
 <section id="cards">
   <div class="eyebrow rv" style="display:flex;justify-content:center">Kapitel 03</div>
-  <h2 class="rv d1">Drei Dinge. <span class="grad">Kein Spoiler.</span></h2>
+  <h2 class="rv d1">Drei Dinge. <span class="grad">Ein Klick.</span></h2>
   <div class="grid">
     <article class="tile rv">
       <span class="no">1</span>
       <div class="ic"><svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></div>
       <h3>Sehen</h3>
-      <p class="blur">Ein Blick auf das Haus – und Sie wissen, wo gerade Platz ist. Ganz ohne Nachfragen.</p>
+      <div class="sp"><div class="sp-content"><p>Der Live-Grundriss zeigt, welche Räume und ShareDesks gerade frei, fast voll oder belegt sind.</p></div><button class="sp-btn" type="button">Aufdecken</button></div>
     </article>
     <article class="tile rv d1">
       <span class="no">2</span>
       <div class="ic"><svg viewBox="0 0 24 24"><path d="M9 11V5a2 2 0 1 1 4 0v6m0 0V9a2 2 0 1 1 4 0v5a7 7 0 0 1-7 7c-3 0-4-1-6-4l-2-3a2 2 0 0 1 3-2l2 2"/></svg></div>
       <h3>Tippen</h3>
-      <p class="blur">Ein einziger Moment genügt, und der Raum gehört Ihnen. Alles Weitere passiert im Hintergrund.</p>
+      <div class="sp"><div class="sp-content"><p>Im Browser buchen oder einfach die NFC-Karte an den Reader am Raum halten. Fertig.</p></div><button class="sp-btn" type="button">Aufdecken</button></div>
     </article>
     <article class="tile rv d2">
       <span class="no">3</span>
       <div class="ic"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg></div>
       <h3>Wissen</h3>
-      <p class="blur">Alle sehen in Echtzeit, was Sie gerade tun. Nie wieder Türschild-Roulette.</p>
+      <div class="sp"><div class="sp-content"><p>Alle sehen sofort, wer wann welchen Raum belegt. Nie wieder Türschild-Roulette.</p></div><button class="sp-btn" type="button">Aufdecken</button></div>
     </article>
+  </div>
+</section>
+
+<!-- ===== Technik ===== -->
+<section id="tech">
+  <div class="eyebrow rv" style="display:flex;justify-content:center">Kapitel 04</div>
+  <h2 class="rv d1">Hinter den <span class="grad">Kulissen.</span></h2>
+  <div class="sp rv d2">
+    <div class="sp-content">
+      <div class="chips"><span>HTML · CSS · JavaScript</span><span>Supabase (PostgreSQL)</span><span>NFC-Reader ACR122U</span><span>Python-Bridge</span><span>GitHub Pages &amp; Actions</span></div>
+      <p class="techtxt">Die Weboberfläche läuft komplett im Browser, ohne Build-Schritt und ohne eigene Serverskripte. Die Daten liegen in einer Cloud-Datenbank, der NFC-Reader meldet Check-ins über eine kleine Python-Brücke. Veröffentlicht wird automatisch per CI/CD.</p>
+    </div>
+    <button class="sp-btn" type="button">Spoiler aufdecken</button>
+  </div>
+</section>
+
+<!-- ===== Team ===== -->
+<section id="team">
+  <div class="eyebrow rv" style="display:flex;justify-content:center">Kapitel 05</div>
+  <h2 class="rv d1">Das <span class="grad">Team.</span></h2>
+  <div class="people">
+    <div class="person rv"><div class="av">DM</div><h3>David Mayer</h3><p>Fachinformatik Systemintegration</p></div>
+    <div class="person rv d1"><div class="av">DH</div><h3>Dion Himaj</h3><p>Fachinformatik Systemintegration</p></div>
+    <div class="person rv d2"><div class="av">ES</div><h3>Eric Schoenfeld</h3><p>Fachinformatik Systemintegration</p></div>
   </div>
 </section>
 
 <!-- ===== Finale ===== -->
 <section id="finale">
-  <div class="eyebrow rv" style="display:flex;justify-content:center">Kapitel 04</div>
-  <h2 class="rv d1">Bald <span class="grad">enthüllt.</span></h2>
-  <p class="rv d2">Kommen Sie zur Hausmesse und erleben Sie es selbst – bei uns am <strong class="grad">Stand 23</strong>.</p>
+  <div class="eyebrow rv" style="display:flex;justify-content:center">Hausmesse 2026</div>
+  <h2 class="rv d1">Jetzt <span class="grad">ausprobieren.</span></h2>
+  <p class="rv d2">Kommen Sie vorbei und erleben Sie es selbst – bei uns am <strong class="grad">Stand 23</strong>.</p>
   <div class="count rv d2" id="count" aria-live="off">
     <div class="unit"><b id="cd">0</b><span>Tage</span></div>
     <div class="unit"><b id="ch">0</b><span>Std</span></div>
     <div class="unit"><b id="cm">0</b><span>Min</span></div>
     <div class="unit"><b id="cs">0</b><span>Sek</span></div>
   </div>
-  <div class="badge rv d3">Stand 23 · Fachinformatik Systemintegration</div>
+  <div class="badge rv d3">Stand 23 · Raumbuchungssystem</div>
 </section>
 
-<footer>Ein Projekt der Klasse Fachinformatik Systemintegration · Walther-Rathenau-Gewerbeschule</footer>
+<footer>Raumbuchungssystem · David Mayer, Dion Himaj, Eric Schoenfeld · Fachinformatik Systemintegration · Walther-Rathenau-Gewerbeschule</footer>
+
+<button id="allBtn" type="button">Alles aufdecken</button>
 
 <script>
 // Datum der Hausmesse (Countdown) – bei Terminänderung hier anpassen
@@ -315,6 +408,65 @@ function tap() {
 stage.addEventListener('click', tap);
 stage.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tap(); } });
 setInterval(() => { if (stage.classList.contains('in')) tap(); }, 5000);
+
+// Spoiler-Verpixelung: Mosaik auf Canvas, löst sich beim Aufdecken Pixel für Pixel auf
+const FARBEN = ['#1a1d27', '#22263a', '#2e3250', '#2a3270', '#3b2a78', '#1d2147'];
+const KLEIN = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const spoiler = [...document.querySelectorAll('.sp')].map(el => {
+  const cv = document.createElement('canvas');
+  cv.className = 'sp-mosaic';
+  el.appendChild(cv);
+  const sp = { el, cv, zellen: [], offen: false, raf: 0 };
+  const oeffnen = () => setSpoiler(sp, true);
+  cv.addEventListener('click', oeffnen);
+  el.querySelector('.sp-btn').addEventListener('click', oeffnen);
+  return sp;
+});
+function zeichne(sp, t) {
+  const g = sp.cv.getContext('2d');
+  g.clearRect(0, 0, sp.cv.width, sp.cv.height);
+  for (const z of sp.zellen) {
+    const a = t === null ? .95 : Math.max(0, .95 - Math.max(0, t - z.d) / 350);
+    if (a <= 0) continue;
+    g.globalAlpha = a; g.fillStyle = z.c; g.fillRect(z.x, z.y, 12, 12);
+  }
+  g.globalAlpha = 1;
+}
+function neuesMosaik(sp) {
+  sp.cv.width = sp.cv.offsetWidth; sp.cv.height = sp.cv.offsetHeight;
+  sp.zellen = [];
+  for (let x = 0; x < sp.cv.width; x += 12)
+    for (let y = 0; y < sp.cv.height; y += 12)
+      sp.zellen.push({ x, y, c: FARBEN[Math.floor(Math.random() * FARBEN.length)], d: Math.random() * 700 });
+  zeichne(sp, null);
+}
+function setSpoiler(sp, offen) {
+  if (sp.offen === offen) return;
+  sp.offen = offen;
+  cancelAnimationFrame(sp.raf);
+  sp.el.classList.toggle('open', offen);
+  const ziel = sp.el.dataset.reveal && document.getElementById(sp.el.dataset.reveal);
+  if (ziel) ziel.classList.toggle('revealed', offen);
+  if (!offen) { neuesMosaik(sp); sp.cv.style.display = ''; return; }
+  if (KLEIN) { sp.cv.style.display = 'none'; return; }
+  const t0 = performance.now();
+  (function step(now) {
+    const t = now - t0;
+    zeichne(sp, t);
+    if (t < 1100) sp.raf = requestAnimationFrame(step); else sp.cv.style.display = 'none';
+  })(t0);
+}
+spoiler.forEach(neuesMosaik);
+addEventListener('resize', () => spoiler.forEach(sp => { if (!sp.offen) neuesMosaik(sp); }));
+addEventListener('load', () => spoiler.forEach(sp => { if (!sp.offen) neuesMosaik(sp); }));
+
+// Alles aufdecken / wieder verpixeln
+const allBtn = document.getElementById('allBtn');
+allBtn.addEventListener('click', () => {
+  const auf = allBtn.textContent === 'Alles aufdecken';
+  spoiler.forEach(sp => setSpoiler(sp, auf));
+  allBtn.textContent = auf ? 'Alles verpixeln' : 'Alles aufdecken';
+});
 
 // Countdown
 function zaehle() {
