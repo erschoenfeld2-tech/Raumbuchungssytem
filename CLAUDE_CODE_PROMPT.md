@@ -27,11 +27,11 @@ Vorher gab es eine ältere Version als reines Python-Programm (Datei `raumbuchun
 ### Nutzer und Testkarten (in DB gespeichert)
 
 - Berta Langenhahn → UID `A8F977E7`
-- Familienvater Mayer → UID `B81DEBEF`
-- Dion Müller → UID `B8AED9EF`
+- David Mayer (früher Familienvater Mayer) → UID `B81DEBEF`
+- Dion Himaj (früher Dion Müller) → UID `B8AED9EF`
 - Luca Guinness → UID `B851FBE7`
-- Eric Nicefield → UID `B8F3F9EF`
-- Standard-Passwort für Web-Login: `123`
+- Eric Schoenfeld (früher Eric Nicefield) → UID `B8F3F9EF`
+- Startpasswort für Web-Login: `123`, wird beim ersten Login erzwungen geändert (pro Nutzer, in der DB gehasht)
 
 ### NFC-Reader-Zuordnung
 

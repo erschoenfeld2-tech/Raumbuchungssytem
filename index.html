@@ -224,7 +224,14 @@
     <input type="text" id="login-name" placeholder="Nutzername" autofocus/>
     <label for="login-pw">Passwort</label>
     <input type="password" id="login-pw" placeholder="Passwort"/>
-    <button onclick="anmelden()">Anmelden</button>
+    <div id="pw-wechsel" style="display:none">
+      <div class="login-sub" style="margin:14px 0 0">Bitte wähle jetzt ein persönliches Passwort (mind. 6 Zeichen).</div>
+      <label for="pw-neu">Neues Passwort</label>
+      <input type="password" id="pw-neu" placeholder="Neues Passwort"/>
+      <label for="pw-neu2">Neues Passwort wiederholen</label>
+      <input type="password" id="pw-neu2" placeholder="Wiederholen"/>
+    </div>
+    <button id="login-btn" onclick="anmelden()">Anmelden</button>
     <div class="login-error" id="login-err"></div>
     <div id="config-banner"></div>
   </div>
@@ -367,7 +374,6 @@
 // ══════════════════════════════════════════════════════════
 const SUPABASE_URL = 'https://yugjccgblqsfjasienwa.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1Z2pjY2dibHFzZmphc2llbndhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNDQ3NDMsImV4cCI6MjEwMDcyMDc0M30.LW2n0hkDPqbP2HGQF6jPL2_Ma66EeO6kG5A2huvFuPM'; // öffentlicher anon key, kein Secret
-const STANDARD_PASSWORT = '123';
 const ADMIN_NAME = 'Admin_Universal';
 const ADMIN_PASSWORT = 'System-2026!';
 const H_START = 7, H_ENDE = 20;
@@ -483,24 +489,64 @@ function heute(){ aktDatum = new Date(); setDatum(); render(); }
 function roomsForEtage(){ return ROOMS.filter(r => r.etage === currentEtage); }
 
 // ── Login / Session (kein Server → localStorage) ──
+let pwWechselNutzer = null; // Nutzer, der gerade sein Startpasswort ändern muss
+function loginFehler(text){
+  const err = document.getElementById('login-err');
+  err.textContent = text; err.className = 'login-error show';
+}
 async function anmelden(){
+  if(pwWechselNutzer) return passwortWechseln();
   const name = document.getElementById('login-name').value.trim();
   const pw = document.getElementById('login-pw').value;
-  const err = document.getElementById('login-err');
-  err.className = 'login-error';
-  if(!name || !pw){ err.textContent = 'Bitte alle Felder ausfüllen.'; err.className = 'login-error show'; return; }
-  const istAdminLogin = name.toLowerCase() === ADMIN_NAME.toLowerCase();
-  const erwartetesPasswort = istAdminLogin ? ADMIN_PASSWORT : STANDARD_PASSWORT;
-  if(pw !== erwartetesPasswort){ err.textContent = 'Falsches Passwort'; err.className = 'login-error show'; return; }
-  if(!CONFIGURED){ err.textContent = 'Supabase ist noch nicht konfiguriert.'; err.className = 'login-error show'; return; }
-  const { data, error } = await supa.from('nutzer_public').select('id,name,ist_admin').ilike('name', name).maybeSingle();
-  if(error || !data){ err.textContent = `Nutzer '${name}' existiert nicht`; err.className = 'login-error show'; return; }
-  currentUser = data;
-  localStorage.setItem('rb_user', JSON.stringify(currentUser));
+  document.getElementById('login-err').className = 'login-error';
+  if(!name || !pw){ loginFehler('Bitte alle Felder ausfüllen.'); return; }
+  if(!CONFIGURED){ loginFehler('Supabase ist noch nicht konfiguriert.'); return; }
+  if(name.toLowerCase() === ADMIN_NAME.toLowerCase()){
+    if(pw !== ADMIN_PASSWORT){ loginFehler('Falsches Passwort'); return; }
+    const { data, error } = await supa.from('nutzer_public').select('id,name,ist_admin').ilike('name', name).maybeSingle();
+    if(error || !data){ loginFehler(`Nutzer '${name}' existiert nicht`); return; }
+    return loginAbschliessen(data);
+  }
+  // normale Nutzer: Passwort wird in der DB geprüft (nutzer_login-RPC)
+  const { data, error } = await supa.rpc('nutzer_login', { p_name: name, p_passwort: pw });
+  if(error){ loginFehler('Anmeldung fehlgeschlagen: ' + error.message); return; }
+  if(!data || !data.length){ loginFehler('Nutzername oder Passwort falsch'); return; }
+  const u = data[0];
+  if(u.muss_aendern){
+    pwWechselNutzer = { name: u.name, altesPw: pw, user: { id: u.id, name: u.name, ist_admin: u.ist_admin } };
+    document.getElementById('pw-wechsel').style.display = 'block';
+    document.getElementById('login-btn').textContent = 'Passwort speichern & anmelden';
+    document.getElementById('pw-neu').focus();
+    return;
+  }
+  loginAbschliessen({ id: u.id, name: u.name, ist_admin: u.ist_admin });
+}
+async function passwortWechseln(){
+  const neu = document.getElementById('pw-neu').value;
+  const neu2 = document.getElementById('pw-neu2').value;
+  document.getElementById('login-err').className = 'login-error';
+  if(neu.length < 6){ loginFehler('Das neue Passwort muss mindestens 6 Zeichen lang sein.'); return; }
+  if(neu !== neu2){ loginFehler('Die Passwörter stimmen nicht überein.'); return; }
+  const { data, error } = await supa.rpc('nutzer_passwort_aendern',
+    { p_name: pwWechselNutzer.name, p_altes: pwWechselNutzer.altesPw, p_neues: neu });
+  if(error){ loginFehler(error.message); return; }
+  if(!data){ loginFehler('Passwortwechsel fehlgeschlagen.'); return; }
+  const user = pwWechselNutzer.user;
+  pwWechselNutzer = null;
+  document.getElementById('pw-wechsel').style.display = 'none';
+  document.getElementById('login-btn').textContent = 'Anmelden';
+  document.getElementById('pw-neu').value = '';
+  document.getElementById('pw-neu2').value = '';
+  loginAbschliessen(user);
+}
+function loginAbschliessen(user){
+  currentUser = user;
+  localStorage.setItem('rb_user2', JSON.stringify(currentUser));
   zeigeApp();
 }
 function abmelden(){
-  localStorage.removeItem('rb_user');
+  localStorage.removeItem('rb_user2');
+  pwWechselNutzer = null;
   currentUser = null;
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
@@ -1283,7 +1329,10 @@ if(!CONFIGURED){
     'im &lt;script&gt;-Block von index.html ein (siehe supabase_setup.sql).';
 }
 
-const gespeicherterUser = localStorage.getItem('rb_user');
+// Alte Sessions (Key 'rb_user', vor Einführung der persönlichen Passwörter) verwerfen,
+// damit jeder einmal den Passwort-Zwangswechsel durchläuft.
+localStorage.removeItem('rb_user');
+const gespeicherterUser = localStorage.getItem('rb_user2');
 if(gespeicherterUser && CONFIGURED){
   currentUser = JSON.parse(gespeicherterUser);
   zeigeApp();

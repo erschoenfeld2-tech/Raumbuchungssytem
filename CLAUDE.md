@@ -30,11 +30,13 @@ Only one is real. Always check which file you're touching before assuming it aff
   `index.html`: 12 rooms across 2 floors (Etage 1: Besprechungsraum, Konferenzraum, ShareDesk 1–5;
   Etage 2: ShareDesk 6–10). `kapazitaet` is 1 for meeting rooms, 2 for ShareDesks, and drives both
   the floor-plan occupancy coloring and the overlap/capacity check on booking.
-- There is no real auth. Login is a client-side password check against hardcoded constants
-  (`STANDARD_PASSWORT` for normal users, a separate `ADMIN_PASSWORT` for the one admin account,
-  `Admin_Universal`) followed by a lookup of the entered name in the `nutzer_public` view (not the
-  `nutzer` table directly — see below); the resulting user object (including `ist_admin`) is
-  cached in `localStorage`. `ist_admin` is the only thing that lets a user delete other people's
+- There is no real auth. Normal users log in via the `nutzer_login(p_name, p_passwort)` RPC
+  (bcrypt hash in `nutzer.passwort_hash`, security-definer, never exposed via `nutzer_public`);
+  initial password is `123` with `passwort_muss_aendern = true`, so the first login forces a new
+  password (`nutzer_passwort_aendern` RPC, migration `20261007120000_*`). The one admin account
+  (`Admin_Universal`) still uses the hardcoded `ADMIN_PASSWORT` in `index.html` followed by a
+  lookup in the `nutzer_public` view (not the `nutzer` table directly — see below). The resulting
+  user object (including `ist_admin`) is cached in `localStorage` (key `rb_user2`). `ist_admin` is the only thing that lets a user delete other people's
   bookings — regular users can only delete their own. **Known, accepted limitation:** because
   there's no real per-user Supabase session, RLS on `buchungen` can't distinguish "this specific
   logged-in user" — the delete/insert/update policies are `using (true)`, so the ownership check is
