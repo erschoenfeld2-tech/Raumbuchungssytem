@@ -10,6 +10,7 @@
     --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3250;
     --accent:#4f6ef7;--purple:#7c3aed;--green:#22c55e;--red:#ef4444;
     --amber:#f59e0b;--text:#e8eaf6;--muted:#8891b4;--r:12px;
+    color-scheme:dark;
   }
   *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif}
   body{background:var(--bg);color:var(--text);min-height:100vh}
@@ -66,7 +67,7 @@
   .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:16px}
   .card h2{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
   label{font-size:12px;color:var(--muted);display:block;margin:8px 0 3px}
-  select,input[type=date],input[type=time]{width:100%;background:var(--surface2);border:1px solid var(--border);
+  select,input[type=date],input[type=time],input.cs-input{width:100%;background:var(--surface2);border:1px solid var(--border);
     color:var(--text);padding:8px 10px;border-radius:8px;font-size:13px;outline:none}
   .zeit-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .ganztag-row{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:10px;cursor:pointer}
@@ -96,11 +97,23 @@
 
   .cal-cell{cursor:pointer}
   .cal-cell:hover{background:rgba(79,110,247,.08)}
-  .cal-cell.cal-blocker{display:flex;align-items:center;justify-content:center;font-size:12px;
-    font-weight:700;color:#fff;cursor:pointer}
-  .cal-cell.cal-blocker.status-partial{background:#3b3d5c}
-  .cal-cell.cal-blocker.status-busy{background:#5c2d3c}
-  .cal-cell.cal-blocker.mine{outline:2px solid var(--amber);outline-offset:-2px}
+
+  /* Buchungen als zusammenhängende Blöcke (ein Block = ein belegter Zeitraum,
+     die Farbe im Block zeigt 1/2 bzw. 2/2) */
+  .cal-block{position:absolute;z-index:2;padding:2px 3px;pointer-events:none}
+  .cal-block-in{position:relative;height:100%;border-radius:9px;overflow:hidden;
+    box-shadow:0 2px 10px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.08)}
+  .cal-seg{position:absolute;left:0;right:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:1px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;
+    pointer-events:auto;overflow:hidden;padding:0 4px;text-align:center;transition:filter .15s}
+  .cal-seg:hover{filter:brightness(1.2)}
+  .cal-seg + .cal-seg{border-top:1px solid rgba(255,255,255,.28)}
+  .cal-seg.status-partial{background:linear-gradient(180deg,#4b4f8f,#3b3d6e)}
+  .cal-seg.status-busy{background:linear-gradient(180deg,#6b3347,#5c2d3c)}
+  .cal-seg.mine{outline:2px solid var(--amber);outline-offset:-2px}
+  .cal-seg .names{font-size:10px;font-weight:500;color:rgba(255,255,255,.72);max-width:100%;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .legend-sw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:4px}
 
   .now{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:3;pointer-events:none}
   .now::before{content:'';position:absolute;left:-4px;top:-4px;width:10px;height:10px;background:var(--red);border-radius:50%}
@@ -125,20 +138,26 @@
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
   /* ── Grundriss ── */
-  .plan-wrap{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px}
+  .plan-wrap{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px}
   .plan-svg{width:100%;height:auto;display:block}
-  .plan-outer{fill:#12141c;stroke:var(--border);stroke-width:3}
   .plan-room{cursor:pointer;transition:.15s}
   .plan-room:hover .plan-fill{filter:brightness(1.3)}
-  .plan-fill{fill:var(--surface2);stroke:var(--border);stroke-width:1.5}
-  .plan-fill.selected{fill:#2a2f52;stroke:var(--accent);stroke-width:2.5}
-  .plan-fill.status-free{fill:var(--surface2);stroke:var(--border)}
-  .plan-fill.status-partial{fill:#3b3d5c;stroke:var(--purple)}
-  .plan-fill.status-busy{fill:#5c2d3c;stroke:var(--red)}
-  .plan-label{fill:var(--text);font-size:12px;font-weight:700;pointer-events:none;text-anchor:middle}
+  .plan-fill{fill:#1a1d27;stroke:none}
+  .plan-fill.selected{fill:#2a2f52;stroke:var(--accent);stroke-width:3}
+  .plan-fill.status-free{fill:#1a1d27}
+  .plan-fill.status-partial{fill:#3b3d5c}
+  .plan-fill.status-busy{fill:#5c2d3c}
+  .plan-extra{fill:#232637;stroke:none}
+  .plan-label{fill:var(--text);font-size:12px;font-weight:700;pointer-events:none;text-anchor:middle;
+    paint-order:stroke;stroke:#0f1117;stroke-width:3px;stroke-linejoin:round}
   .plan-sub{fill:var(--muted);font-size:9px;pointer-events:none;text-anchor:middle;font-style:italic}
-  .plan-flur{fill:#161923;stroke:var(--border);stroke-width:1;stroke-dasharray:3 3}
-  .plan-flur-label{fill:var(--muted);font-size:11px;text-anchor:middle;font-style:italic}
+  .plan-flur{fill:#12141c;stroke:none}
+  .plan-flur-label{fill:#4a5075;font-size:12px;letter-spacing:.25em;text-anchor:middle;text-transform:uppercase}
+  .plan-wall{fill:none;stroke:#b9c0e6;stroke-width:4;stroke-linejoin:miter}
+  .plan-wall.outer{stroke-width:7}
+  .plan-window{fill:#0f1117;stroke:var(--accent);stroke-width:1.2}
+  .plan-door{fill:none;stroke:var(--muted);stroke-width:1}
+  .plan-text{fill:#6c7499;font-size:9px;pointer-events:none}
   .plan-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--muted)}
   .plan-legend span{display:flex;align-items:center;gap:6px}
   .plan-legend .sw{width:14px;height:14px;border-radius:3px;border:1px solid var(--border)}
@@ -151,8 +170,38 @@
   .desk-badge.frei{fill:var(--green)}
   .desk-badge.belegt{fill:var(--red)}
   .plan-desk.selected .desk-badge{stroke:var(--amber);stroke-width:2.5}
-  .desk-plus{fill:#fff;font-size:11px;font-weight:800;text-anchor:middle;dominant-baseline:central;pointer-events:none}
-  .desk-code{fill:var(--muted);font-size:8px;text-anchor:middle;pointer-events:none}
+  .desk-plus{fill:#fff;font-size:14px;font-weight:800;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+  .desk-code{fill:var(--muted);font-size:9px;text-anchor:middle;pointer-events:none}
+
+  /* ── Eigene Dropdowns / Zeitfelder im Dark-Design ── */
+  .cs{position:relative}
+  select.cs-native{display:none!important}
+  .cs-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;
+    background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 10px;
+    border-radius:8px;font-size:13px;cursor:pointer}
+  .cs-btn:hover{background:var(--surface2);border-color:var(--accent)}
+  .cs-btn::after{content:'';width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);
+    transform:rotate(45deg) translateY(-2px);flex-shrink:0;transition:.15s}
+  .cs.cs-open .cs-btn,.cs-time:focus-within input{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,110,247,.2)}
+  .cs.cs-open .cs-btn::after{transform:rotate(-135deg) translateY(-2px)}
+  .cs-list{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:60;max-height:220px;overflow-y:auto;
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;
+    box-shadow:0 12px 32px rgba(0,0,0,.55)}
+  .cs.cs-open .cs-list{display:block}
+  .cs-opt{padding:7px 10px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--text)}
+  .cs-opt:hover,.cs-opt.active{background:var(--surface2)}
+  .cs-opt.selected{background:var(--accent);color:#fff}
+  .cs-empty{padding:8px 10px;font-size:12px;color:var(--muted)}
+  .cs-list::-webkit-scrollbar{width:8px}
+  .cs-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  .cs-time input{padding-right:34px;font-variant-numeric:tabular-nums}
+  .cs-time input:disabled{opacity:.5}
+  .cs-time input.cs-error{border-color:var(--red);animation:csShake .25s}
+  @keyframes csShake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+  .cs-clock{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:28px;height:28px;padding:0;
+    background:transparent;border:none;color:var(--muted);font-size:14px;display:flex;align-items:center;justify-content:center}
+  .cs-clock:hover{background:transparent;color:var(--text)}
+  .cs-time:has(input:disabled) .cs-clock{pointer-events:none;opacity:.4}
 
   /* ── Mobile ── */
   @media (max-width:720px){
@@ -224,13 +273,15 @@
         <h2>Neue Buchung</h2>
         <label for="f-raum">Raum</label>
         <select id="f-raum"></select>
-        <label for="f-tisch" id="f-tisch-label" style="display:none">Tisch</label>
-        <select id="f-tisch" style="display:none"></select>
+        <div id="f-tisch-wrap" style="display:none">
+          <label for="f-tisch">Tisch</label>
+          <select id="f-tisch"></select>
+        </div>
         <label for="f-datum">Datum</label>
         <input type="date" id="f-datum"/>
         <div class="zeit-row">
-          <div><label for="f-start">Von</label><input type="time" id="f-start" value="09:00" step="1800"/></div>
-          <div><label for="f-ende">Bis</label><input type="time" id="f-ende" value="10:00" step="1800"/></div>
+          <div><label for="f-start">Von</label><input type="text" id="f-start" class="cs-input" value="09:00" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM"/></div>
+          <div><label for="f-ende">Bis</label><input type="text" id="f-ende" class="cs-input" value="10:00" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM"/></div>
         </div>
         <label class="ganztag-row" id="ganztag-row" style="display:none">
           <input type="checkbox" id="f-ganztag" onchange="toggleGanztag()"/> Ganztägig buchen (0–24 Uhr)
@@ -244,9 +295,11 @@
           Jeder Tisch ist einzeln buchbar und durchnummeriert:
           <strong style="color:var(--text)">Etage.RaumTisch</strong>, z.B.
           <strong style="color:var(--text)">1.203</strong> = Etage 1, 2. Raum, 3. Tisch.<br><br>
-          In der Listenansicht zeigt eine Zelle nur die Belegung
-          (z.B. <strong style="color:var(--text)">1/2</strong>) – anklicken zeigt Details
-          und erlaubt die Buchung eines freien Tisches.<br><br>
+          In der Listenansicht erscheint jede Belegung als ein zusammenhängender Block.
+          Die Farbe zeigt, von wann bis wann ein Raum teilbelegt
+          (<span class="legend-sw" style="background:#3b3d6e"></span><strong style="color:var(--text)">1/2</strong>) oder
+          voll belegt (<span class="legend-sw" style="background:#5c2d3c"></span><strong style="color:var(--text)">2/2</strong>) ist.
+          Anklicken zeigt Details und erlaubt die Buchung eines freien Tisches.<br><br>
           <span style="color:var(--amber);font-weight:600">▭</span> Deine Buchungen<br><br>
           Meetingräume: 1 Tisch (der ganze Raum) · ShareDesks: 2 Einzeltische.<br><br>
           <strong style="color:var(--text)">NFC:</strong> Karte am Reader (Besprechungsraum/Konferenzraum) auflegen → automatische 60-Min-Buchung.
@@ -266,7 +319,7 @@
 
       <div id="office-view" style="display:none">
         <div class="plan-wrap">
-          <svg class="plan-svg" viewBox="0 0 800 550" id="floorplan"></svg>
+          <svg class="plan-svg" viewBox="0 0 960 480" id="floorplan"></svg>
         </div>
         <div class="plan-legend">
           <span><span class="dot" style="background:#22c55e"></span>Tisch frei</span>
@@ -358,29 +411,59 @@ function baueRaeume(){
 }
 const ROOMS = baueRaeume();
 
-// Grundriss-Geometrie je Etage (SVG-Koordinaten, wie in raumbuchung.py)
+// Grundriss-Geometrie je Etage (SVG-Koordinaten, viewBox 960×480).
+// Ein Gebäude mit Außenwand, Flur in der Mitte, Räumen oben und unten,
+// Treppenhaus und WC rechts. "rooms" sind buchbar, "extras" nur Deko.
+// doors: o='h' (Tür in waagerechter Wand) / 'v' (senkrecht), s = Aufschwung-Richtung.
+const FLOOR_OUTER = {x:20,y:20,w:920,h:440};
+const FLOOR_FLUR  = {x:20,y:190,w:920,h:80};
 const FLOORS = {
   1: {
-    outer:{x:30,y:30,w:740,h:490}, flur:{x:290,y:60,w:220,h:430}, flurLabel:'Flur',
     rooms:{
-      'Besprechungsraum':{x:60,y:60,w:210,h:200,sub:'8 Plätze'},
-      'Konferenzraum':   {x:530,y:60,w:210,h:200,sub:'12 Plätze'},
-      'ShareDesk 1':{x:60,y:280,w:100,h:210},
-      'ShareDesk 2':{x:170,y:280,w:100,h:210},
-      'ShareDesk 3':{x:530,y:280,w:100,h:210},
-      'ShareDesk 4':{x:640,y:280,w:100,h:100},
-      'ShareDesk 5':{x:640,y:390,w:100,h:100},
-    }
+      'ShareDesk 1':     {x:20, y:20, w:150,h:170},
+      'Besprechungsraum':{x:170,y:20, w:230,h:170,sub:'8 Plätze',  seats:4,ends:0},
+      'Konferenzraum':   {x:400,y:20, w:300,h:170,sub:'12 Plätze', seats:5,ends:1},
+      'ShareDesk 2':     {x:700,y:20, w:120,h:170},
+      'ShareDesk 3':     {x:20, y:270,w:170,h:190},
+      'ShareDesk 4':     {x:190,y:270,w:170,h:190},
+      'ShareDesk 5':     {x:360,y:270,w:170,h:190},
+    },
+    extras:[
+      {typ:'treppe', name:'Treppe',  x:820,y:20, w:120,h:170},
+      {typ:'lounge', name:'Lounge',  x:530,y:270,w:170,h:190},
+      {typ:'technik',name:'Technik', x:700,y:270,w:120,h:190},
+      {typ:'wc',     name:'WC',      x:820,y:270,w:120,h:190},
+    ],
+    doors:[
+      {o:'h',x:60, y:190,len:32,s:-1},{o:'h',x:250,y:190,len:32,s:-1},{o:'h',x:520,y:190,len:32,s:-1},
+      {o:'h',x:745,y:190,len:32,s:-1},{o:'h',x:865,y:190,len:32,s:-1},
+      {o:'h',x:70, y:270,len:32,s:1},{o:'h',x:240,y:270,len:32,s:1},{o:'h',x:410,y:270,len:32,s:1},
+      {o:'h',x:575,y:270,len:40,s:1},{o:'h',x:740,y:270,len:32,s:1},{o:'h',x:865,y:270,len:32,s:1},
+      {o:'v',x:20, y:215,len:40,s:1},
+    ],
+    texts:[{x:70,y:234,t:'Eingang'}]
   },
   2: {
-    outer:{x:30,y:30,w:740,h:490}, flur:{x:290,y:60,w:220,h:430}, flurLabel:'Flur',
     rooms:{
-      'ShareDesk 6': {x:60,y:60,w:210,h:200},
-      'ShareDesk 7': {x:60,y:280,w:100,h:210},
-      'ShareDesk 8': {x:170,y:280,w:100,h:210},
-      'ShareDesk 9': {x:530,y:60,w:210,h:200},
-      'ShareDesk 10':{x:530,y:280,w:210,h:210},
-    }
+      'ShareDesk 6': {x:20, y:20, w:230,h:170},
+      'ShareDesk 7': {x:420,y:20, w:230,h:170},
+      'ShareDesk 8': {x:650,y:20, w:170,h:170},
+      'ShareDesk 9': {x:20, y:270,w:270,h:190},
+      'ShareDesk 10':{x:530,y:270,w:290,h:190},
+    },
+    extras:[
+      {typ:'kueche', name:'Teeküche',x:250,y:20, w:170,h:170},
+      {typ:'treppe', name:'Treppe',  x:820,y:20, w:120,h:170},
+      {typ:'lounge', name:'Lounge',  x:290,y:270,w:240,h:190},
+      {typ:'wc',     name:'WC',      x:820,y:270,w:120,h:190},
+    ],
+    doors:[
+      {o:'h',x:110,y:190,len:32,s:-1},{o:'h',x:315,y:190,len:32,s:-1},{o:'h',x:520,y:190,len:32,s:-1},
+      {o:'h',x:715,y:190,len:32,s:-1},{o:'h',x:865,y:190,len:32,s:-1},
+      {o:'h',x:130,y:270,len:32,s:1},{o:'h',x:380,y:270,len:40,s:1},{o:'h',x:640,y:270,len:32,s:1},
+      {o:'h',x:865,y:270,len:32,s:1},
+    ],
+    texts:[]
   }
 };
 
@@ -450,22 +533,21 @@ function initRaumDropdown(){
 // wird der einzige Tisch (z.B. bei Meetingräumen) automatisch übernommen.
 function initTischDropdown(){
   const raum = ROOMS.find(r => r.name === document.getElementById('f-raum').value);
-  const label = document.getElementById('f-tisch-label');
+  const wrap = document.getElementById('f-tisch-wrap');
   const sel = document.getElementById('f-tisch');
   if(!raum) return;
   if(raum.tische.length <= 1){
-    label.style.display = 'none';
-    sel.style.display = 'none';
+    wrap.style.display = 'none';
     sel.innerHTML = `<option value="${raum.tische[0].code}">${raum.tische[0].code}</option>`;
     return;
   }
-  label.style.display = 'block';
-  sel.style.display = 'block';
+  wrap.style.display = 'block';
   const bisher = sel.value;
-  sel.innerHTML = raum.tische.map(t => {
+  const neu = raum.tische.map(t => {
     const status = tischStatus(raum.name, t.code);
     return `<option value="${t.code}">Tisch ${t.code}${status==='belegt' ? ' – aktuell belegt' : ''}</option>`;
   }).join('');
+  if(sel.innerHTML !== neu) sel.innerHTML = neu;  // nur bei Änderung, sonst flackert ein offenes Dropdown
   if(raum.tische.some(t => t.code === bisher)) sel.value = bisher;
 }
 
@@ -541,27 +623,33 @@ function tischStatus(raumName, code){
 }
 
 // ── Möbel-Zeichenfunktionen ──
-const FURN_TABLE='fill:#2e3250;stroke:#4f6ef7;stroke-width:1';
-const FURN_CHAIR='fill:#161923;stroke:#4f6ef7;stroke-width:0.8';
-const FURN_DESK='fill:#2e3250;stroke:#4f6ef7;stroke-width:1';
+const FURN_TABLE='fill:#2e3250;stroke:#8891b4;stroke-width:1';
+const FURN_CHAIR='fill:#161923;stroke:#8891b4;stroke-width:0.9';
+const FURN_DESK='fill:#2e3250;stroke:#8891b4;stroke-width:1';
 const FURN_MON='fill:#4f6ef7';
 
-function furnConf(r){
-  const tx=r.x+r.w/2-45, ty=r.y+r.h/2-20;
-  let s=`<rect style="${FURN_TABLE}" x="${tx}" y="${ty}" width="90" height="40" rx="4"/>`;
-  for(let i=0;i<4;i++){
-    const cx=tx+15+i*20;
-    s+=`<rect style="${FURN_CHAIR}" x="${cx-7}" y="${ty-11}" width="14" height="8" rx="1"/>`;
-    s+=`<rect style="${FURN_CHAIR}" x="${cx-7}" y="${ty+43}" width="14" height="8" rx="1"/>`;
+// Konferenztisch mit `seats` Stühlen je Längsseite und `ends` Stühlen an den Stirnseiten.
+function furnConf(r, seats, ends){
+  const tw = seats*24+14, th = 46;
+  const tx = r.x+r.w/2-tw/2, ty = r.y+r.h/2-th/2+6;
+  let s = `<rect style="${FURN_TABLE}" x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="6"/>`;
+  for(let i=0;i<seats;i++){
+    const cx = tx+19+i*24;
+    s += `<rect style="${FURN_CHAIR}" x="${cx-8}" y="${ty-12}" width="16" height="9" rx="2"/>`;
+    s += `<rect style="${FURN_CHAIR}" x="${cx-8}" y="${ty+th+3}" width="16" height="9" rx="2"/>`;
   }
-  return s;
+  if(ends){
+    s += `<rect style="${FURN_CHAIR}" x="${tx-12}" y="${ty+th/2-8}" width="9" height="16" rx="2"/>`;
+    s += `<rect style="${FURN_CHAIR}" x="${tx+tw+3}" y="${ty+th/2-8}" width="9" height="16" rx="2"/>`;
+  }
+  return {svg:s, badge:{x:tx+tw, y:ty}};
 }
 function furnDeskSingle(cx, cy){
-  const dw=54, dh=26;
+  const dw=64, dh=30;
   const dx=cx-dw/2, dy=cy-dh/2;
   let s=`<rect style="${FURN_DESK}" x="${dx}" y="${dy}" width="${dw}" height="${dh}" rx="3"/>`;
-  s+=`<rect style="${FURN_MON}" x="${dx+dw/2-7}" y="${dy+3}" width="14" height="8" rx="1"/>`;
-  s+=`<rect style="${FURN_CHAIR}" x="${dx+dw/2-7}" y="${dy+dh+3}" width="14" height="8" rx="1"/>`;
+  s+=`<rect style="${FURN_MON}" x="${dx+dw/2-8}" y="${dy+4}" width="16" height="9" rx="1"/>`;
+  s+=`<rect style="${FURN_CHAIR}" x="${dx+dw/2-8}" y="${dy+dh+3}" width="16" height="10" rx="3"/>`;
   return s;
 }
 // Mittelpunkte für 1-2 Einzeltische innerhalb einer Raum-Bounding-Box,
@@ -569,9 +657,64 @@ function furnDeskSingle(cx, cy){
 function deskCenters(r, n){
   if(n <= 1) return [{x:r.x+r.w/2, y:r.y+r.h/2}];
   if(r.w >= r.h){
-    return [{x:r.x+r.w*0.28, y:r.y+r.h/2}, {x:r.x+r.w*0.72, y:r.y+r.h/2}];
+    return [{x:r.x+r.w*0.28, y:r.y+r.h/2+6}, {x:r.x+r.w*0.72, y:r.y+r.h/2+6}];
   }
-  return [{x:r.x+r.w/2, y:r.y+r.h*0.32}, {x:r.x+r.w/2, y:r.y+r.h*0.72}];
+  return [{x:r.x+r.w/2, y:r.y+r.h*0.30}, {x:r.x+r.w/2, y:r.y+r.h*0.64}];
+}
+
+// Deko für nicht buchbare Räume (Treppe, WC, Lounge, Teeküche, Technik)
+function dekorSvg(e){
+  const cx=e.x+e.w/2, cy=e.y+e.h/2;
+  let s='';
+  if(e.typ==='treppe'){
+    const n=9, x1=e.x+22, x2=e.x+e.w-22, top=e.y+34, bot=e.y+e.h-18;
+    for(let i=0;i<=n;i++){
+      const y=top+i*(bot-top)/n;
+      s+=`<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#8891b4" stroke-width="1"/>`;
+    }
+    s+=`<rect x="${x1}" y="${top}" width="${x2-x1}" height="${bot-top}" fill="none" stroke="#8891b4" stroke-width="1"/>`;
+    s+=`<path d="M${cx} ${bot-8} L${cx} ${top+8} M${cx-6} ${top+16} L${cx} ${top+8} L${cx+6} ${top+16}" fill="none" stroke="#b9c0e6" stroke-width="1.5"/>`;
+  } else if(e.typ==='wc'){
+    for(let i=0;i<3;i++){
+      const x=e.x+14+i*34, y=e.y+e.h-70;
+      s+=`<rect style="${FURN_TABLE}" x="${x}" y="${y}" width="28" height="56" rx="2"/>`;
+      s+=`<ellipse cx="${x+14}" cy="${y+36}" rx="7" ry="9" style="${FURN_CHAIR}"/>`;
+    }
+    s+=`<circle cx="${cx}" cy="${e.y+52}" r="15" fill="#fff"/>`;
+    s+=`<text x="${cx}" y="${e.y+57}" text-anchor="middle" font-size="13" font-weight="800" fill="#232637">WC</text>`;
+  } else if(e.typ==='lounge'){
+    [[0.3,0.5],[0.7,0.62]].forEach(([fx,fy])=>{
+      const x=e.x+e.w*fx, y=e.y+e.h*fy;
+      s+=`<circle cx="${x}" cy="${y}" r="15" style="${FURN_TABLE}"/>`;
+      [[-24,0],[24,0],[0,-24],[0,24]].forEach(([dx,dy])=>{ s+=`<circle cx="${x+dx}" cy="${y+dy}" r="7" style="${FURN_CHAIR}"/>`; });
+    });
+    s+=`<rect style="${FURN_TABLE}" x="${e.x+16}" y="${e.y+34}" width="${e.w-32}" height="18" rx="8"/>`;
+  } else if(e.typ==='kueche'){
+    s+=`<rect style="${FURN_TABLE}" x="${e.x+12}" y="${e.y+34}" width="${e.w-24}" height="18" rx="2"/>`;
+    s+=`<circle cx="${e.x+34}" cy="${e.y+43}" r="5" style="${FURN_CHAIR}"/><circle cx="${e.x+54}" cy="${e.y+43}" r="5" style="${FURN_CHAIR}"/>`;
+    s+=`<rect style="${FURN_TABLE}" x="${cx-36}" y="${cy+4}" width="72" height="36" rx="4"/>`;
+    [-20,20].forEach(dx=>{
+      s+=`<rect style="${FURN_CHAIR}" x="${cx+dx-7}" y="${cy-8}" width="14" height="8" rx="2"/>`;
+      s+=`<rect style="${FURN_CHAIR}" x="${cx+dx-7}" y="${cy+42}" width="14" height="8" rx="2"/>`;
+    });
+  } else if(e.typ==='technik'){
+    for(let i=0;i<3;i++){
+      s+=`<rect style="${FURN_TABLE}" x="${e.x+16+i*32}" y="${e.y+44}" width="24" height="${e.h-70}" rx="2"/>`;
+      s+=`<line x1="${e.x+20+i*32}" y1="${e.y+60}" x2="${e.x+36+i*32}" y2="${e.y+60}" stroke="#4f6ef7" stroke-width="2"/>`;
+    }
+  }
+  return s;
+}
+
+// Tür: Lücke in der Wand (Maske) + Aufschwung-Bogen
+function tuerBogen(d){
+  const r=d.len;
+  if(d.o==='h'){
+    const sw = d.s>0 ? 0 : 1;
+    return `<path class="plan-door" d="M${d.x} ${d.y+d.s*r} L${d.x} ${d.y} M${d.x} ${d.y+d.s*r} A${r} ${r} 0 0 ${sw} ${d.x+r} ${d.y}"/>`;
+  }
+  const sw = d.s>0 ? 1 : 0;
+  return `<path class="plan-door" d="M${d.x+d.s*r} ${d.y} L${d.x} ${d.y} M${d.x+d.s*r} ${d.y} A${r} ${r} 0 0 ${sw} ${d.x} ${d.y+r}"/>`;
 }
 
 function drawFloor(){
@@ -580,12 +723,22 @@ function drawFloor(){
   const floor = FLOORS[currentEtage];
   const selRaum = document.getElementById('f-raum').value;
   const selTisch = document.getElementById('f-tisch').value;
-  const outer = floor.outer;
+  const o = FLOOR_OUTER, fl = FLOOR_FLUR;
   let s = '';
-  s += `<rect class="plan-outer" x="${outer.x}" y="${outer.y}" width="${outer.w}" height="${outer.h}" rx="6"/>`;
-  s += `<rect class="plan-flur" x="${floor.flur.x}" y="${floor.flur.y}" width="${floor.flur.w}" height="${floor.flur.h}" rx="4"/>`;
-  s += `<text class="plan-flur-label" x="${floor.flur.x+floor.flur.w/2}" y="${floor.flur.y+floor.flur.h/2}">${floor.flurLabel}</text>`;
 
+  // Boden: Flur
+  s += `<rect class="plan-flur" x="${fl.x}" y="${fl.y}" width="${fl.w}" height="${fl.h}"/>`;
+  s += `<text class="plan-flur-label" x="${fl.x+fl.w/2}" y="${fl.y+fl.h/2+4}">Flur</text>`;
+  (floor.texts||[]).forEach(t => { s += `<text class="plan-text" x="${t.x}" y="${t.y}">${t.t}</text>`; });
+
+  // Nicht buchbare Räume (Deko)
+  floor.extras.forEach(e => {
+    s += `<rect class="plan-extra" x="${e.x}" y="${e.y}" width="${e.w}" height="${e.h}"/>`;
+    s += dekorSvg(e);
+    if(e.typ !== 'wc') s += `<text class="plan-sub" x="${e.x+e.w/2}" y="${e.y < 190 ? e.y+20 : e.y+e.h-10}">${e.name}</text>`;
+  });
+
+  // Buchbare Räume
   Object.entries(floor.rooms).forEach(([name, r]) => {
     const room = ROOMS.find(x => x.name === name);
     const isSelectedRoom = name === selRaum;
@@ -593,15 +746,19 @@ function drawFloor(){
     if(room.typ === 'meeting'){
       const status = raumStatus(name);
       const cls = isSelectedRoom ? 'selected' : `status-${status}`;
+      const conf = furnConf(r, r.seats, r.ends);
+      const bc = status === 'free' ? 'frei' : 'belegt';
       s += `<g class="plan-room" onclick="waehleTisch('${name}','${room.tische[0].code}')">`;
-      s += `<rect class="plan-fill ${cls}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="6"/>`;
-      s += furnConf(r);
-      s += `<text class="plan-label" x="${r.x+r.w/2}" y="${r.y+16}">${name}</text>`;
-      s += `<text class="plan-sub" x="${r.x+r.w/2}" y="${r.y+r.h-6}">${r.sub} · Tisch ${room.tische[0].code}</text>`;
+      s += `<rect class="plan-fill ${cls}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`;
+      s += conf.svg;
+      s += `<circle class="desk-badge ${bc}" cx="${conf.badge.x}" cy="${conf.badge.y}" r="11"/>`;
+      s += `<text class="desk-plus" x="${conf.badge.x}" y="${conf.badge.y}">+</text>`;
+      s += `<text class="plan-label" x="${r.x+r.w/2}" y="${r.y+24}">${name}</text>`;
+      s += `<text class="plan-sub" x="${r.x+r.w/2}" y="${r.y+r.h-12}">${r.sub} · Tisch ${room.tische[0].code}</text>`;
       s += `</g>`;
     } else {
-      s += `<rect class="plan-fill${isSelectedRoom ? ' selected' : ''}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="6"/>`;
-      s += `<text class="plan-label" x="${r.x+r.w/2}" y="${r.y+16}">${name}</text>`;
+      s += `<rect class="plan-fill${isSelectedRoom ? ' selected' : ''}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`;
+      s += `<text class="plan-label" x="${r.x+r.w/2}" y="${r.y+(r.y<190 ? 24 : r.h-12)}">${name}</text>`;
       const zentren = deskCenters(r, room.tische.length);
       room.tische.forEach((t, i) => {
         const c = zentren[i];
@@ -609,13 +766,39 @@ function drawFloor(){
         const istSelektiert = isSelectedRoom && t.code === selTisch;
         s += `<g class="plan-desk${istSelektiert ? ' selected' : ''}" onclick="waehleTisch('${name}','${t.code}')">`;
         s += furnDeskSingle(c.x, c.y);
-        s += `<circle class="desk-badge ${status}" cx="${c.x+22}" cy="${c.y-16}" r="8"/>`;
-        s += `<text class="desk-plus" x="${c.x+22}" y="${c.y-16}">+</text>`;
-        s += `<text class="desk-code" x="${c.x}" y="${c.y+27}">${t.code}</text>`;
+        s += `<circle class="desk-badge ${status}" cx="${c.x+32}" cy="${c.y-15}" r="11"/>`;
+        s += `<text class="desk-plus" x="${c.x+32}" y="${c.y-15}">+</text>`;
+        s += `<text class="desk-code" x="${c.x}" y="${c.y+41}">${t.code}</text>`;
         s += `</g>`;
       });
     }
   });
+
+  // Fenster in der Außenwand (oben/unten, mittig je Raum)
+  const alle = [...Object.values(floor.rooms), ...floor.extras.filter(e => e.typ !== 'treppe' && e.typ !== 'wc' && e.typ !== 'technik')];
+  alle.forEach(r => {
+    const len = Math.min(70, r.w-60);
+    if(len < 30) return;
+    const x = r.x + r.w/2 - len/2;
+    if(r.y === o.y) s += `<rect class="plan-window" x="${x}" y="${o.y-3.5}" width="${len}" height="7"/>`;
+    if(r.y + r.h === o.y+o.h) s += `<rect class="plan-window" x="${x}" y="${o.y+o.h-3.5}" width="${len}" height="7"/>`;
+  });
+
+  // Wände (mit Türlücken per Maske)
+  const tueren = floor.doors;
+  const lueckeW = (d) => d.o==='h' ? `<rect x="${d.x}" y="${d.y-6}" width="${d.len}" height="12" fill="#000"/>`
+                                  : `<rect x="${d.x-6}" y="${d.y}" width="12" height="${d.len}" fill="#000"/>`;
+  s += `<mask id="wandmaske" maskUnits="userSpaceOnUse" x="0" y="0" width="960" height="480">
+          <rect x="0" y="0" width="960" height="480" fill="#fff"/>${tueren.map(lueckeW).join('')}
+        </mask>`;
+  s += `<g mask="url(#wandmaske)" style="pointer-events:none">`;
+  [...Object.values(floor.rooms), ...floor.extras].forEach(r => {
+    s += `<rect class="plan-wall" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`;
+  });
+  s += `<rect class="plan-wall outer" x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}"/>`;
+  s += `</g>`;
+  s += tueren.map(tuerBogen).join('');
+
   svg.innerHTML = s;
 }
 
@@ -665,21 +848,68 @@ function minutenZuUhrzeit(m){
   return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
 }
 
-// Eine Kalenderzelle (Raum × Halbstunde) zeigt keine einzelnen Buchungen
-// mehr, sondern nur einen Belegungs-"Blocker" (z.B. "1/2"). Klick öffnet
-// die Detailliste inkl. Schnellbuchung eines freien Tisches.
-function zelleHtml(raum, buchungen, datum, minuten){
+// Eine Kalenderzelle (Raum × Halbstunde) ist nur noch die leere Klickfläche;
+// Belegungen werden als zusammenhängende Blöcke darübergelegt (blockHtml).
+function zelleHtml(raum, datum, minuten){
   const start = datum + ' ' + minutenZuUhrzeit(minuten);
   const ende = datum + ' ' + minutenZuUhrzeit(minuten + 30);
   const halfCls = (minuten % 60 !== 0) ? ' half' : '';
-  const treffer = buchungen.filter(b => b.raum === raum.name && b.start < ende && b.ende > start);
-  if(treffer.length === 0){
-    return `<div class="cal-cell${halfCls}" onclick="zelleOeffnen('${raum.name}','${start}','${ende}')"></div>`;
+  return `<div class="cal-cell${halfCls}" onclick="zelleOeffnen('${raum.name}','${start}','${ende}')"></div>`;
+}
+
+function minutenVon(str){ return parseInt(str.slice(11,13),10)*60 + parseInt(str.slice(14,16),10); }
+
+// Belegte Zeiträume eines Raums: zusammenhängend belegte Zeit = ein Block,
+// innerhalb des Blocks wechselt nur die Farbe, wenn sich die Belegung ändert
+// (z.B. 1/2 → 2/2). Eine lange Buchung ergibt nie mehrere Blöcke.
+function belegungsBloecke(raum, buchungen){
+  const lo = H_START*60, hi = H_ENDE*60;
+  const bs = buchungen.filter(b => b.raum === raum.name)
+    .map(b => ({ s:Math.max(lo, minutenVon(b.start)), e:Math.min(hi, minutenVon(b.ende)), b }))
+    .filter(x => x.e > x.s);
+  const punkte = [...new Set(bs.flatMap(x => [x.s, x.e]))].sort((a,b) => a-b);
+  const stuecke = [];
+  for(let i = 0; i < punkte.length-1; i++){
+    const von = punkte[i], bis = punkte[i+1];
+    const treffer = bs.filter(x => x.s < bis && x.e > von);
+    if(treffer.length) stuecke.push({ von, bis, anzahl:treffer.length, bs:treffer.map(x => x.b) });
   }
-  const belegt = Math.min(treffer.length, raum.kapazitaet);
-  const status = belegt >= raum.kapazitaet ? 'busy' : 'partial';
-  const mine = currentUser && treffer.some(b => b.nutzer_id === currentUser.id) ? ' mine' : '';
-  return `<div class="cal-cell cal-blocker status-${status}${mine}${halfCls}" onclick="zelleOeffnen('${raum.name}','${start}','${ende}')">${belegt}/${raum.kapazitaet}</div>`;
+  const bloecke = [];
+  stuecke.forEach(st => {
+    let blk = bloecke[bloecke.length-1];
+    if(!blk || blk.bis !== st.von){ blk = { von:st.von, bis:st.von, segmente:[] }; bloecke.push(blk); }
+    const seg = blk.segmente[blk.segmente.length-1];
+    if(seg && seg.anzahl === st.anzahl){
+      seg.bis = st.bis;
+      st.bs.forEach(b => { if(!seg.bs.includes(b)) seg.bs.push(b); });
+    } else {
+      blk.segmente.push({ von:st.von, bis:st.bis, anzahl:st.anzahl, bs:[...st.bs] });
+    }
+    blk.bis = st.bis;
+  });
+  return bloecke;
+}
+
+function blockHtml(raum, spalte, anzahlSpalten, buchungen, datum){
+  const px = m => (m - H_START*60) / 30 * 48;
+  return belegungsBloecke(raum, buchungen).map(blk => {
+    const segs = blk.segmente.map(seg => {
+      const belegt = Math.min(seg.anzahl, raum.kapazitaet);
+      const status = belegt >= raum.kapazitaet ? 'busy' : 'partial';
+      const mine = currentUser && seg.bs.some(b => b.nutzer_id === currentUser.id) ? ' mine' : '';
+      const hoehe = px(seg.bis) - px(seg.von);
+      const namen = [...new Set(seg.bs.map(b => b.name))].join(', ');
+      const start = datum + ' ' + minutenZuUhrzeit(seg.von);
+      const ende = datum + ' ' + minutenZuUhrzeit(seg.bis);
+      return `<div class="cal-seg status-${status}${mine}" style="top:${px(seg.von)-px(blk.von)}px;height:${hoehe}px"
+          title="${minutenZuUhrzeit(seg.von)}–${minutenZuUhrzeit(seg.bis)} · ${namen}"
+          onclick="zelleOeffnen('${raum.name}','${start}','${ende}')">
+          <span>${belegt}/${raum.kapazitaet}</span>${hoehe >= 44 ? `<span class="names">${namen}</span>` : ''}</div>`;
+    }).join('');
+    return `<div class="cal-block" style="top:${px(blk.von)}px;height:${px(blk.bis)-px(blk.von)}px;
+        left:calc(60px + (100% - 60px) * ${spalte} / ${anzahlSpalten});width:calc((100% - 60px) / ${anzahlSpalten})">
+        <div class="cal-block-in">${segs}</div></div>`;
+  }).join('');
 }
 
 async function render(){
@@ -708,10 +938,12 @@ async function render(){
       const minuten = h*60 + half*30;
       html += `<div class="cal-row" style="display:grid;grid-template-columns:${cols}">
         <div class="cal-time">${half===0 ? String(h).padStart(2,'0')+':00' : ''}</div>
-        ${raeume.map(r => zelleHtml(r, buchungen, datum, minuten)).join('')}
+        ${raeume.map(r => zelleHtml(r, datum, minuten)).join('')}
       </div>`;
     }
   }
+
+  html += raeume.map((r, i) => blockHtml(r, i, raeume.length, buchungen, datum)).join('');
 
   if(heuteFlag){
     const now = new Date();
@@ -748,8 +980,10 @@ async function buchen(){
     startVoll = datum + ' 00:00';
     endeVoll = datum + ' 23:59';
   } else {
-    const start = document.getElementById('f-start').value;
-    const ende = document.getElementById('f-ende').value;
+    const startEl = document.getElementById('f-start'), endeEl = document.getElementById('f-ende');
+    if(startEl._cs) startEl._cs.commit();
+    if(endeEl._cs) endeEl._cs.commit();
+    const start = startEl.value, ende = endeEl.value;
     if(!start || !ende){ toast('Bitte alle Felder ausfüllen.', 'error'); return; }
     if(start >= ende){ toast('Startzeit muss vor Endzeit liegen.', 'error'); return; }
     startVoll = datum + ' ' + start;
@@ -802,13 +1036,14 @@ function zelleOeffnen(raumName, slotStart, slotEnde){
   const treffer = allBookings.filter(b => b.raum === raumName && b.start < slotEnde && b.ende > slotStart);
   document.getElementById('slot-title').textContent = `${raumName} · ${slotStart.slice(11)}–${slotEnde.slice(11)} Uhr`;
 
-  const belegt = Math.min(treffer.length, room.kapazitaet);
+  const belegt = Math.min(maxGleichzeitig(treffer, slotStart, slotEnde), room.kapazitaet);
   let html = `<p style="margin-bottom:10px"><strong style="color:var(--text)">${belegt}/${room.kapazitaet}</strong> Tische belegt</p>`;
 
   if(treffer.length){
     html += treffer.map(b => `
       <div class="agenda-row" style="cursor:pointer" onclick="slotModalClose();modalOpen(${b.id},${b.nutzer_id},'${b.raum}','${b.tisch || ''}','${b.name}','${b.start}','${b.ende}','${b.quelle}')">
         <span class="agenda-time">${b.tisch || raumName}</span>
+        <span class="agenda-raum">${b.start.slice(11,16)}–${b.ende.slice(11,16)}</span>
         <span class="agenda-nutzer">${b.name}${b.quelle === 'nfc' ? ' · 📡' : ''}</span>
       </div>`).join('');
   } else {
@@ -816,14 +1051,21 @@ function zelleOeffnen(raumName, slotStart, slotEnde){
   }
 
   const freieTische = room.tische.filter(t => !treffer.some(b => b.tisch === t.code));
-  if(currentUser && treffer.length < room.kapazitaet && freieTische.length){
+  if(currentUser && belegt < room.kapazitaet && freieTische.length){
     html += `<label style="margin-top:12px">Freien Tisch buchen (${slotStart.slice(11)}–${slotEnde.slice(11)} Uhr)</label>
       <select id="slot-tisch-sel">${freieTische.map(t => `<option value="${t.code}">Tisch ${t.code}</option>`).join('')}</select>
       <button class="btn-book" onclick="slotSchnellbuchen('${raumName}','${slotStart}','${slotEnde}')">✓ Buchen</button>`;
   }
 
   document.getElementById('slot-body').innerHTML = html;
+  const slotSel = document.getElementById('slot-tisch-sel');
+  if(slotSel) enhanceSelect(slotSel);
   document.getElementById('slot-modal').classList.add('open');
+}
+// Höchste Zahl gleichzeitiger Buchungen innerhalb eines Zeitfensters.
+function maxGleichzeitig(treffer, von, bis){
+  const zeitpunkte = [von, ...treffer.map(b => b.start).filter(t => t > von && t < bis)];
+  return Math.max(0, ...zeitpunkte.map(t => treffer.filter(b => b.start <= t && b.ende > t).length));
 }
 function slotModalClose(){ document.getElementById('slot-modal').classList.remove('open'); }
 
@@ -848,7 +1090,188 @@ function toast(msg, typ){
   setTimeout(() => t.className = '', 3500);
 }
 
+// ── Eigene Dropdowns im Dark-Design ──
+// Die echten <select>/<input>-Elemente bleiben als Datenquelle erhalten
+// (value wird weiter wie bisher gelesen/gesetzt), die Oberfläche kommt von hier.
+function csSchliessen(ausser){
+  document.querySelectorAll('.cs.cs-open').forEach(w => { if(w !== ausser) w.classList.remove('cs-open'); });
+}
+document.addEventListener('mousedown', e => { if(!e.target.closest('.cs')) csSchliessen(); });
+
+function csAktivSetzen(list, idx){
+  const opts = [...list.querySelectorAll('.cs-opt')];
+  if(!opts.length) return;
+  idx = Math.max(0, Math.min(opts.length-1, idx));
+  opts.forEach((o,i) => o.classList.toggle('active', i === idx));
+  opts[idx].scrollIntoView({block:'nearest'});
+}
+
+function enhanceSelect(sel){
+  if(sel._cs){ sel._cs.refresh(); return; }
+  const wrap = document.createElement('div'); wrap.className = 'cs';
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'cs-btn';
+  const list = document.createElement('div'); list.className = 'cs-list';
+  sel.parentNode.insertBefore(wrap, sel);
+  wrap.append(btn, list, sel);
+  sel.classList.add('cs-native');
+
+  let signatur = '';
+  function refresh(){
+    const opts = [...sel.options];
+    btn.textContent = sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : '';
+    const sig = opts.map(o => o.value + '|' + o.textContent).join('§') + '#' + sel.value;
+    if(sig === signatur) return;
+    signatur = sig;
+    list.innerHTML = '';
+    opts.forEach(o => {
+      const d = document.createElement('div');
+      d.className = 'cs-opt' + (o.value === sel.value ? ' selected' : '');
+      d.textContent = o.textContent;
+      d.dataset.v = o.value;
+      d.onclick = () => waehle(o.value);
+      list.appendChild(d);
+    });
+  }
+  function waehle(v){
+    const geaendert = sel.value !== v;
+    sel.value = v;
+    wrap.classList.remove('cs-open');
+    if(geaendert) sel.dispatchEvent(new Event('change'));
+  }
+  function oeffnen(){
+    csSchliessen(wrap);
+    refresh();
+    wrap.classList.add('cs-open');
+    const idx = Math.max(0, [...list.children].findIndex(o => o.dataset.v === sel.value));
+    csAktivSetzen(list, idx);
+  }
+  // value von außen setzen (z.B. beim Klick im Grundriss) → Anzeige mitziehen
+  const desc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+  Object.defineProperty(sel, 'value', { get(){ return desc.get.call(sel); }, set(v){ desc.set.call(sel, v); refresh(); } });
+  new MutationObserver(refresh).observe(sel, {childList:true, subtree:true});
+
+  btn.onclick = () => wrap.classList.contains('cs-open') ? wrap.classList.remove('cs-open') : oeffnen();
+  btn.onkeydown = e => {
+    const offen = wrap.classList.contains('cs-open');
+    const opts = [...list.children];
+    const aktiv = opts.findIndex(o => o.classList.contains('active'));
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+      e.preventDefault();
+      if(!offen) oeffnen(); else csAktivSetzen(list, aktiv + (e.key === 'ArrowDown' ? 1 : -1));
+    } else if(e.key === 'Enter' && offen && aktiv >= 0){
+      e.preventDefault(); waehle(opts[aktiv].dataset.v);
+    } else if(e.key === 'Escape'){ wrap.classList.remove('cs-open'); }
+  };
+  sel._cs = { refresh };
+  refresh();
+}
+
+// "9", "930", "9:30", "09.30" → "09:30"; ungültig → null
+function parseZeit(t){
+  t = t.trim().replace(/[.hH]/g, ':');
+  let h, m;
+  if(t.includes(':')){
+    const teile = t.split(':');
+    if(teile.length !== 2 || !/^\d{1,2}$/.test(teile[0]) || !/^\d{1,2}$/.test(teile[1] || '0')) return null;
+    h = +teile[0]; m = +(teile[1] || 0);
+  } else {
+    if(!/^\d{1,4}$/.test(t)) return null;
+    if(t.length <= 2){ h = +t; m = 0; }
+    else { h = +t.slice(0, t.length-2); m = +t.slice(-2); }
+  }
+  if(h > 23 || m > 59) return null;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+
+// Zeitfeld: frei tippbar + Auswahlliste im 15-Minuten-Raster
+function enhanceTime(inp, beiAenderung){
+  const wrap = document.createElement('div'); wrap.className = 'cs cs-time';
+  const list = document.createElement('div'); list.className = 'cs-list';
+  const clock = document.createElement('button'); clock.type = 'button'; clock.className = 'cs-clock';
+  clock.tabIndex = -1; clock.textContent = '🕒';
+  inp.parentNode.insertBefore(wrap, inp);
+  wrap.append(inp, clock, list);
+
+  const zeiten = [];
+  for(let m = 6*60; m <= 22*60; m += 15) zeiten.push(minutenZuUhrzeit(m));
+  let letzter = parseZeit(inp.value) || '09:00';
+
+  function baue(filter){
+    list.innerHTML = '';
+    const f = (filter || '').replace(/[^0-9]/g, '');
+    const treffer = zeiten.filter(z => !f || z.replace(':','').startsWith(f) || z.replace(':','').replace(/^0/,'').startsWith(f));
+    if(!treffer.length){ list.innerHTML = '<div class="cs-empty">Eigene Uhrzeit mit Enter übernehmen</div>'; return; }
+    treffer.forEach(z => {
+      const d = document.createElement('div');
+      d.className = 'cs-opt' + (z === inp.value ? ' selected' : '');
+      d.textContent = z; d.dataset.v = z;
+      d.onmousedown = e => { e.preventDefault(); setze(z); };
+      list.appendChild(d);
+    });
+  }
+  function oeffnen(alle){
+    csSchliessen(wrap);
+    baue(alle ? '' : inp.value === letzter ? '' : inp.value);
+    wrap.classList.add('cs-open');
+    const opts = [...list.children];
+    let idx = opts.findIndex(o => o.dataset.v === inp.value);
+    if(idx < 0) idx = Math.max(0, opts.findIndex(o => o.dataset.v > inp.value) - 1);
+    csAktivSetzen(list, idx);
+  }
+  function setze(z){
+    inp.value = z; letzter = z;
+    wrap.classList.remove('cs-open');
+    if(beiAenderung) beiAenderung(z);
+  }
+  function commit(){
+    const z = parseZeit(inp.value);
+    if(z){ setze(z); }
+    else {
+      inp.value = letzter;
+      inp.classList.add('cs-error');
+      setTimeout(() => inp.classList.remove('cs-error'), 400);
+      wrap.classList.remove('cs-open');
+    }
+  }
+  inp.addEventListener('focus', () => { oeffnen(true); inp.select(); });
+  inp.addEventListener('click', () => { if(!wrap.classList.contains('cs-open')) oeffnen(true); });
+  inp.addEventListener('input', () => { baue(inp.value); wrap.classList.add('cs-open'); csAktivSetzen(list, 0); });
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', e => {
+    const opts = [...list.querySelectorAll('.cs-opt')];
+    const aktiv = opts.findIndex(o => o.classList.contains('active'));
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+      e.preventDefault();
+      if(!wrap.classList.contains('cs-open')) oeffnen(true);
+      else csAktivSetzen(list, aktiv + (e.key === 'ArrowDown' ? 1 : -1));
+    } else if(e.key === 'Enter'){
+      e.preventDefault();
+      // getippte Zeit hat Vorrang, sonst die markierte Listenzeile
+      if(inp.value === letzter && wrap.classList.contains('cs-open') && aktiv >= 0) setze(opts[aktiv].dataset.v);
+      else commit();
+    } else if(e.key === 'Escape'){
+      inp.value = letzter; wrap.classList.remove('cs-open'); inp.blur();
+    }
+  });
+  clock.onmousedown = e => e.preventDefault();
+  clock.onclick = () => wrap.classList.contains('cs-open') ? wrap.classList.remove('cs-open') : (inp.focus(), oeffnen(true));
+  inp._cs = { commit };
+}
+
+// Ende automatisch nachziehen, wenn Beginn hinter/auf dem Ende liegt (+1 Stunde)
+function startGeaendert(z){
+  const ende = document.getElementById('f-ende');
+  if(ende.value <= z){
+    const m = Math.min(23*60+59, parseInt(z.slice(0,2),10)*60 + parseInt(z.slice(3),10) + 60);
+    ende.value = minutenZuUhrzeit(m);
+  }
+}
+
 // ── Init ──
+enhanceSelect(document.getElementById('f-raum'));
+enhanceSelect(document.getElementById('f-tisch'));
+enhanceTime(document.getElementById('f-start'), startGeaendert);
+enhanceTime(document.getElementById('f-ende'));
 document.addEventListener('keydown', e => {
   if(e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') anmelden();
 });
