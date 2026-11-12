@@ -186,6 +186,25 @@ geheim, da sie ohnehin Teil der öffentlichen Supabase-URL in `index.html` ist.
   (`fix:`, `feat:`, `refactor:`, `docs:`, `ci:`, `test:`)
 - Pull Request gegen `main`, Quality-Check muss grün sein
 
+## Messeplakat (Hausmesse)
+
+Im Ordner `Plakat/` liegt das Plakat für den Messestand (DIN A1 hoch, Stil der Messeseite):
+
+- `Plakat_Raumbuchungssystem_A1.pdf` – Druckdatei, reine Vektorgrafik (auch für A0/A2/A3
+  ohne Qualitätsverlust skalierbar)
+- `Plakat_Raumbuchungssystem_A1_Beschnitt3mm.pdf` – dieselbe Datei mit 3 mm Beschnitt
+  rundum, falls die Druckerei das verlangt
+- `Plakat_Raumbuchungssystem_A1_300dpi.jpg` – Rasterversion (7016 × 9933 px) für
+  Druckdienste, die kein PDF annehmen
+- `plakat.html` – die Quelle (eine Datei, kein Build-Schritt). Texte, Standnummer und
+  Datum stehen direkt im HTML. Neu exportieren: in Chrome/Edge öffnen → Drucken →
+  "Als PDF speichern", Ränder "Keine", Hintergrundgrafiken an (Format A1 wird automatisch
+  gesetzt; mit `?beschnitt=3` an der Adresse inklusive Beschnitt)
+
+Der QR-Code auf dem Plakat zeigt auf die Live-App (GitHub Pages). Er ist als fertige Matrix
+in `plakat.html` eingebettet (`QR_MATRIX`) – ändert sich die Adresse, muss er neu erzeugt
+werden.
+
 ## Troubleshooting
 
 **"Relationship-Fehler zwischen nutzer und buchungen"**
