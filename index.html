@@ -3,278 +3,16 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content="Raumbuchungssystem mit NFC-Check-in und Grundriss-Ansicht – Hausmesse-Projekt der Walther-Rathenau-Gewerbeschule"/>
+<meta name="theme-color" content="#0f1117"/>
 <title>Raumbuchungssystem</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  :root{
-    --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3250;
-    --accent:#4f6ef7;--purple:#7c3aed;--green:#22c55e;--red:#ef4444;
-    --amber:#f59e0b;--text:#e8eaf6;--muted:#8891b4;--r:12px;
-    color-scheme:dark;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif}
-  body{background:var(--bg);color:var(--text);min-height:100vh}
-
-  /* ── Login-Screen ── */
-  #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-  .login-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:360px;
-    box-shadow:0 10px 40px rgba(0,0,0,.4)}
-  .login-logo{width:52px;height:52px;background:linear-gradient(135deg,var(--accent),var(--purple));
-    border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 18px}
-  .login-box h1{text-align:center;font-size:20px;margin-bottom:6px}
-  .login-sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:24px}
-  .login-box label{font-size:12px;color:var(--muted);display:block;margin:12px 0 4px}
-  .login-box input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);
-    padding:10px 12px;border-radius:8px;font-size:14px;outline:none}
-  .login-box input:focus{border-color:var(--accent)}
-  .login-box button{width:100%;background:linear-gradient(135deg,var(--accent),var(--purple));border:none;color:#fff;
-    padding:11px;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;margin-top:18px}
-  .login-box button:hover{opacity:.9}
-  .login-error{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);
-    border-radius:8px;padding:10px 12px;font-size:13px;margin-top:14px;display:none}
-  .login-error.show{display:block}
-
-  /* ── Konfig-Banner ── */
-  #config-banner{display:none;background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.35);
-    border-radius:10px;padding:14px 18px;font-size:13px;line-height:1.6;max-width:520px;margin-top:16px}
-  #config-banner code{background:var(--surface2);padding:2px 6px;border-radius:4px;color:var(--text)}
-
-  /* ── App ── */
-  #app{display:none;padding:20px 28px;max-width:1500px;margin:0 auto}
-  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px}
-  h1{font-size:20px}
-  .top .sub{color:var(--muted);font-size:12px}
-  button{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 14px;
-    border-radius:8px;cursor:pointer;font-size:13px}
-  button:hover{background:var(--border)}
-  .btn-today{background:var(--accent)!important;border-color:var(--accent)!important}
-
-  .user-info{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);
-    padding:8px 14px;border-radius:8px;font-size:13px}
-  .user-info .avatar{width:26px;height:26px;background:linear-gradient(135deg,var(--accent),var(--purple));
-    border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
-
-  .datenav{display:flex;gap:8px;align-items:center;margin-bottom:16px}
-  #datum{font-size:15px;font-weight:600;min-width:220px;text-align:center}
-
-  .tabs-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px}
-  .view-tabs,.etage-tabs{display:flex;gap:6px;background:var(--surface2);padding:6px;border-radius:10px}
-  .view-tabs button,.etage-tabs button{flex:1;background:transparent;border:none;color:var(--muted);
-    padding:9px 15px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;transition:.15s;white-space:nowrap}
-  .view-tabs button.active,.etage-tabs button.active{background:var(--accent);color:#fff}
-
-  .container{display:grid;grid-template-columns:320px 1fr;gap:20px}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:16px}
-  .card h2{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
-  label{font-size:12px;color:var(--muted);display:block;margin:8px 0 3px}
-  select,input[type=date],input[type=time],input.cs-input{width:100%;background:var(--surface2);border:1px solid var(--border);
-    color:var(--text);padding:8px 10px;border-radius:8px;font-size:13px;outline:none}
-  .zeit-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .ganztag-row{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:10px;cursor:pointer}
-  .btn-book{width:100%;background:linear-gradient(135deg,var(--accent),var(--purple));border:none;color:#fff;
-    padding:10px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;margin-top:12px}
-
-  /* ── Agenda (v.a. Mobile) ── */
-  #agenda-card{display:none}
-  .agenda-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
-  .agenda-row:last-child{border-bottom:none}
-  .agenda-time{color:var(--accent);font-weight:700;min-width:88px}
-  .agenda-raum{color:var(--text);font-weight:600;flex:1}
-  .agenda-nutzer{color:var(--muted)}
-  .agenda-empty{color:var(--muted);font-size:12px;padding:6px 0}
-
-  /* ── Kalender (Liste) ── */
-  .cal-wrap{overflow-x:auto}
-  .cal{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;min-width:700px}
-  .cal-header{display:grid;background:var(--surface2);font-size:11px;font-weight:600}
-  .cal-header div{padding:12px 6px;text-align:center;border-left:1px solid var(--border)}
-  .cal-header div:first-child{border-left:none}
-  .cal-body{position:relative}
-  .cal-row{display:grid;height:48px}
-  .cal-time{padding:0 8px;font-size:11px;color:var(--muted);line-height:48px;text-align:right;border-right:1px solid var(--border)}
-  .cal-cell{border-left:1px solid var(--border);border-top:1px solid var(--surface2);position:relative}
-  .cal-cell.half{border-top:1px dashed rgba(46,50,80,.5)}
-
-  .cal-cell{cursor:pointer}
-  .cal-cell:hover{background:rgba(79,110,247,.08)}
-
-  /* Buchungen als zusammenhängende Blöcke (ein Block = ein belegter Zeitraum,
-     die Farbe im Block zeigt 1/2 bzw. 2/2) */
-  .cal-block{position:absolute;z-index:2;padding:2px 3px;pointer-events:none}
-  .cal-block-in{position:relative;height:100%;border-radius:9px;overflow:hidden;
-    box-shadow:0 2px 10px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.08)}
-  .cal-seg{position:absolute;left:0;right:0;display:flex;flex-direction:column;align-items:center;
-    justify-content:center;gap:1px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;
-    pointer-events:auto;overflow:hidden;padding:0 4px;text-align:center;transition:filter .15s}
-  .cal-seg:hover{filter:brightness(1.2)}
-  .cal-seg + .cal-seg{border-top:1px solid rgba(255,255,255,.28)}
-  .cal-seg.status-partial{background:linear-gradient(180deg,#4b4f8f,#3b3d6e)}
-  .cal-seg.status-busy{background:linear-gradient(180deg,#6b3347,#5c2d3c)}
-  .cal-seg.mine{outline:2px solid var(--amber);outline-offset:-2px}
-  .cal-seg .names{font-size:10px;font-weight:500;color:rgba(255,255,255,.72);max-width:100%;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .legend-sw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:4px}
-
-  .now{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:3;pointer-events:none}
-  .now::before{content:'';position:absolute;left:-4px;top:-4px;width:10px;height:10px;background:var(--red);border-radius:50%}
-
-  #toast{position:fixed;bottom:20px;right:20px;padding:12px 18px;border-radius:10px;color:#fff;font-size:13px;
-    font-weight:600;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;z-index:100}
-  #toast.show{opacity:1;transform:translateY(0)}
-  #toast.success{background:var(--green)}
-  #toast.error{background:var(--red)}
-
-  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center}
-  .modal-bg.open{display:flex}
-  .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;width:340px}
-  .modal h3{margin-bottom:12px;font-size:16px}
-  .modal p{color:var(--muted);font-size:13px;margin-bottom:6px}
-  .modal p strong{color:var(--text)}
-  .modal-actions{display:flex;gap:8px;margin-top:16px}
-
-  .live{position:fixed;top:20px;right:20px;background:var(--green);color:#fff;padding:6px 12px;border-radius:6px;
-    font-size:11px;display:flex;align-items:center;gap:6px;z-index:50}
-  .live .dot{width:7px;height:7px;background:#fff;border-radius:50%;animation:pulse 1.5s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-
-  /* ── Grundriss ── */
-  .plan-wrap{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px}
-  .plan-svg{width:100%;height:auto;display:block}
-  .plan-room{cursor:pointer;transition:.15s}
-  .plan-room:hover .plan-fill{filter:brightness(1.3)}
-  .plan-fill{fill:#1a1d27;stroke:none}
-  .plan-fill.selected{fill:#2a2f52;stroke:var(--accent);stroke-width:3}
-  .plan-fill.status-free{fill:#1a1d27}
-  .plan-fill.status-partial{fill:#3b3d5c}
-  .plan-fill.status-busy{fill:#5c2d3c}
-  .plan-extra{fill:#232637;stroke:none}
-  .plan-label{fill:var(--text);font-size:12px;font-weight:700;pointer-events:none;text-anchor:middle;
-    paint-order:stroke;stroke:#0f1117;stroke-width:3px;stroke-linejoin:round}
-  .plan-sub{fill:var(--muted);font-size:9px;pointer-events:none;text-anchor:middle;font-style:italic}
-  .plan-flur{fill:#12141c;stroke:none}
-  .plan-flur-label{fill:#4a5075;font-size:12px;letter-spacing:.25em;text-anchor:middle;text-transform:uppercase}
-  .plan-wall{fill:none;stroke:#b9c0e6;stroke-width:4;stroke-linejoin:miter}
-  .plan-wall.outer{stroke-width:7}
-  .plan-window{fill:#0f1117;stroke:var(--accent);stroke-width:1.2}
-  .plan-door{fill:none;stroke:var(--muted);stroke-width:1}
-  .plan-text{fill:#6c7499;font-size:9px;pointer-events:none}
-  .plan-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--muted)}
-  .plan-legend span{display:flex;align-items:center;gap:6px}
-  .plan-legend .sw{width:14px;height:14px;border-radius:3px;border:1px solid var(--border)}
-  .plan-legend .dot{width:12px;height:12px;border-radius:50%}
-
-  /* ── Einzelne Tische im Grundriss ── */
-  .plan-desk{cursor:pointer;transition:.15s}
-  .plan-desk:hover{filter:brightness(1.25)}
-  .desk-badge{stroke:#0f1117;stroke-width:1.5}
-  .desk-badge.frei{fill:var(--green)}
-  .desk-badge.belegt{fill:var(--red)}
-  .plan-desk.selected .desk-badge{stroke:var(--amber);stroke-width:2.5}
-  .desk-plus{fill:#fff;font-size:14px;font-weight:800;text-anchor:middle;dominant-baseline:central;pointer-events:none}
-  .desk-code{fill:var(--muted);font-size:9px;text-anchor:middle;pointer-events:none}
-
-  /* ── Eigene Dropdowns / Zeitfelder im Dark-Design ── */
-  .cs{position:relative}
-  select.cs-native{display:none!important}
-  .cs-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;
-    background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 10px;
-    border-radius:8px;font-size:13px;cursor:pointer}
-  .cs-btn:hover{background:var(--surface2);border-color:var(--accent)}
-  .cs-btn::after{content:'';width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);
-    transform:rotate(45deg) translateY(-2px);flex-shrink:0;transition:.15s}
-  .cs.cs-open .cs-btn,.cs-time:focus-within input{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,110,247,.2)}
-  .cs.cs-open .cs-btn::after{transform:rotate(-135deg) translateY(-2px)}
-  .cs-list{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:60;max-height:220px;overflow-y:auto;
-    background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;
-    box-shadow:0 12px 32px rgba(0,0,0,.55)}
-  .cs.cs-open .cs-list{display:block}
-  .cs-opt{padding:7px 10px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--text)}
-  .cs-opt:hover,.cs-opt.active{background:var(--surface2)}
-  .cs-opt.selected{background:var(--accent);color:#fff}
-  .cs-empty{padding:8px 10px;font-size:12px;color:var(--muted)}
-  .cs-list::-webkit-scrollbar{width:8px}
-  .cs-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-  .cs-time input{padding-right:34px;font-variant-numeric:tabular-nums}
-  .cs-time input:disabled{opacity:.5}
-  .cs-time input.cs-error{border-color:var(--red);animation:csShake .25s}
-  @keyframes csShake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
-  .cs-clock{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:28px;height:28px;padding:0;
-    background:transparent;border:none;color:var(--muted);font-size:14px;display:flex;align-items:center;justify-content:center}
-  .cs-clock:hover{background:transparent;color:var(--text)}
-  .cs-time:has(input:disabled) .cs-clock{pointer-events:none;opacity:.4}
-
-
-  /* ══ Promo-Look (angelehnt an hausmesse.wara.de/Stand23): Spotlight, Verlauf, Animationen ══ */
-  body{overflow-x:hidden}
-  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
-    background:radial-gradient(500px circle at var(--mx,50%) var(--my,30%),rgba(79,110,247,.13),transparent 60%)}
-  #login-screen,#app{position:relative;z-index:2}
-  #net{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
-  .grad{background:linear-gradient(100deg,var(--accent),var(--purple) 55%,#c084fc);
-    -webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% 100%;
-    animation:shift 8s ease-in-out infinite alternate}
-  @keyframes shift{to{background-position:100% 0}}
-  @keyframes rise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
-  @keyframes ping{70%{box-shadow:0 0 0 10px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
-  @keyframes floaty{50%{transform:translateY(-5px)}}
-  @keyframes popin{from{opacity:0;transform:scale(.92) translateY(8px)}to{opacity:1;transform:none}}
-
-  .login-box{border-radius:22px;padding:36px 32px;animation:rise .9s cubic-bezier(.2,.7,.2,1) both;
-    background:linear-gradient(160deg,var(--surface),#151824);box-shadow:0 30px 80px -30px rgba(79,110,247,.45)}
-  .login-logo{animation:floaty 4s ease-in-out infinite;box-shadow:0 12px 34px -8px rgba(124,58,237,.7);border-radius:16px}
-  .login-box h1{font-size:24px;letter-spacing:-.03em}
-  .login-box input{transition:border-color .2s,box-shadow .2s}
-  .login-box input:focus{box-shadow:0 0 0 3px rgba(79,110,247,.22)}
-  .login-box button,.btn-book{position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s,opacity .2s}
-  .login-box button:hover,.btn-book:hover{transform:translateY(-2px);box-shadow:0 12px 30px -8px rgba(124,58,237,.65)}
-  .login-box button::after,.btn-book::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;
-    background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent);transform:skewX(-20deg);transition:left .6s}
-  .login-box button:hover::after,.btn-book:hover::after{left:130%}
-  #gast-btn:hover{border-color:var(--accent)!important}
-
-  #app.in > *{animation:rise .8s cubic-bezier(.2,.7,.2,1) both}
-  #app.in > :nth-child(3){animation-delay:.08s}#app.in > :nth-child(4){animation-delay:.16s}
-  #app.in > :nth-child(5){animation-delay:.24s}#app.in > :nth-child(6){animation-delay:.32s}
-  #app.in > :nth-child(n+7){animation-delay:.4s}
-  .top h1{font-size:26px;font-weight:800;letter-spacing:-.03em}
-  .card,.user-info,.cal,.plan-wrap,.modal{border-radius:18px}
-  .card{transition:border-color .3s,box-shadow .3s}
-  .card:hover{border-color:var(--accent);box-shadow:0 20px 50px -28px rgba(79,110,247,.5)}
-  button{transition:background .2s,transform .15s,border-color .2s}
-  button:active{transform:scale(.97)}
-  .view-tabs,.etage-tabs{border-radius:999px}
-  .view-tabs button,.etage-tabs button{border-radius:999px}
-  .view-tabs button.active,.etage-tabs button.active{background:linear-gradient(100deg,var(--accent),var(--purple));
-    box-shadow:0 8px 22px -8px rgba(124,58,237,.7)}
-  .user-info .avatar{box-shadow:0 0 0 0 rgba(124,58,237,.6);animation:ping 2.4s infinite}
-  .live{border-radius:999px;padding:7px 14px}
-  .live .dot{animation:pulse 1.5s infinite,ping 2s infinite}
-  .cal-seg{transition:filter .15s,transform .15s}
-  .cal-seg:hover{transform:scale(1.02)}
-  .cal-block-in{border-radius:11px}
-  .plan-room:hover .plan-fill{filter:brightness(1.3) drop-shadow(0 0 8px rgba(79,110,247,.6))}
-  .plan-desk:hover{filter:brightness(1.25) drop-shadow(0 0 6px rgba(34,197,94,.7))}
-  .modal-bg.open{animation:fade .25s ease}
-  .modal-bg.open .modal{animation:popin .35s cubic-bezier(.2,.7,.2,1)}
-  @keyframes fade{from{opacity:0}to{opacity:1}}
-  .agenda-row{transition:background .2s,padding-left .2s}
-  .agenda-row:hover{background:rgba(79,110,247,.08);padding-left:6px}
-  #toast{border-radius:999px;padding:12px 22px;box-shadow:0 12px 30px -8px rgba(0,0,0,.6)}
-  @media (prefers-reduced-motion:reduce){
-    *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
-  }
-
-  /* ── Mobile ── */
-  @media (max-width:720px){
-    #app{padding:14px}
-    .container{grid-template-columns:1fr}
-    #agenda-card{display:block;order:-1}
-    .cal{min-width:520px}
-  }
-</style>
+<link rel="stylesheet" href="css/app.css"/>
+<!-- Supabase-Client lokal mitgeliefert (fest gepinnte Version, keine CDN-Abhängigkeit am Messestand) -->
+<script src="vendor/supabase-js-2.119.0.min.js"></script>
 </head>
 <body>
 <canvas id="net" aria-hidden="true"></canvas>
+<noscript><p style="padding:20px">Bitte JavaScript aktivieren – das Raumbuchungssystem läuft komplett im Browser.</p></noscript>
 
 <!-- ══════════ LOGIN ══════════ -->
 <div id="login-screen">
@@ -283,64 +21,66 @@
     <h1><span class="grad">Raumbuchungssystem</span></h1>
     <div class="login-sub">Bitte anmelden</div>
     <label for="login-name">Nutzername</label>
-    <input type="text" id="login-name" placeholder="Nutzername" autofocus/>
+    <input type="text" id="login-name" placeholder="Nutzername" autocomplete="username" autofocus/>
     <label for="login-pw">Passwort</label>
-    <input type="password" id="login-pw" placeholder="Passwort"/>
+    <input type="password" id="login-pw" placeholder="Passwort" autocomplete="current-password"/>
     <div id="pw-wechsel" style="display:none">
       <div class="login-sub" style="margin:14px 0 0">Bitte wähle jetzt ein persönliches Passwort (mind. 6 Zeichen).</div>
       <label for="pw-neu">Neues Passwort</label>
-      <input type="password" id="pw-neu" placeholder="Neues Passwort"/>
+      <input type="password" id="pw-neu" placeholder="Neues Passwort" autocomplete="new-password"/>
       <label for="pw-neu2">Neues Passwort wiederholen</label>
-      <input type="password" id="pw-neu2" placeholder="Wiederholen"/>
+      <input type="password" id="pw-neu2" placeholder="Wiederholen" autocomplete="new-password"/>
     </div>
-    <button id="login-btn" onclick="anmelden()">Anmelden</button>
-    <button id="gast-btn" type="button" onclick="gastAnmelden()"
-      style="background:var(--surface2);border:1px solid var(--border);margin-top:10px">👤 Als Gast testen</button>
-    <div class="login-error" id="login-err"></div>
+    <button id="login-btn" type="button">Anmelden</button>
+    <button id="gast-btn" class="gast-btn" type="button">👤 Als Gast testen</button>
+    <div class="login-hinweis">Gast = Testsystem: Buchungen sind vom Echtbetrieb getrennt und werden automatisch gelöscht.</div>
+    <div class="login-error" id="login-err" role="alert"></div>
     <div id="config-banner"></div>
   </div>
 </div>
 
 <!-- ══════════ APP ══════════ -->
 <div id="app">
-  <div class="live"><div class="dot"></div>Live</div>
-
-  <div id="gast-banner" style="display:none;background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.35);
-    border-radius:14px;padding:8px 80px 8px 14px;margin-bottom:12px;font-size:13px">
+  <div id="gast-banner">
     🧪 <strong>Testsystem (Gast)</strong> – Buchungen werden nach 2 Minuten automatisch gelöscht.
-    Besprechungs- &amp; Konferenzraum sind hier nur per NFC buchbar.
+    Räume mit NFC-Reader sind hier nur per Karte buchbar.
   </div>
 
   <div class="top">
     <div>
-      <h1>🏢 <span class="grad">Raumbuchungssystem</span></h1>
+      <h1>🏢 <span class="grad">Raumbuchungssystem</span> <span class="live"><span class="dot"></span>Live</span></h1>
       <div class="sub">Hausmesse-Präsentation · Fachinformatik Systemintegration</div>
     </div>
     <div class="user-info">
       <div class="avatar" id="avatar">?</div>
       <div>
         <div style="font-weight:600" id="user-name">Lade...</div>
-        <div style="color:var(--muted);font-size:11px">eingeloggt</div>
+        <div style="color:var(--muted);font-size:11px" id="user-rolle">eingeloggt</div>
       </div>
-      <button onclick="abmelden()">Abmelden</button>
+      <button type="button" id="btn-abmelden">Abmelden</button>
     </div>
   </div>
 
   <div class="datenav">
-    <button onclick="tag(-1)">← Zurück</button>
+    <button type="button" id="btn-zurueck">← Zurück</button>
     <div id="datum"></div>
-    <button onclick="tag(1)">Weiter →</button>
-    <button class="btn-today" onclick="heute()">Heute</button>
+    <button type="button" id="btn-weiter">Weiter →</button>
+    <button type="button" class="btn-today" id="btn-heute">Heute</button>
   </div>
 
   <div class="tabs-row">
     <div class="view-tabs">
-      <button id="view-cal" class="active" onclick="switchView('cal')">📋 Liste</button>
-      <button id="view-office" onclick="switchView('office')">🗺 Grundriss</button>
+      <button type="button" id="view-cal" class="active">📋 Liste</button>
+      <button type="button" id="view-office">🗺 Grundriss</button>
     </div>
-    <div class="etage-tabs">
-      <button id="etage-1" class="active" onclick="switchEtage(1)">Etage 1</button>
-      <button id="etage-2" onclick="switchEtage(2)">Etage 2</button>
+    <div class="ort-tabs">
+      <!-- Gebäude- und Etagen-Tabs werden aus den Etagen-Definitionen erzeugt (js/app.js) -->
+      <div class="gebaeude-tabs" id="gebaeude-tabs" style="display:none"></div>
+      <div class="etage-tabs" id="etage-tabs"></div>
+      <div class="ort-tabs" id="admin-tabs" style="display:none">
+        <button type="button" class="btn-admin" id="btn-etage-neu">＋ Etage / Gebäude</button>
+        <button type="button" class="btn-admin" id="btn-etage-bearbeiten">✎ Etage bearbeiten</button>
+      </div>
     </div>
   </div>
 
@@ -361,30 +101,29 @@
           <div><label for="f-ende">Bis</label><input type="text" id="f-ende" class="cs-input" value="10:00" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="HH:MM"/></div>
         </div>
         <label class="ganztag-row" id="ganztag-row" style="display:none">
-          <input type="checkbox" id="f-ganztag" onchange="toggleGanztag()"/> Ganztägig buchen (0–24 Uhr)
+          <input type="checkbox" id="f-ganztag"/> Ganztägig buchen (0–24 Uhr)
         </label>
-        <button class="btn-book" onclick="buchen()">✓ Buchen</button>
+        <button type="button" class="btn-book" id="btn-buchen">✓ Buchen</button>
       </div>
 
       <div class="card">
         <h2>Info</h2>
-        <p style="color:var(--muted);font-size:12px;line-height:1.6">
+        <p class="info-text">
           Jeder Tisch ist einzeln buchbar und durchnummeriert:
-          <strong style="color:var(--text)">Etage.RaumTisch</strong>, z.B.
-          <strong style="color:var(--text)">1.203</strong> = Etage 1, 2. Raum, 3. Tisch.<br><br>
+          <strong>Etage.RaumTisch</strong>, z.B. <strong>1.203</strong> = Etage 1, Raum 2, Tisch 3.<br><br>
           In der Listenansicht erscheint jede Belegung als ein zusammenhängender Block.
-          Die Farbe zeigt, von wann bis wann ein Raum teilbelegt
-          (<span class="legend-sw" style="background:#3b3d6e"></span><strong style="color:var(--text)">1/2</strong>) oder
-          voll belegt (<span class="legend-sw" style="background:#5c2d3c"></span><strong style="color:var(--text)">2/2</strong>) ist.
+          Die Farbe zeigt, ob ein Raum teilbelegt
+          (<span class="legend-sw" style="background:#3b3d6e"></span><strong>1/2</strong>) oder
+          voll belegt (<span class="legend-sw" style="background:#5c2d3c"></span><strong>2/2</strong>) ist.
           Anklicken zeigt Details und erlaubt die Buchung eines freien Tisches.<br><br>
           <span style="color:var(--amber);font-weight:600">▭</span> Deine Buchungen<br><br>
-          Meetingräume: 1 Tisch (der ganze Raum) · ShareDesks: 2 Einzeltische.<br><br>
-          <strong style="color:var(--text)">NFC:</strong> Karte am Reader (Besprechungsraum/Konferenzraum) auflegen → automatische 60-Min-Buchung.
+          Meetingräume: 1 Buchung (der ganze Raum) · ShareDesks: Einzeltische.<br><br>
+          <span id="info-nfc"></span>
         </p>
       </div>
 
       <div class="card" id="agenda-card">
-        <h2>Agenda heute</h2>
+        <h2>Agenda des Tages</h2>
         <div id="agenda-list"><div class="agenda-empty">Lade...</div></div>
       </div>
     </div>
@@ -396,7 +135,7 @@
 
       <div id="office-view" style="display:none">
         <div class="plan-wrap">
-          <svg class="plan-svg" viewBox="0 0 960 480" id="floorplan"></svg>
+          <svg class="plan-svg" viewBox="0 0 960 480" id="floorplan" role="img" aria-label="Grundriss der gewählten Etage"></svg>
         </div>
         <div class="plan-legend">
           <span><span class="dot" style="background:#22c55e"></span>Tisch frei</span>
@@ -410,1073 +149,131 @@
   </div>
 </div>
 
+<!-- ══════════ Buchungs-Details ══════════ -->
 <div class="modal-bg" id="modal">
-  <div class="modal">
-    <h3>Buchung</h3>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-titel">
+    <h3 id="m-titel">Buchung</h3>
     <p>Raum: <strong id="m-raum"></strong></p>
     <p id="m-tisch-row">Tisch: <strong id="m-tisch"></strong></p>
     <p>Nutzer: <strong id="m-nutzer"></strong></p>
     <p>Zeit: <strong id="m-zeit"></strong></p>
     <p>Quelle: <strong id="m-quelle"></strong></p>
     <div class="modal-actions">
-      <button onclick="modalClose()" style="flex:1">Schließen</button>
-      <button id="m-delete" onclick="modalDelete()" style="flex:1;background:var(--red);border-color:var(--red);display:none">Löschen</button>
+      <button type="button" id="m-close" style="flex:1">Schließen</button>
+      <button type="button" id="m-delete" class="btn-danger" style="flex:1;display:none">Löschen</button>
     </div>
   </div>
 </div>
 
+<!-- ══════════ Zeitfenster (Klick in die Liste) ══════════ -->
 <div class="modal-bg" id="slot-modal">
-  <div class="modal" style="width:380px">
+  <div class="modal modal-breit" role="dialog" aria-modal="true" aria-labelledby="slot-title">
     <h3 id="slot-title">Zeitfenster</h3>
     <div id="slot-body"></div>
     <div class="modal-actions">
-      <button onclick="slotModalClose()" style="flex:1">Schließen</button>
+      <button type="button" id="slot-close" style="flex:1">Schließen</button>
     </div>
   </div>
 </div>
 
-<div id="toast"></div>
-
-<script>
-// ══════════════════════════════════════════════════════════
-// KONFIGURATION — hier Supabase-Zugangsdaten eintragen
-// (Projekteinstellungen → API → Project URL / anon public key)
-// ══════════════════════════════════════════════════════════
-const SUPABASE_URL = 'https://yugjccgblqsfjasienwa.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1Z2pjY2dibHFzZmphc2llbndhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNDQ3NDMsImV4cCI6MjEwMDcyMDc0M30.LW2n0hkDPqbP2HGQF6jPL2_Ma66EeO6kG5A2huvFuPM'; // öffentlicher anon key, kein Secret
-const ADMIN_NAME = 'Admin_Universal';
-const ADMIN_PASSWORT = 'System-2026!';
-const H_START = 7, H_ENDE = 20;
-const GAST_NAME = 'Gast';       // gemeinsamer Nutzer des Testsystems (siehe Migration 20261119120000)
-const istGast = () => !!(currentUser && currentUser.gast);
-// Im Testsystem sind Meetingräume nur per NFC buchbar, damit sie für die Live-Demo frei bleiben.
-function webBuchungErlaubt(raumName){
-  const r = ROOMS.find(x => x.name === raumName);
-  return !(istGast() && r && r.typ === 'meeting');
-}
-const WEB_GESPERRT_MSG = '✗ Im Testsystem ist dieser Raum nur per NFC buchbar.';
-
-const CONFIGURED = SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20;
-const supa = CONFIGURED ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
-
-// 12 Räume auf 2 Etagen. Meetingräume: 1 Tisch (= der ganze Raum),
-// ShareDesks: 2 Einzeltische. Kapazität eines Raums = Anzahl seiner Tische.
-const ROOM_DEFS = [
-  {name:'Besprechungsraum', etage:1, typ:'meeting',   tische:1},
-  {name:'Konferenzraum',    etage:1, typ:'meeting',   tische:1},
-  {name:'ShareDesk 1',      etage:1, typ:'sharedesk', tische:2},
-  {name:'ShareDesk 2',      etage:1, typ:'sharedesk', tische:2},
-  {name:'ShareDesk 3',      etage:1, typ:'sharedesk', tische:2},
-  {name:'ShareDesk 4',      etage:1, typ:'sharedesk', tische:2},
-  {name:'ShareDesk 5',      etage:1, typ:'sharedesk', tische:2},
-  {name:'ShareDesk 6',      etage:2, typ:'sharedesk', tische:2},
-  {name:'ShareDesk 7',      etage:2, typ:'sharedesk', tische:2},
-  {name:'ShareDesk 8',      etage:2, typ:'sharedesk', tische:2},
-  {name:'ShareDesk 9',      etage:2, typ:'sharedesk', tische:2},
-  {name:'ShareDesk 10',     etage:2, typ:'sharedesk', tische:2},
-];
-
-// Tisch-Nummerierung: <Etage>.<Raum-Nr><Tisch-Nr, 2-stellig>.
-// Beispiel 1.203 = Etage 1, 2. Raum dieser Etage, 3. Tisch.
-function tischCode(etage, raumNr, tischNr){
-  return `${etage}.${raumNr}${String(tischNr).padStart(2,'0')}`;
-}
-function baueRaeume(){
-  const raumZaehler = {};
-  return ROOM_DEFS.map(def => {
-    raumZaehler[def.etage] = (raumZaehler[def.etage] || 0) + 1;
-    const raumNr = raumZaehler[def.etage];
-    const tische = [];
-    for(let t = 1; t <= def.tische; t++){
-      tische.push({ nr:t, code: tischCode(def.etage, raumNr, t) });
-    }
-    return { ...def, raumNr, kapazitaet: def.tische, tische };
-  });
-}
-const ROOMS = baueRaeume();
-
-// Grundriss-Geometrie je Etage (SVG-Koordinaten, viewBox 960×480).
-// Ein Gebäude mit Außenwand, Flur in der Mitte, Räumen oben und unten,
-// Treppenhaus und WC rechts. "rooms" sind buchbar, "extras" nur Deko.
-// doors: o='h' (Tür in waagerechter Wand) / 'v' (senkrecht), s = Aufschwung-Richtung.
-const FLOOR_OUTER = {x:20,y:20,w:920,h:440};
-const FLOOR_FLUR  = {x:20,y:190,w:920,h:80};
-const FLOORS = {
-  1: {
-    rooms:{
-      'ShareDesk 1':     {x:20, y:20, w:150,h:170},
-      'Besprechungsraum':{x:170,y:20, w:230,h:170,sub:'8 Plätze',  seats:4,ends:0},
-      'Konferenzraum':   {x:400,y:20, w:300,h:170,sub:'12 Plätze', seats:5,ends:1},
-      'ShareDesk 2':     {x:700,y:20, w:120,h:170},
-      'ShareDesk 3':     {x:20, y:270,w:170,h:190},
-      'ShareDesk 4':     {x:190,y:270,w:170,h:190},
-      'ShareDesk 5':     {x:360,y:270,w:170,h:190},
-    },
-    extras:[
-      {typ:'treppe', name:'Treppe',  x:820,y:20, w:120,h:170},
-      {typ:'lounge', name:'Lounge',  x:530,y:270,w:170,h:190},
-      {typ:'technik',name:'Technik', x:700,y:270,w:120,h:190},
-      {typ:'wc',     name:'WC',      x:820,y:270,w:120,h:190},
-    ],
-    doors:[
-      {o:'h',x:60, y:190,len:32,s:-1},{o:'h',x:250,y:190,len:32,s:-1},{o:'h',x:520,y:190,len:32,s:-1},
-      {o:'h',x:745,y:190,len:32,s:-1},{o:'h',x:865,y:190,len:32,s:-1},
-      {o:'h',x:70, y:270,len:32,s:1},{o:'h',x:240,y:270,len:32,s:1},{o:'h',x:410,y:270,len:32,s:1},
-      {o:'h',x:575,y:270,len:40,s:1},{o:'h',x:740,y:270,len:32,s:1},{o:'h',x:865,y:270,len:32,s:1},
-      {o:'v',x:20, y:215,len:40,s:1},
-    ],
-    texts:[{x:70,y:234,t:'Eingang'}]
-  },
-  2: {
-    rooms:{
-      'ShareDesk 6': {x:20, y:20, w:230,h:170},
-      'ShareDesk 7': {x:420,y:20, w:230,h:170},
-      'ShareDesk 8': {x:650,y:20, w:170,h:170},
-      'ShareDesk 9': {x:20, y:270,w:270,h:190},
-      'ShareDesk 10':{x:530,y:270,w:290,h:190},
-    },
-    extras:[
-      {typ:'kueche', name:'Teeküche',x:250,y:20, w:170,h:170},
-      {typ:'treppe', name:'Treppe',  x:820,y:20, w:120,h:170},
-      {typ:'lounge', name:'Lounge',  x:290,y:270,w:240,h:190},
-      {typ:'wc',     name:'WC',      x:820,y:270,w:120,h:190},
-    ],
-    doors:[
-      {o:'h',x:110,y:190,len:32,s:-1},{o:'h',x:315,y:190,len:32,s:-1},{o:'h',x:520,y:190,len:32,s:-1},
-      {o:'h',x:715,y:190,len:32,s:-1},{o:'h',x:865,y:190,len:32,s:-1},
-      {o:'h',x:130,y:270,len:32,s:1},{o:'h',x:380,y:270,len:40,s:1},{o:'h',x:640,y:270,len:32,s:1},
-      {o:'h',x:865,y:270,len:32,s:1},
-    ],
-    texts:[]
-  }
-};
-
-let aktDatum = new Date();
-let currentUser = null, modalBid = null;
-let currentEtage = 1, currentView = 'cal';
-let allBookings = [];
-
-function ds(d){ return d.toISOString().split('T')[0]; }
-function deDatum(d){ return d.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}); }
-function setDatum(){
-  document.getElementById('datum').textContent = deDatum(aktDatum);
-  document.getElementById('f-datum').value = ds(aktDatum);
-}
-function tag(n){ aktDatum.setDate(aktDatum.getDate()+n); setDatum(); render(); }
-function heute(){ aktDatum = new Date(); setDatum(); render(); }
-function roomsForEtage(){ return ROOMS.filter(r => r.etage === currentEtage); }
-
-// ── Login / Session (kein Server → localStorage) ──
-let pwWechselNutzer = null; // Nutzer, der gerade sein Startpasswort ändern muss
-function loginFehler(text){
-  const err = document.getElementById('login-err');
-  err.textContent = text; err.className = 'login-error show';
-}
-async function anmelden(){
-  if(pwWechselNutzer) return passwortWechseln();
-  const name = document.getElementById('login-name').value.trim();
-  const pw = document.getElementById('login-pw').value;
-  document.getElementById('login-err').className = 'login-error';
-  if(!name || !pw){ loginFehler('Bitte alle Felder ausfüllen.'); return; }
-  if(!CONFIGURED){ loginFehler('Supabase ist noch nicht konfiguriert.'); return; }
-  if(name.toLowerCase() === ADMIN_NAME.toLowerCase()){
-    if(pw !== ADMIN_PASSWORT){ loginFehler('Falsches Passwort'); return; }
-    const { data, error } = await supa.from('nutzer_public').select('id,name,ist_admin').ilike('name', name).maybeSingle();
-    if(error || !data){ loginFehler(`Nutzer '${name}' existiert nicht`); return; }
-    return loginAbschliessen(data);
-  }
-  // normale Nutzer: Passwort wird in der DB geprüft (nutzer_login-RPC)
-  const { data, error } = await supa.rpc('nutzer_login', { p_name: name, p_passwort: pw });
-  if(error){ loginFehler('Anmeldung fehlgeschlagen: ' + error.message); return; }
-  if(!data || !data.length){ loginFehler('Nutzername oder Passwort falsch'); return; }
-  const u = data[0];
-  if(u.muss_aendern){
-    pwWechselNutzer = { name: u.name, altesPw: pw, user: { id: u.id, name: u.name, ist_admin: u.ist_admin } };
-    document.getElementById('pw-wechsel').style.display = 'block';
-    document.getElementById('login-btn').textContent = 'Passwort speichern & anmelden';
-    document.getElementById('pw-neu').focus();
-    return;
-  }
-  loginAbschliessen({ id: u.id, name: u.name, ist_admin: u.ist_admin });
-}
-async function gastAnmelden(){
-  document.getElementById('login-err').className = 'login-error';
-  if(!CONFIGURED){ loginFehler('Supabase ist noch nicht konfiguriert.'); return; }
-  const { data, error } = await supa.from('nutzer_public').select('id,name').eq('name', GAST_NAME).maybeSingle();
-  if(error || !data){ loginFehler('Gast-Zugang ist nicht eingerichtet (Migration fehlt).'); return; }
-  loginAbschliessen({ id: data.id, name: 'Gast', ist_admin: false, gast: true });
-}
-async function passwortWechseln(){
-  const neu = document.getElementById('pw-neu').value;
-  const neu2 = document.getElementById('pw-neu2').value;
-  document.getElementById('login-err').className = 'login-error';
-  if(neu.length < 6){ loginFehler('Das neue Passwort muss mindestens 6 Zeichen lang sein.'); return; }
-  if(neu !== neu2){ loginFehler('Die Passwörter stimmen nicht überein.'); return; }
-  const { data, error } = await supa.rpc('nutzer_passwort_aendern',
-    { p_name: pwWechselNutzer.name, p_altes: pwWechselNutzer.altesPw, p_neues: neu });
-  if(error){ loginFehler(error.message); return; }
-  if(!data){ loginFehler('Passwortwechsel fehlgeschlagen.'); return; }
-  const user = pwWechselNutzer.user;
-  pwWechselNutzer = null;
-  document.getElementById('pw-wechsel').style.display = 'none';
-  document.getElementById('login-btn').textContent = 'Anmelden';
-  document.getElementById('pw-neu').value = '';
-  document.getElementById('pw-neu2').value = '';
-  loginAbschliessen(user);
-}
-function loginAbschliessen(user){
-  currentUser = user;
-  localStorage.setItem('rb_user2', JSON.stringify(currentUser));
-  zeigeApp();
-}
-function abmelden(){
-  netzAn(true);
-  localStorage.removeItem('rb_user2');
-  pwWechselNutzer = null;
-  currentUser = null;
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-}
-async function zeigeApp(){
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  document.getElementById('user-name').textContent = currentUser.name + (currentUser.ist_admin ? ' (Administrator)' : '');
-  document.getElementById('gast-banner').style.display = istGast() ? 'block' : 'none';
-  const appEl = document.getElementById('app');
-  appEl.classList.remove('in'); void appEl.offsetWidth; appEl.classList.add('in');
-  netzAn(false);
-  document.getElementById('avatar').textContent = currentUser.name.split(' ').map(w=>w[0]).join('').slice(0,2);
-  setDatum();
-  await ladeNutzerMap();
-  switchEtage(1);
-  render();
-  setInterval(render, 5000);
-}
-
-// ── Räume / Ansicht ──
-function initRaumDropdown(){
-  const raeume = roomsForEtage();
-  const sel = document.getElementById('f-raum');
-  const bisher = sel.value;
-  sel.innerHTML = raeume.map(r => `<option value="${r.name}">${r.name} (${r.kapazitaet} Tisch${r.kapazitaet>1?'e':''})</option>`).join('');
-  if(!raeume.some(r => r.name === bisher)) sel.value = raeume[0].name;
-  sel.onchange = () => { initTischDropdown(); drawFloor(); updateGanztagVisibility(); };
-  initTischDropdown();
-  updateGanztagVisibility();
-}
-
-// Tisch-Dropdown: nur bei Räumen mit mehreren Tischen sichtbar, sonst
-// wird der einzige Tisch (z.B. bei Meetingräumen) automatisch übernommen.
-function initTischDropdown(){
-  const raum = ROOMS.find(r => r.name === document.getElementById('f-raum').value);
-  const wrap = document.getElementById('f-tisch-wrap');
-  const sel = document.getElementById('f-tisch');
-  if(!raum) return;
-  if(raum.tische.length <= 1){
-    wrap.style.display = 'none';
-    sel.innerHTML = `<option value="${raum.tische[0].code}">${raum.tische[0].code}</option>`;
-    return;
-  }
-  wrap.style.display = 'block';
-  const bisher = sel.value;
-  const neu = raum.tische.map(t => {
-    const status = tischStatus(raum.name, t.code);
-    return `<option value="${t.code}">Tisch ${t.code}${status==='belegt' ? ' – aktuell belegt' : ''}</option>`;
-  }).join('');
-  if(sel.innerHTML !== neu) sel.innerHTML = neu;  // nur bei Änderung, sonst flackert ein offenes Dropdown
-  if(raum.tische.some(t => t.code === bisher)) sel.value = bisher;
-}
-
-// ShareDesks (Kapazität 2) dürfen ganztägig gebucht werden, Meetingräume nicht.
-function updateGanztagVisibility(){
-  const raum = ROOMS.find(r => r.name === document.getElementById('f-raum').value);
-  const row = document.getElementById('ganztag-row');
-  const istShareDesk = raum && raum.kapazitaet > 1;
-  row.style.display = istShareDesk ? 'flex' : 'none';
-  if(!istShareDesk){
-    document.getElementById('f-ganztag').checked = false;
-    toggleGanztag();
-  }
-}
-function toggleGanztag(){
-  const an = document.getElementById('f-ganztag').checked;
-  document.getElementById('f-start').disabled = an;
-  document.getElementById('f-ende').disabled = an;
-}
-function switchEtage(nr){
-  currentEtage = nr;
-  document.getElementById('etage-1').classList.toggle('active', nr===1);
-  document.getElementById('etage-2').classList.toggle('active', nr===2);
-  initRaumDropdown();
-  render();
-}
-function switchView(which){
-  currentView = which;
-  document.getElementById('cal-view').style.display = which === 'cal' ? 'block' : 'none';
-  document.getElementById('office-view').style.display = which === 'office' ? 'block' : 'none';
-  document.getElementById('view-cal').classList.toggle('active', which === 'cal');
-  document.getElementById('view-office').classList.toggle('active', which === 'office');
-  if(which === 'office') drawFloor();
-}
-function waehleTisch(raumName, tischCode){
-  document.getElementById('f-raum').value = raumName;
-  initTischDropdown();
-  const tischSel = document.getElementById('f-tisch');
-  if([...tischSel.options].some(o => o.value === tischCode)) tischSel.value = tischCode;
-  drawFloor();
-  updateGanztagVisibility();
-  toast('Ausgewählt: Tisch ' + tischCode, 'success');
-}
-
-// ── Belegungsstatus (kapazitätsbewusst) ──
-function isBookingActive(b){
-  const now = new Date();
-  const nowStr = ds(now) + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-  return b.start <= nowStr && b.ende > nowStr;
-}
-// Buchungen eines Raums, die für die aktuelle Ansicht relevant sind:
-// heute nur die gerade laufenden, an anderen Tagen alle des Tages.
-function raumBuchungenRelevant(raumName){
-  const bs = allBookings.filter(b => b.raum === raumName);
-  const isToday = ds(aktDatum) === ds(new Date());
-  return isToday ? bs.filter(isBookingActive) : bs;
-}
-function raumStatus(name){
-  const room = ROOMS.find(r => r.name === name);
-  const relevante = raumBuchungenRelevant(name);
-  if(relevante.length === 0) return 'free';
-  return relevante.length >= room.kapazitaet ? 'busy' : 'partial';
-}
-// Status eines einzelnen Tisches. Buchungen ohne tisch-Wert (z.B. übers
-// NFC-Skript, das nur den Raum kennt) können keinem konkreten Tisch
-// zugeordnet werden – sie zählen konservativ gegen die Gesamtkapazität,
-// damit kein Tisch als "frei" angezeigt wird, wenn der Raum voll ist.
-function tischStatus(raumName, code){
-  const room = ROOMS.find(r => r.name === raumName);
-  const relevante = raumBuchungenRelevant(raumName);
-  if(relevante.some(b => b.tisch === code)) return 'belegt';
-  return relevante.length >= room.kapazitaet ? 'belegt' : 'frei';
-}
-
-// ── Möbel-Zeichenfunktionen ──
-const FURN_TABLE='fill:#2e3250;stroke:#8891b4;stroke-width:1';
-const FURN_CHAIR='fill:#161923;stroke:#8891b4;stroke-width:0.9';
-const FURN_DESK='fill:#2e3250;stroke:#8891b4;stroke-width:1';
-const FURN_MON='fill:#4f6ef7';
-
-// Konferenztisch mit `seats` Stühlen je Längsseite und `ends` Stühlen an den Stirnseiten.
-function furnConf(r, seats, ends){
-  const tw = seats*24+14, th = 46;
-  const tx = r.x+r.w/2-tw/2, ty = r.y+r.h/2-th/2+6;
-  let s = `<rect style="${FURN_TABLE}" x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="6"/>`;
-  for(let i=0;i<seats;i++){
-    const cx = tx+19+i*24;
-    s += `<rect style="${FURN_CHAIR}" x="${cx-8}" y="${ty-12}" width="16" height="9" rx="2"/>`;
-    s += `<rect style="${FURN_CHAIR}" x="${cx-8}" y="${ty+th+3}" width="16" height="9" rx="2"/>`;
-  }
-  if(ends){
-    s += `<rect style="${FURN_CHAIR}" x="${tx-12}" y="${ty+th/2-8}" width="9" height="16" rx="2"/>`;
-    s += `<rect style="${FURN_CHAIR}" x="${tx+tw+3}" y="${ty+th/2-8}" width="9" height="16" rx="2"/>`;
-  }
-  return {svg:s, badge:{x:tx+tw, y:ty}};
-}
-function furnDeskSingle(cx, cy){
-  const dw=64, dh=30;
-  const dx=cx-dw/2, dy=cy-dh/2;
-  let s=`<rect style="${FURN_DESK}" x="${dx}" y="${dy}" width="${dw}" height="${dh}" rx="3"/>`;
-  s+=`<rect style="${FURN_MON}" x="${dx+dw/2-8}" y="${dy+4}" width="16" height="9" rx="1"/>`;
-  s+=`<rect style="${FURN_CHAIR}" x="${dx+dw/2-8}" y="${dy+dh+3}" width="16" height="10" rx="3"/>`;
-  return s;
-}
-// Mittelpunkte für 1-2 Einzeltische innerhalb einer Raum-Bounding-Box,
-// nebeneinander bei breiten Räumen, übereinander bei hohen.
-function deskCenters(r, n){
-  if(n <= 1) return [{x:r.x+r.w/2, y:r.y+r.h/2}];
-  if(r.w >= r.h){
-    return [{x:r.x+r.w*0.28, y:r.y+r.h/2+6}, {x:r.x+r.w*0.72, y:r.y+r.h/2+6}];
-  }
-  return [{x:r.x+r.w/2, y:r.y+r.h*0.30}, {x:r.x+r.w/2, y:r.y+r.h*0.64}];
-}
-
-// Deko für nicht buchbare Räume (Treppe, WC, Lounge, Teeküche, Technik)
-function dekorSvg(e){
-  const cx=e.x+e.w/2, cy=e.y+e.h/2;
-  let s='';
-  if(e.typ==='treppe'){
-    const n=9, x1=e.x+22, x2=e.x+e.w-22, top=e.y+34, bot=e.y+e.h-18;
-    for(let i=0;i<=n;i++){
-      const y=top+i*(bot-top)/n;
-      s+=`<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#8891b4" stroke-width="1"/>`;
-    }
-    s+=`<rect x="${x1}" y="${top}" width="${x2-x1}" height="${bot-top}" fill="none" stroke="#8891b4" stroke-width="1"/>`;
-    s+=`<path d="M${cx} ${bot-8} L${cx} ${top+8} M${cx-6} ${top+16} L${cx} ${top+8} L${cx+6} ${top+16}" fill="none" stroke="#b9c0e6" stroke-width="1.5"/>`;
-  } else if(e.typ==='wc'){
-    for(let i=0;i<3;i++){
-      const x=e.x+14+i*34, y=e.y+e.h-70;
-      s+=`<rect style="${FURN_TABLE}" x="${x}" y="${y}" width="28" height="56" rx="2"/>`;
-      s+=`<ellipse cx="${x+14}" cy="${y+36}" rx="7" ry="9" style="${FURN_CHAIR}"/>`;
-    }
-    s+=`<circle cx="${cx}" cy="${e.y+52}" r="15" fill="#fff"/>`;
-    s+=`<text x="${cx}" y="${e.y+57}" text-anchor="middle" font-size="13" font-weight="800" fill="#232637">WC</text>`;
-  } else if(e.typ==='lounge'){
-    [[0.3,0.5],[0.7,0.62]].forEach(([fx,fy])=>{
-      const x=e.x+e.w*fx, y=e.y+e.h*fy;
-      s+=`<circle cx="${x}" cy="${y}" r="15" style="${FURN_TABLE}"/>`;
-      [[-24,0],[24,0],[0,-24],[0,24]].forEach(([dx,dy])=>{ s+=`<circle cx="${x+dx}" cy="${y+dy}" r="7" style="${FURN_CHAIR}"/>`; });
-    });
-    s+=`<rect style="${FURN_TABLE}" x="${e.x+16}" y="${e.y+34}" width="${e.w-32}" height="18" rx="8"/>`;
-  } else if(e.typ==='kueche'){
-    s+=`<rect style="${FURN_TABLE}" x="${e.x+12}" y="${e.y+34}" width="${e.w-24}" height="18" rx="2"/>`;
-    s+=`<circle cx="${e.x+34}" cy="${e.y+43}" r="5" style="${FURN_CHAIR}"/><circle cx="${e.x+54}" cy="${e.y+43}" r="5" style="${FURN_CHAIR}"/>`;
-    s+=`<rect style="${FURN_TABLE}" x="${cx-36}" y="${cy+4}" width="72" height="36" rx="4"/>`;
-    [-20,20].forEach(dx=>{
-      s+=`<rect style="${FURN_CHAIR}" x="${cx+dx-7}" y="${cy-8}" width="14" height="8" rx="2"/>`;
-      s+=`<rect style="${FURN_CHAIR}" x="${cx+dx-7}" y="${cy+42}" width="14" height="8" rx="2"/>`;
-    });
-  } else if(e.typ==='technik'){
-    for(let i=0;i<3;i++){
-      s+=`<rect style="${FURN_TABLE}" x="${e.x+16+i*32}" y="${e.y+44}" width="24" height="${e.h-70}" rx="2"/>`;
-      s+=`<line x1="${e.x+20+i*32}" y1="${e.y+60}" x2="${e.x+36+i*32}" y2="${e.y+60}" stroke="#4f6ef7" stroke-width="2"/>`;
-    }
-  }
-  return s;
-}
-
-// Tür: Lücke in der Wand (Maske) + Aufschwung-Bogen
-function tuerBogen(d){
-  const r=d.len;
-  if(d.o==='h'){
-    const sw = d.s>0 ? 0 : 1;
-    return `<path class="plan-door" d="M${d.x} ${d.y+d.s*r} L${d.x} ${d.y} M${d.x} ${d.y+d.s*r} A${r} ${r} 0 0 ${sw} ${d.x+r} ${d.y}"/>`;
-  }
-  const sw = d.s>0 ? 1 : 0;
-  return `<path class="plan-door" d="M${d.x+d.s*r} ${d.y} L${d.x} ${d.y} M${d.x+d.s*r} ${d.y} A${r} ${r} 0 0 ${sw} ${d.x} ${d.y+r}"/>`;
-}
-
-function drawFloor(){
-  const svg = document.getElementById('floorplan');
-  if(!svg) return;
-  const floor = FLOORS[currentEtage];
-  const selRaum = document.getElementById('f-raum').value;
-  const selTisch = document.getElementById('f-tisch').value;
-  const o = FLOOR_OUTER, fl = FLOOR_FLUR;
-  let s = '';
-
-  // Boden: Flur
-  s += `<rect class="plan-flur" x="${fl.x}" y="${fl.y}" width="${fl.w}" height="${fl.h}"/>`;
-  s += `<text class="plan-flur-label" x="${fl.x+fl.w/2}" y="${fl.y+fl.h/2+4}">Flur</text>`;
-  (floor.texts||[]).forEach(t => { s += `<text class="plan-text" x="${t.x}" y="${t.y}">${t.t}</text>`; });
-
-  // Nicht buchbare Räume (Deko)
-  floor.extras.forEach(e => {
-    s += `<rect class="plan-extra" x="${e.x}" y="${e.y}" width="${e.w}" height="${e.h}"/>`;
-    s += dekorSvg(e);
-    if(e.typ !== 'wc') s += `<text class="plan-sub" x="${e.x+e.w/2}" y="${e.y < 190 ? e.y+20 : e.y+e.h-10}">${e.name}</text>`;
-  });
-
-  // Buchbare Räume
-  Object.entries(floor.rooms).forEach(([name, r]) => {
-    const room = ROOMS.find(x => x.name === name);
-    const isSelectedRoom = name === selRaum;
-
-    if(room.typ === 'meeting'){
-      const status = raumStatus(name);
-      const cls = isSelectedRoom ? 'selected' : `status-${status}`;
-      const conf = furnConf(r, r.seats, r.ends);
-      const bc = status === 'free' ? 'frei' : 'belegt';
-      s += `<g class="plan-room" onclick="waehleTisch('${name}','${room.tische[0].code}')">`;
-      s += `<rect class="plan-fill ${cls}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`;
-      s += conf.svg;
-      s += `<circle class="desk-badge ${bc}" cx="${conf.badge.x}" cy="${conf.badge.y}" r="11"/>`;
-      s += `<text class="desk-plus" x="${conf.badge.x}" y="${conf.badge.y}">+</text>`;
-      s += `<text class="plan-label" x="${r.x+r.w/2}" y="${r.y+24}">${name}</text>`;
-      s += `<text class="plan-sub" x="${r.x+r.w/2}" y="${r.y+r.h-12}">${r.sub} · Tisch ${room.tische[0].code}</text>`;
-      s += `</g>`;
-    } else {
-      s += `<rect class="plan-fill${isSelectedRoom ? ' selected' : ''}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`;
-      s += `<text class="plan-label" x="${r.x+r.w/2}" y="${r.y+(r.y<190 ? 24 : r.h-12)}">${name}</text>`;
-      const zentren = deskCenters(r, room.tische.length);
-      room.tische.forEach((t, i) => {
-        const c = zentren[i];
-        const status = tischStatus(name, t.code);
-        const istSelektiert = isSelectedRoom && t.code === selTisch;
-        s += `<g class="plan-desk${istSelektiert ? ' selected' : ''}" onclick="waehleTisch('${name}','${t.code}')">`;
-        s += furnDeskSingle(c.x, c.y);
-        s += `<circle class="desk-badge ${status}" cx="${c.x+32}" cy="${c.y-15}" r="11"/>`;
-        s += `<text class="desk-plus" x="${c.x+32}" y="${c.y-15}">+</text>`;
-        s += `<text class="desk-code" x="${c.x}" y="${c.y+41}">${t.code}</text>`;
-        s += `</g>`;
-      });
-    }
-  });
-
-  // Fenster in der Außenwand (oben/unten, mittig je Raum)
-  const alle = [...Object.values(floor.rooms), ...floor.extras.filter(e => e.typ !== 'treppe' && e.typ !== 'wc' && e.typ !== 'technik')];
-  alle.forEach(r => {
-    const len = Math.min(70, r.w-60);
-    if(len < 30) return;
-    const x = r.x + r.w/2 - len/2;
-    if(r.y === o.y) s += `<rect class="plan-window" x="${x}" y="${o.y-3.5}" width="${len}" height="7"/>`;
-    if(r.y + r.h === o.y+o.h) s += `<rect class="plan-window" x="${x}" y="${o.y+o.h-3.5}" width="${len}" height="7"/>`;
-  });
-
-  // Wände (mit Türlücken per Maske)
-  const tueren = floor.doors;
-  const lueckeW = (d) => d.o==='h' ? `<rect x="${d.x}" y="${d.y-6}" width="${d.len}" height="12" fill="#000"/>`
-                                  : `<rect x="${d.x-6}" y="${d.y}" width="12" height="${d.len}" fill="#000"/>`;
-  s += `<mask id="wandmaske" maskUnits="userSpaceOnUse" x="0" y="0" width="960" height="480">
-          <rect x="0" y="0" width="960" height="480" fill="#fff"/>${tueren.map(lueckeW).join('')}
-        </mask>`;
-  s += `<g mask="url(#wandmaske)" style="pointer-events:none">`;
-  [...Object.values(floor.rooms), ...floor.extras].forEach(r => {
-    s += `<rect class="plan-wall" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`;
-  });
-  s += `<rect class="plan-wall outer" x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}"/>`;
-  s += `</g>`;
-  s += tueren.map(tuerBogen).join('');
-
-  svg.innerHTML = s;
-}
-
-// ── Daten laden (Supabase) ──
-// Namen werden bewusst separat geladen und im Browser zugeordnet, statt über
-// eine eingebettete Supabase-Relation (nutzer:nutzer_id(name)) – das würde
-// eine erkannte Fremdschlüssel-Beziehung im Schema-Cache voraussetzen, die
-// je nach Anlage der Tabellen nicht immer vorhanden ist.
-let nutzerMap = {};
-
-async function ladeNutzerMap(){
-  const { data, error } = await supa.from('nutzer_public').select('id,name');
-  if(error){ console.error(error); return; }
-  nutzerMap = {};
-  data.forEach(n => nutzerMap[n.id] = n.name);
-}
-
-async function ladeBuchungen(datum){
-  if(!CONFIGURED) return [];
-  if(istGast()) await supa.rpc('test_buchungen_aufraeumen'); // abgelaufene Test-Buchungen (>2 Min) löschen
-  let q = supa.from('buchungen').select('*').like('start', datum + '%');
-  // Echtbetrieb: nur echte Buchungen. Testsystem: Test-Buchungen + die per NFC
-  // gebuchten Meetingräume, damit man deren Belegung auch dort sieht.
-  q = istGast() ? q.or('test.eq.true,raum.in.(Besprechungsraum,Konferenzraum)') : q.eq('test', false);
-  const { data, error } = await q.order('start');
-  if(error){ console.error(error); toast('Fehler beim Laden: ' + error.message, 'error'); return []; }
-  return data.map(b => ({...b, name: nutzerMap[b.nutzer_id] || '?'}));
-}
-
-async function pruefeKapazitaet(raum, start, ende, tisch){
-  const room = ROOMS.find(r => r.name === raum);
-  const { data, error } = await supa.from('buchungen')
-    .select('id,tisch')
-    .eq('raum', raum)
-    .eq('test', istGast())
-    .lt('start', ende)
-    .gt('ende', start);
-  if(error) return { ok:false, msg:'Fehler bei Kapazitätsprüfung: ' + error.message };
-  if(data.length >= room.kapazitaet){
-    return { ok:false, msg:`Raum ausgebucht (${data.length}/${room.kapazitaet} belegt)` };
-  }
-  if(tisch && data.some(b => b.tisch === tisch)){
-    return { ok:false, msg:`Tisch ${tisch} ist in diesem Zeitraum bereits belegt` };
-  }
-  return { ok:true };
-}
-
-// ── Rendern ──
-function minutenZuUhrzeit(m){
-  return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
-}
-
-// Eine Kalenderzelle (Raum × Halbstunde) ist nur noch die leere Klickfläche;
-// Belegungen werden als zusammenhängende Blöcke darübergelegt (blockHtml).
-function zelleHtml(raum, datum, minuten){
-  const start = datum + ' ' + minutenZuUhrzeit(minuten);
-  const ende = datum + ' ' + minutenZuUhrzeit(minuten + 30);
-  const halfCls = (minuten % 60 !== 0) ? ' half' : '';
-  return `<div class="cal-cell${halfCls}" onclick="zelleOeffnen('${raum.name}','${start}','${ende}')"></div>`;
-}
-
-function minutenVon(str){ return parseInt(str.slice(11,13),10)*60 + parseInt(str.slice(14,16),10); }
-
-// Belegte Zeiträume eines Raums: zusammenhängend belegte Zeit = ein Block,
-// innerhalb des Blocks wechselt nur die Farbe, wenn sich die Belegung ändert
-// (z.B. 1/2 → 2/2). Eine lange Buchung ergibt nie mehrere Blöcke.
-function belegungsBloecke(raum, buchungen){
-  const lo = H_START*60, hi = H_ENDE*60;
-  const bs = buchungen.filter(b => b.raum === raum.name)
-    .map(b => ({ s:Math.max(lo, minutenVon(b.start)), e:Math.min(hi, minutenVon(b.ende)), b }))
-    .filter(x => x.e > x.s);
-  const punkte = [...new Set(bs.flatMap(x => [x.s, x.e]))].sort((a,b) => a-b);
-  const stuecke = [];
-  for(let i = 0; i < punkte.length-1; i++){
-    const von = punkte[i], bis = punkte[i+1];
-    const treffer = bs.filter(x => x.s < bis && x.e > von);
-    if(treffer.length) stuecke.push({ von, bis, anzahl:treffer.length, bs:treffer.map(x => x.b) });
-  }
-  const bloecke = [];
-  stuecke.forEach(st => {
-    let blk = bloecke[bloecke.length-1];
-    if(!blk || blk.bis !== st.von){ blk = { von:st.von, bis:st.von, segmente:[] }; bloecke.push(blk); }
-    const seg = blk.segmente[blk.segmente.length-1];
-    if(seg && seg.anzahl === st.anzahl){
-      seg.bis = st.bis;
-      st.bs.forEach(b => { if(!seg.bs.includes(b)) seg.bs.push(b); });
-    } else {
-      blk.segmente.push({ von:st.von, bis:st.bis, anzahl:st.anzahl, bs:[...st.bs] });
-    }
-    blk.bis = st.bis;
-  });
-  return bloecke;
-}
-
-function blockHtml(raum, spalte, anzahlSpalten, buchungen, datum){
-  const px = m => (m - H_START*60) / 30 * 48;
-  return belegungsBloecke(raum, buchungen).map(blk => {
-    const segs = blk.segmente.map(seg => {
-      const belegt = Math.min(seg.anzahl, raum.kapazitaet);
-      const status = belegt >= raum.kapazitaet ? 'busy' : 'partial';
-      const mine = currentUser && seg.bs.some(b => b.nutzer_id === currentUser.id) ? ' mine' : '';
-      const hoehe = px(seg.bis) - px(seg.von);
-      const namen = [...new Set(seg.bs.map(b => b.name))].join(', ');
-      const start = datum + ' ' + minutenZuUhrzeit(seg.von);
-      const ende = datum + ' ' + minutenZuUhrzeit(seg.bis);
-      return `<div class="cal-seg status-${status}${mine}" style="top:${px(seg.von)-px(blk.von)}px;height:${hoehe}px"
-          title="${minutenZuUhrzeit(seg.von)}–${minutenZuUhrzeit(seg.bis)} · ${namen}"
-          onclick="zelleOeffnen('${raum.name}','${start}','${ende}')">
-          <span>${belegt}/${raum.kapazitaet}</span>${hoehe >= 44 ? `<span class="names">${namen}</span>` : ''}</div>`;
-    }).join('');
-    return `<div class="cal-block" style="top:${px(blk.von)}px;height:${px(blk.bis)-px(blk.von)}px;
-        left:calc(60px + (100% - 60px) * ${spalte} / ${anzahlSpalten});width:calc((100% - 60px) / ${anzahlSpalten})">
-        <div class="cal-block-in">${segs}</div></div>`;
-  }).join('');
-}
-
-async function render(){
-  if(!CONFIGURED){
-    document.getElementById('kalender').innerHTML = '<div style="padding:20px;color:var(--muted)">Supabase noch nicht konfiguriert.</div>';
-    return;
-  }
-  const datum = ds(aktDatum);
-  const buchungen = await ladeBuchungen(datum);
-  allBookings = buchungen;
-  renderAgenda(buchungen);
-  drawFloor();
-  initTischDropdown();
-
-  const raeume = roomsForEtage();
-  const heuteFlag = datum === ds(new Date());
-  const cols = `60px repeat(${raeume.length}, 1fr)`;
-
-  let html = `<div class="cal-header" style="display:grid;grid-template-columns:${cols}">
-    <div></div>
-    ${raeume.map(r => `<div>${r.name}</div>`).join('')}
-  </div><div class="cal-body" style="position:relative">`;
-
-  for(let h = H_START; h < H_ENDE; h++){
-    for(let half = 0; half < 2; half++){
-      const minuten = h*60 + half*30;
-      html += `<div class="cal-row" style="display:grid;grid-template-columns:${cols}">
-        <div class="cal-time">${half===0 ? String(h).padStart(2,'0')+':00' : ''}</div>
-        ${raeume.map(r => zelleHtml(r, datum, minuten)).join('')}
-      </div>`;
-    }
-  }
-
-  html += raeume.map((r, i) => blockHtml(r, i, raeume.length, buchungen, datum)).join('');
-
-  if(heuteFlag){
-    const now = new Date();
-    const top = (now.getHours()*60 + now.getMinutes() - H_START*60) / 30 * 48;
-    if(top >= 0 && top <= (H_ENDE-H_START)*96) html += `<div class="now" style="top:${top}px"></div>`;
-  }
-  html += `</div>`;
-  document.getElementById('kalender').innerHTML = html;
-}
-
-function renderAgenda(buchungen){
-  const list = document.getElementById('agenda-list');
-  if(buchungen.length === 0){ list.innerHTML = '<div class="agenda-empty">Keine Buchungen an diesem Tag.</div>'; return; }
-  const sorted = [...buchungen].sort((a,b) => a.start.localeCompare(b.start));
-  list.innerHTML = sorted.map(b => `
-    <div class="agenda-row">
-      <span class="agenda-time">${b.start.slice(11,16)}–${b.ende.slice(11,16)}</span>
-      <span class="agenda-raum">${b.raum}${b.tisch ? ' · '+b.tisch : ''}</span>
-      <span class="agenda-nutzer">${b.name}${b.quelle === 'nfc' ? ' · 📡' : ''}</span>
-    </div>`).join('');
-}
-
-// ── Buchen / Löschen ──
-async function buchen(){
-  const raum = document.getElementById('f-raum').value;
-  const tisch = document.getElementById('f-tisch').value || null;
-  const datum = document.getElementById('f-datum').value;
-  const ganztag = document.getElementById('f-ganztag').checked;
-
-  if(!datum){ toast('Bitte ein Datum wählen.', 'error'); return; }
-
-  let startVoll, endeVoll;
-  if(ganztag){
-    startVoll = datum + ' 00:00';
-    endeVoll = datum + ' 23:59';
-  } else {
-    const startEl = document.getElementById('f-start'), endeEl = document.getElementById('f-ende');
-    if(startEl._cs) startEl._cs.commit();
-    if(endeEl._cs) endeEl._cs.commit();
-    const start = startEl.value, ende = endeEl.value;
-    if(!start || !ende){ toast('Bitte alle Felder ausfüllen.', 'error'); return; }
-    if(start >= ende){ toast('Startzeit muss vor Endzeit liegen.', 'error'); return; }
-    startVoll = datum + ' ' + start;
-    endeVoll = datum + ' ' + ende;
-  }
-
-  if(!webBuchungErlaubt(raum)){ toast(WEB_GESPERRT_MSG, 'error'); return; }
-  const kap = await pruefeKapazitaet(raum, startVoll, endeVoll, tisch);
-  if(!kap.ok){ toast('✗ ' + kap.msg, 'error'); return; }
-
-  const { error } = await supa.from('buchungen').insert({
-    raum, tisch, nutzer_id: currentUser.id, name: currentUser.name,
-    start: startVoll, ende: endeVoll, quelle: 'web', test: istGast()
-  });
-  if(error){ toast('✗ Fehler: ' + error.message, 'error'); return; }
-  toast('✓ Buchung erstellt', 'success');
-  render();
-}
-
-function modalOpen(id, ownerId, raum, tisch, nutzer, start, ende, quelle){
-  modalBid = id;
-  document.getElementById('m-raum').textContent = raum;
-  const tischRow = document.getElementById('m-tisch-row');
-  if(tisch){ tischRow.style.display = 'block'; document.getElementById('m-tisch').textContent = tisch; }
-  else tischRow.style.display = 'none';
-  document.getElementById('m-nutzer').textContent = nutzer;
-  document.getElementById('m-zeit').textContent = start.slice(11,16) + ' – ' + ende.slice(11,16) + ' Uhr';
-  document.getElementById('m-quelle').textContent = quelle === 'nfc' ? '📡 NFC-Buchung' : '🖥 Web-Buchung';
-  const darfLoeschen = currentUser && (ownerId === currentUser.id || currentUser.ist_admin);
-  document.getElementById('m-delete').style.display = darfLoeschen ? 'block' : 'none';
-  document.getElementById('modal').classList.add('open');
-}
-function modalClose(){ document.getElementById('modal').classList.remove('open'); modalBid = null; }
-
-async function modalDelete(){
-  if(!modalBid) return;
-  let query = supa.from('buchungen').delete().eq('id', modalBid);
-  if(!currentUser.ist_admin) query = query.eq('nutzer_id', currentUser.id);
-  const { error } = await query;
-  modalClose();
-  if(error){ toast('✗ ' + error.message, 'error'); return; }
-  toast('Buchung gelöscht', 'success');
-  render();
-}
-
-// ── Zeitfenster-Detailmodal (Listenansicht) ──
-// Zeigt, welche Tische in einem Raum während einer Halbstunde belegt
-// sind, und erlaubt die Direktbuchung eines freien Tisches per Klick.
-function zelleOeffnen(raumName, slotStart, slotEnde){
-  const room = ROOMS.find(r => r.name === raumName);
-  const treffer = allBookings.filter(b => b.raum === raumName && b.start < slotEnde && b.ende > slotStart);
-  document.getElementById('slot-title').textContent = `${raumName} · ${slotStart.slice(11)}–${slotEnde.slice(11)} Uhr`;
-
-  const belegt = Math.min(maxGleichzeitig(treffer, slotStart, slotEnde), room.kapazitaet);
-  let html = `<p style="margin-bottom:10px"><strong style="color:var(--text)">${belegt}/${room.kapazitaet}</strong> Tische belegt</p>`;
-
-  if(treffer.length){
-    html += treffer.map(b => `
-      <div class="agenda-row" style="cursor:pointer" onclick="slotModalClose();modalOpen(${b.id},${b.nutzer_id},'${b.raum}','${b.tisch || ''}','${b.name}','${b.start}','${b.ende}','${b.quelle}')">
-        <span class="agenda-time">${b.tisch || raumName}</span>
-        <span class="agenda-raum">${b.start.slice(11,16)}–${b.ende.slice(11,16)}</span>
-        <span class="agenda-nutzer">${b.name}${b.quelle === 'nfc' ? ' · 📡' : ''}</span>
-      </div>`).join('');
-  } else {
-    html += `<p>Alle Tische frei.</p>`;
-  }
-
-  const freieTische = room.tische.filter(t => !treffer.some(b => b.tisch === t.code));
-  if(currentUser && webBuchungErlaubt(raumName) && belegt < room.kapazitaet && freieTische.length){
-    html += `<label style="margin-top:12px">Freien Tisch buchen (${slotStart.slice(11)}–${slotEnde.slice(11)} Uhr)</label>
-      <select id="slot-tisch-sel">${freieTische.map(t => `<option value="${t.code}">Tisch ${t.code}</option>`).join('')}</select>
-      <button class="btn-book" onclick="slotSchnellbuchen('${raumName}','${slotStart}','${slotEnde}')">✓ Buchen</button>`;
-  }
-
-  document.getElementById('slot-body').innerHTML = html;
-  const slotSel = document.getElementById('slot-tisch-sel');
-  if(slotSel) enhanceSelect(slotSel);
-  document.getElementById('slot-modal').classList.add('open');
-}
-// Höchste Zahl gleichzeitiger Buchungen innerhalb eines Zeitfensters.
-function maxGleichzeitig(treffer, von, bis){
-  const zeitpunkte = [von, ...treffer.map(b => b.start).filter(t => t > von && t < bis)];
-  return Math.max(0, ...zeitpunkte.map(t => treffer.filter(b => b.start <= t && b.ende > t).length));
-}
-function slotModalClose(){ document.getElementById('slot-modal').classList.remove('open'); }
-
-async function slotSchnellbuchen(raumName, slotStart, slotEnde){
-  if(!webBuchungErlaubt(raumName)){ toast(WEB_GESPERRT_MSG, 'error'); return; }
-  const tisch = document.getElementById('slot-tisch-sel').value;
-  const kap = await pruefeKapazitaet(raumName, slotStart, slotEnde, tisch);
-  if(!kap.ok){ toast('✗ ' + kap.msg, 'error'); return; }
-  const { error } = await supa.from('buchungen').insert({
-    raum: raumName, tisch, nutzer_id: currentUser.id, name: currentUser.name,
-    start: slotStart, ende: slotEnde, quelle: 'web', test: istGast()
-  });
-  if(error){ toast('✗ Fehler: ' + error.message, 'error'); return; }
-  toast('✓ Buchung erstellt', 'success');
-  slotModalClose();
-  render();
-}
-
-function toast(msg, typ){
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'show ' + typ;
-  setTimeout(() => t.className = '', 3500);
-}
-
-// ── Eigene Dropdowns im Dark-Design ──
-// Die echten <select>/<input>-Elemente bleiben als Datenquelle erhalten
-// (value wird weiter wie bisher gelesen/gesetzt), die Oberfläche kommt von hier.
-function csSchliessen(ausser){
-  document.querySelectorAll('.cs.cs-open').forEach(w => { if(w !== ausser) w.classList.remove('cs-open'); });
-}
-document.addEventListener('mousedown', e => { if(!e.target.closest('.cs')) csSchliessen(); });
-
-function csAktivSetzen(list, idx){
-  const opts = [...list.querySelectorAll('.cs-opt')];
-  if(!opts.length) return;
-  idx = Math.max(0, Math.min(opts.length-1, idx));
-  opts.forEach((o,i) => o.classList.toggle('active', i === idx));
-  opts[idx].scrollIntoView({block:'nearest'});
-}
-
-function enhanceSelect(sel){
-  if(sel._cs){ sel._cs.refresh(); return; }
-  const wrap = document.createElement('div'); wrap.className = 'cs';
-  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'cs-btn';
-  const list = document.createElement('div'); list.className = 'cs-list';
-  sel.parentNode.insertBefore(wrap, sel);
-  wrap.append(btn, list, sel);
-  sel.classList.add('cs-native');
-
-  let signatur = '';
-  function refresh(){
-    const opts = [...sel.options];
-    btn.textContent = sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : '';
-    const sig = opts.map(o => o.value + '|' + o.textContent).join('§') + '#' + sel.value;
-    if(sig === signatur) return;
-    signatur = sig;
-    list.innerHTML = '';
-    opts.forEach(o => {
-      const d = document.createElement('div');
-      d.className = 'cs-opt' + (o.value === sel.value ? ' selected' : '');
-      d.textContent = o.textContent;
-      d.dataset.v = o.value;
-      d.onclick = () => waehle(o.value);
-      list.appendChild(d);
-    });
-  }
-  function waehle(v){
-    const geaendert = sel.value !== v;
-    sel.value = v;
-    wrap.classList.remove('cs-open');
-    if(geaendert) sel.dispatchEvent(new Event('change'));
-  }
-  function oeffnen(){
-    csSchliessen(wrap);
-    refresh();
-    wrap.classList.add('cs-open');
-    const idx = Math.max(0, [...list.children].findIndex(o => o.dataset.v === sel.value));
-    csAktivSetzen(list, idx);
-  }
-  // value von außen setzen (z.B. beim Klick im Grundriss) → Anzeige mitziehen
-  const desc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
-  Object.defineProperty(sel, 'value', { get(){ return desc.get.call(sel); }, set(v){ desc.set.call(sel, v); refresh(); } });
-  new MutationObserver(refresh).observe(sel, {childList:true, subtree:true});
-
-  btn.onclick = () => wrap.classList.contains('cs-open') ? wrap.classList.remove('cs-open') : oeffnen();
-  btn.onkeydown = e => {
-    const offen = wrap.classList.contains('cs-open');
-    const opts = [...list.children];
-    const aktiv = opts.findIndex(o => o.classList.contains('active'));
-    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
-      e.preventDefault();
-      if(!offen) oeffnen(); else csAktivSetzen(list, aktiv + (e.key === 'ArrowDown' ? 1 : -1));
-    } else if(e.key === 'Enter' && offen && aktiv >= 0){
-      e.preventDefault(); waehle(opts[aktiv].dataset.v);
-    } else if(e.key === 'Escape'){ wrap.classList.remove('cs-open'); }
-  };
-  sel._cs = { refresh };
-  refresh();
-}
-
-// "9", "930", "9:30", "09.30" → "09:30"; ungültig → null
-function parseZeit(t){
-  t = t.trim().replace(/[.hH]/g, ':');
-  let h, m;
-  if(t.includes(':')){
-    const teile = t.split(':');
-    if(teile.length !== 2 || !/^\d{1,2}$/.test(teile[0]) || !/^\d{1,2}$/.test(teile[1] || '0')) return null;
-    h = +teile[0]; m = +(teile[1] || 0);
-  } else {
-    if(!/^\d{1,4}$/.test(t)) return null;
-    if(t.length <= 2){ h = +t; m = 0; }
-    else { h = +t.slice(0, t.length-2); m = +t.slice(-2); }
-  }
-  if(h > 23 || m > 59) return null;
-  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
-}
-
-// Zeitfeld: frei tippbar + Auswahlliste im 15-Minuten-Raster
-function enhanceTime(inp, beiAenderung){
-  const wrap = document.createElement('div'); wrap.className = 'cs cs-time';
-  const list = document.createElement('div'); list.className = 'cs-list';
-  const clock = document.createElement('button'); clock.type = 'button'; clock.className = 'cs-clock';
-  clock.tabIndex = -1; clock.textContent = '🕒';
-  inp.parentNode.insertBefore(wrap, inp);
-  wrap.append(inp, clock, list);
-
-  const zeiten = [];
-  for(let m = 6*60; m <= 22*60; m += 15) zeiten.push(minutenZuUhrzeit(m));
-  let letzter = parseZeit(inp.value) || '09:00';
-
-  function baue(filter){
-    list.innerHTML = '';
-    const f = (filter || '').replace(/[^0-9]/g, '');
-    const treffer = zeiten.filter(z => !f || z.replace(':','').startsWith(f) || z.replace(':','').replace(/^0/,'').startsWith(f));
-    if(!treffer.length){ list.innerHTML = '<div class="cs-empty">Eigene Uhrzeit mit Enter übernehmen</div>'; return; }
-    treffer.forEach(z => {
-      const d = document.createElement('div');
-      d.className = 'cs-opt' + (z === inp.value ? ' selected' : '');
-      d.textContent = z; d.dataset.v = z;
-      d.onmousedown = e => { e.preventDefault(); setze(z); };
-      list.appendChild(d);
-    });
-  }
-  function oeffnen(alle){
-    csSchliessen(wrap);
-    baue(alle ? '' : inp.value === letzter ? '' : inp.value);
-    wrap.classList.add('cs-open');
-    const opts = [...list.children];
-    let idx = opts.findIndex(o => o.dataset.v === inp.value);
-    if(idx < 0) idx = Math.max(0, opts.findIndex(o => o.dataset.v > inp.value) - 1);
-    csAktivSetzen(list, idx);
-  }
-  function setze(z){
-    inp.value = z; letzter = z;
-    wrap.classList.remove('cs-open');
-    if(beiAenderung) beiAenderung(z);
-  }
-  function commit(){
-    const z = parseZeit(inp.value);
-    if(z){ setze(z); }
-    else {
-      inp.value = letzter;
-      inp.classList.add('cs-error');
-      setTimeout(() => inp.classList.remove('cs-error'), 400);
-      wrap.classList.remove('cs-open');
-    }
-  }
-  inp.addEventListener('focus', () => { oeffnen(true); inp.select(); });
-  inp.addEventListener('click', () => { if(!wrap.classList.contains('cs-open')) oeffnen(true); });
-  inp.addEventListener('input', () => { baue(inp.value); wrap.classList.add('cs-open'); csAktivSetzen(list, 0); });
-  inp.addEventListener('blur', commit);
-  inp.addEventListener('keydown', e => {
-    const opts = [...list.querySelectorAll('.cs-opt')];
-    const aktiv = opts.findIndex(o => o.classList.contains('active'));
-    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
-      e.preventDefault();
-      if(!wrap.classList.contains('cs-open')) oeffnen(true);
-      else csAktivSetzen(list, aktiv + (e.key === 'ArrowDown' ? 1 : -1));
-    } else if(e.key === 'Enter'){
-      e.preventDefault();
-      // getippte Zeit hat Vorrang, sonst die markierte Listenzeile
-      if(inp.value === letzter && wrap.classList.contains('cs-open') && aktiv >= 0) setze(opts[aktiv].dataset.v);
-      else commit();
-    } else if(e.key === 'Escape'){
-      inp.value = letzter; wrap.classList.remove('cs-open'); inp.blur();
-    }
-  });
-  clock.onmousedown = e => e.preventDefault();
-  clock.onclick = () => wrap.classList.contains('cs-open') ? wrap.classList.remove('cs-open') : (inp.focus(), oeffnen(true));
-  inp._cs = { commit };
-}
-
-// Ende automatisch nachziehen, wenn Beginn hinter/auf dem Ende liegt (+1 Stunde)
-function startGeaendert(z){
-  const ende = document.getElementById('f-ende');
-  if(ende.value <= z){
-    const m = Math.min(23*60+59, parseInt(z.slice(0,2),10)*60 + parseInt(z.slice(3),10) + 60);
-    ende.value = minutenZuUhrzeit(m);
-  }
-}
-
-// ── Hintergrund: Cursor-Spotlight + animiertes Netz (nur im Login) ──
-document.addEventListener('pointermove', e => {
-  document.body.style.setProperty('--mx', e.clientX + 'px');
-  document.body.style.setProperty('--my', e.clientY + 'px');
-});
-const netCv = document.getElementById('net');
-let netAktiv = true, netLaeuft = false, netPunkte = [];
-function netzAn(an){
-  netAktiv = an;
-  netCv.style.display = an ? 'block' : 'none';
-  if(an && !netLaeuft) netZeichnen();
-}
-function netGroesse(){
-  netCv.width = innerWidth; netCv.height = innerHeight;
-  const n = Math.min(70, Math.round(innerWidth * innerHeight / 22000));
-  netPunkte = Array.from({length:n}, () => ({x:Math.random()*netCv.width, y:Math.random()*netCv.height,
-    vx:(Math.random()-.5)*.35, vy:(Math.random()-.5)*.35}));
-}
-function netZeichnen(){
-  if(!netAktiv){ netLaeuft = false; return; }
-  netLaeuft = true;
-  const c = netCv.getContext('2d');
-  c.clearRect(0, 0, netCv.width, netCv.height);
-  for(const p of netPunkte){
-    p.x += p.vx; p.y += p.vy;
-    if(p.x < 0 || p.x > netCv.width) p.vx *= -1;
-    if(p.y < 0 || p.y > netCv.height) p.vy *= -1;
-  }
-  for(let i = 0; i < netPunkte.length; i++){
-    const a = netPunkte[i];
-    c.fillStyle = 'rgba(124,138,247,.7)';
-    c.beginPath(); c.arc(a.x, a.y, 1.8, 0, 6.3); c.fill();
-    for(let j = i + 1; j < netPunkte.length; j++){
-      const b = netPunkte[j], d = Math.hypot(a.x-b.x, a.y-b.y);
-      if(d < 140){
-        c.strokeStyle = `rgba(79,110,247,${.28 * (1 - d/140)})`;
-        c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
-      }
-    }
-  }
-  requestAnimationFrame(netZeichnen);
-}
-addEventListener('resize', netGroesse);
-netGroesse(); netZeichnen();
-
-// ── Init ──
-enhanceSelect(document.getElementById('f-raum'));
-enhanceSelect(document.getElementById('f-tisch'));
-enhanceTime(document.getElementById('f-start'), startGeaendert);
-enhanceTime(document.getElementById('f-ende'));
-document.addEventListener('keydown', e => {
-  if(e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') anmelden();
-});
-
-if(!CONFIGURED){
-  document.getElementById('config-banner').style.display = 'block';
-  document.getElementById('config-banner').innerHTML =
-    '⚠ Supabase ist noch nicht konfiguriert. Trage <code>SUPABASE_URL</code> und <code>SUPABASE_ANON_KEY</code> ' +
-    'im &lt;script&gt;-Block von index.html ein (siehe supabase_setup.sql).';
-}
-
-// Alte Sessions (Key 'rb_user', vor Einführung der persönlichen Passwörter) verwerfen,
-// damit jeder einmal den Passwort-Zwangswechsel durchläuft.
-localStorage.removeItem('rb_user');
-const gespeicherterUser = localStorage.getItem('rb_user2');
-if(gespeicherterUser && CONFIGURED){
-  currentUser = JSON.parse(gespeicherterUser);
-  zeigeApp();
-}
-</script>
+<!-- ══════════ Etagen-Editor (nur Admin) ══════════ -->
+<div class="editor-bg" id="editor-bg">
+  <div class="editor" role="dialog" aria-modal="true" aria-labelledby="ed-titel">
+    <h3><span id="ed-titel">Neue Etage</span><button type="button" id="ed-schliessen">✕ Schließen</button></h3>
+
+    <div class="editor-seite">
+      <h4>1 · Grundlage</h4>
+      <div class="editor-knoepfe">
+        <label class="knopf">🖼 Grundriss-Bild laden<input type="file" id="ed-bild" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"/></label>
+        <label class="knopf">📄 Datei importieren<input type="file" id="ed-datei" accept=".json,.js,application/json,text/javascript"/></label>
+        <button type="button" id="ed-leer">Leer beginnen</button>
+        <button type="button" id="ed-bild-entfernen">Bild entfernen</button>
+      </div>
+      <label class="editor-check"><input type="checkbox" id="ed-invert" checked/> Bild fürs Dark-Design invertieren</label>
+
+      <h4>2 · Etage</h4>
+      <label for="ed-gebaeude">Gebäude (neuer Name = neues Gebäude)</label>
+      <input type="text" id="ed-gebaeude" list="ed-gebaeude-liste" maxlength="60"/>
+      <datalist id="ed-gebaeude-liste"></datalist>
+      <div class="editor-zeile">
+        <div><label for="ed-nr">Etagen-Nr.</label><input type="number" id="ed-nr" min="-9" max="99"/></div>
+        <div><label for="ed-kuerzel">Kürzel (optional)</label><input type="text" id="ed-kuerzel" maxlength="6" placeholder="z.B. W"/></div>
+      </div>
+      <label for="ed-name">Bezeichnung</label>
+      <input type="text" id="ed-name" maxlength="60" placeholder="z.B. Erdgeschoss"/>
+      <label for="ed-id">ID (für die Adresse ?etage=…)</label>
+      <input type="text" id="ed-id" maxlength="60"/>
+      <div class="editor-zeile">
+        <div><label for="ed-breite">Breite</label><input type="number" id="ed-breite" min="200" max="4000"/></div>
+        <div><label for="ed-hoehe">Höhe</label><input type="number" id="ed-hoehe" min="150" max="4000"/></div>
+      </div>
+
+      <h4>3 · Räume</h4>
+      <label for="ed-neu-art">Beim Aufziehen anlegen als</label>
+      <select id="ed-neu-art">
+        <option value="raeume">buchbarer Raum</option>
+        <option value="bereiche">Bereich (Treppe, WC, Lounge …)</option>
+      </select>
+      <div id="ed-keine-auswahl" class="editor-hinweis">Auf der Fläche mit gedrückter Maus ein Rechteck ziehen = neuer Raum. Raum anklicken = bearbeiten, ziehen = verschieben, gelbe Ecke = Größe ändern, Entf = löschen.</div>
+      <div id="ed-auswahl" style="display:none">
+        <label for="ed-el-name">Name (systemweit eindeutig)</label>
+        <input type="text" id="ed-el-name" maxlength="60"/>
+        <label for="ed-el-typ">Typ</label>
+        <select id="ed-el-typ"></select>
+        <div id="ed-nur-raum">
+          <div class="editor-zeile">
+            <div><label for="ed-el-nr">Raum-Nr.</label><input type="number" id="ed-el-nr" min="1" max="99"/></div>
+            <div><label for="ed-el-tische">Tische</label><input type="number" id="ed-el-tische" min="1" max="20"/></div>
+          </div>
+          <label for="ed-el-sub">Untertitel (optional)</label>
+          <input type="text" id="ed-el-sub" maxlength="40" placeholder="z.B. 8 Plätze"/>
+          <label class="editor-check"><input type="checkbox" id="ed-el-nfc"/> Raum hat einen NFC-Reader</label>
+        </div>
+        <div class="editor-knoepfe">
+          <button type="button" id="ed-el-kopieren">⧉ Duplizieren</button>
+          <button type="button" id="ed-el-loeschen" class="btn-danger">🗑 Entfernen</button>
+        </div>
+      </div>
+
+      <h4>4 · Speichern</h4>
+      <label for="ed-pw">Admin-Passwort (wird in der Datenbank geprüft)</label>
+      <input type="password" id="ed-pw" autocomplete="current-password"/>
+      <div class="editor-knoepfe">
+        <button type="button" id="ed-speichern" class="btn-book" style="margin-top:0">💾 In Datenbank speichern</button>
+        <button type="button" id="ed-export-js">⬇ Etagen-Datei (.js)</button>
+        <button type="button" id="ed-export-json">⬇ JSON</button>
+        <button type="button" id="ed-db-loeschen" class="btn-danger">🗑 DB-Etage löschen</button>
+      </div>
+      <div id="ed-meldung" class="editor-meldung"></div>
+    </div>
+
+    <div class="editor-flaeche">
+      <svg id="ed-svg" viewBox="0 0 960 480" aria-label="Zeichenfläche des Etagen-Editors"></svg>
+      <div class="editor-knoepfe"><button type="button" id="ed-vorschau">👁 Vorschau wie in der App</button></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- ══════════ Skripte (Reihenfolge wichtig) ══════════ -->
+<script src="js/config.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/gebaeude.js"></script>
+
+<!-- ETAGEN: eine Datei pro Etage. Neue Etage = Datei aus etagen/_vorlage-etage.js
+     kopieren und hier eine Zeile ergänzen (Reihenfolge = Reihenfolge der Tabs). -->
+<script src="etagen/hauptgebaeude-etage-1.js"></script>
+<script src="etagen/hauptgebaeude-etage-2.js"></script>
+<!-- /ETAGEN -->
+
+<script src="js/belegung.js"></script>
+<script src="js/grundriss.js"></script>
+<script src="js/daten.js"></script>
+<script src="js/kalender.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/hintergrund.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
