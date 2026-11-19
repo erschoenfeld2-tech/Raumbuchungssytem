@@ -6,16 +6,16 @@
 -- Ab jetzt meldet sich der Admin wie alle anderen über nutzer_login() an
 -- (bcrypt-Hash in nutzer.passwort_hash, nie über nutzer_public sichtbar).
 --
--- Übergang: Der Hash wird einmalig aus dem bisherigen (bekannten, daher
--- unsicheren) Passwort erzeugt und passwort_muss_aendern = true gesetzt –
--- beim nächsten Admin-Login muss also sofort ein neues Passwort vergeben
--- werden. Ein bereits gesetzter Hash wird nicht überschrieben.
+-- Übergang: Als Start-Hash dient der bcrypt-Hash des bisherigen
+-- Admin-Passworts (hier bewusst nur als Hash, nicht im Klartext) mit
+-- passwort_muss_aendern = true – beim nächsten Admin-Login muss also sofort
+-- ein neues Passwort vergeben werden. Ein gesetzter Hash wird nicht überschrieben.
 -- ══════════════════════════════════════════════════════════
 
 create extension if not exists pgcrypto with schema extensions;
 
 update nutzer
-set passwort_hash = extensions.crypt('System-2026!', extensions.gen_salt('bf')),
+set passwort_hash = '$2a$06$k5t.vLEV6Wv4MeSprEmCkea2iz7bLUiREkU37RyIucXPV2h1/r2cm',
     passwort_muss_aendern = true
 where ist_admin and passwort_hash is null;
 

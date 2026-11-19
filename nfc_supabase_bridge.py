@@ -155,6 +155,8 @@ def checkin(nutzer, raum, start, ende):
     r = requests.post(
         f'{SUPABASE_URL}/rest/v1/buchungen',
         headers={**HEADERS, 'Prefer': 'return=representation'},
+        # nur die id zurücklesen – die Namensspalte ist für den anon key gesperrt
+        params={'select': 'id'},
         json={
             'raum': raum, 'nutzer_id': nutzer['id'], 'name': nutzer['name'],
             'start': start, 'ende': ende, 'quelle': 'nfc',
