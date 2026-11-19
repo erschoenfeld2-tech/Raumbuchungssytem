@@ -16,7 +16,9 @@ jobs:
   # Rolle anon und Browser-Tests (Chromium) gegen diese lokale DB.
   # Die echte Supabase-Datenbank wird dabei nie angesprochen.
   tests:
-    runs-on: ubuntu-latest
+    # Fest auf 24.04: ubuntu-latest ist inzwischen 26.04, dafür liefert die
+    # gepinnte Playwright-Version noch kein Chromium ("does not support chromium on ubuntu26.04").
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
