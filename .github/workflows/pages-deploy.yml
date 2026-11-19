@@ -1,6 +1,6 @@
 name: Deploy to GitHub Pages
 
-# Deployt die statische Web-App (index.html) über GitHub Actions statt
+# Deployt die statische Web-App (index.html + css/ js/ etagen/ vendor/) über GitHub Actions statt
 # über den klassischen "Deploy from a branch"-Mechanismus. Läuft nur
 # nach erfolgreichem Quality-Gate.
 #
@@ -46,8 +46,8 @@ jobs:
         # als abrufbare Dateien auf der Pages-Seite landen).
         run: |
           mkdir -p _site
-          cp index.html _site/
-          cp .nojekyll _site/
+          cp index.html .nojekyll _site/
+          cp -r css js etagen vendor _site/
 
       - name: Artefakt hochladen
         uses: actions/upload-pages-artifact@v3

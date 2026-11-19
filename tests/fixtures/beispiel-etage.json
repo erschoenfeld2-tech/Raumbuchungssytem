@@ -1,0 +1,89 @@
+{
+  "id": "anbau-eg",
+  "gebaeude": "Anbau",
+  "kuerzel": "A",
+  "nr": 0,
+  "name": "Erdgeschoss",
+  "breite": 960,
+  "hoehe": 480,
+  "aussenwand": {
+    "x": 20,
+    "y": 20,
+    "w": 920,
+    "h": 440
+  },
+  "flure": [
+    {
+      "x": 20,
+      "y": 200,
+      "w": 920,
+      "h": 70,
+      "name": "Flur"
+    }
+  ],
+  "raeume": [
+    {
+      "name": "Anbau Seminarraum",
+      "nr": 1,
+      "typ": "meeting",
+      "x": 20,
+      "y": 20,
+      "w": 460,
+      "h": 180,
+      "sub": "20 Plätze"
+    },
+    {
+      "name": "Anbau Coworking",
+      "nr": 2,
+      "typ": "sharedesk",
+      "tische": 6,
+      "x": 480,
+      "y": 20,
+      "w": 460,
+      "h": 180
+    },
+    {
+      "name": "Anbau Lernraum",
+      "nr": 3,
+      "typ": "sharedesk",
+      "tische": 3,
+      "x": 20,
+      "y": 270,
+      "w": 600,
+      "h": 190
+    }
+  ],
+  "bereiche": [
+    {
+      "typ": "kueche",
+      "name": "Teeküche",
+      "x": 620,
+      "y": 270,
+      "w": 320,
+      "h": 190
+    }
+  ],
+  "tueren": [
+    {
+      "o": "h",
+      "x": 200,
+      "y": 200,
+      "len": 36,
+      "s": 1
+    },
+    {
+      "o": "h",
+      "x": 700,
+      "y": 200,
+      "len": 36,
+      "s": 1
+    },
+    {
+      "o": "h",
+      "x": 300,
+      "y": 270,
+      "len": 36,
+      "s": -1
+    }
+  ]
+}

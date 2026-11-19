@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600">
+  <!-- Beispiel-Grundriss (schwarz auf weiß, wie ein eingescannter Plan) zum Ausprobieren des Etagen-Editors -->
+  <rect width="1200" height="600" fill="#fff"/>
+  <g fill="none" stroke="#111" stroke-width="8">
+    <rect x="30" y="30" width="1140" height="540"/>
+    <line x1="30" y1="250" x2="1170" y2="250"/><line x1="30" y1="350" x2="1170" y2="350"/>
+    <line x1="420" y1="30" x2="420" y2="250"/><line x1="800" y1="30" x2="800" y2="250"/>
+    <line x1="600" y1="350" x2="600" y2="570"/>
+  </g>
+  <g font-family="sans-serif" font-size="28" fill="#333">
+    <text x="160" y="150">Werkstatt A</text><text x="540" y="150">Werkstatt B</text>
+    <text x="930" y="150">Lager</text><text x="250" y="470">Labor</text><text x="800" y="470">Büro</text>
+    <text x="520" y="310">Flur</text>
+  </g>
+</svg>
