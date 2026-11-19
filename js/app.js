@@ -39,6 +39,10 @@ function istMeine(b){
   if(b.test) return !!testHash() && b.gast_hash === testHash();
   return !istGast() && b.nutzer_id === currentUser.id;
 }
+function darfEtageBearbeiten(etage){
+  if(istAdmin() || istGast()) return true;
+  return etage.quelle === 'datenbank' && etage.erstelltVon === currentUser.id;
+}
 function darfLoeschen(b){
   if(istAdmin()) return true;
   if(istGast()) return b.test && istMeine(b);
@@ -91,20 +95,20 @@ async function meineAenderungenZuruecksetzen(){
   switchEtage(etageById(aktEtageId) ? aktEtageId : (ETAGEN[0] && ETAGEN[0].id));
 }
 // Admin-Passwort: aus der Anmeldung (nur im Speicher) oder verdeckt abfragen
-async function adminPasswortHolen(frage, knopf){
-  if(adminPasswortSitzung){
+async function passwortHolen(frage, knopf){
+  if(passwortSitzung){
     const { ok } = await bestaetigen(frage, { knopf });
-    return ok ? adminPasswortSitzung : null;
+    return ok ? passwortSitzung : null;
   }
   const { ok, passwort } = await bestaetigen(frage + ' Zur Bestätigung bitte dein Passwort eingeben.', { knopf, passwort: true });
   return ok && passwort ? passwort : null;
 }
 async function testsystemKomplettLeeren(){
-  const pw = await adminPasswortHolen('Das komplette Testsystem leeren? Alle Test-Buchungen und alle Gast-Etagen aller Gäste werden gelöscht. Echte Buchungen bleiben unberührt.', '🗑 Alles löschen');
+  const pw = await passwortHolen('Das komplette Testsystem leeren? Alle Test-Buchungen und alle Gast-Etagen aller Gäste werden gelöscht. Echte Buchungen bleiben unberührt.', '🗑 Alles löschen');
   if(!pw) return;
   const r = await testsystemLeeren(currentUser.name, pw);
   if(r.fehler){ toast('✗ ' + r.fehler, 'error'); return; }
-  adminPasswortSitzung = pw;
+  passwortSitzung = pw;
   toast(`Testsystem geleert: ${r.buchungen} Buchung(en), ${r.etagen} Gast-Etage(n)`, 'success');
   render();
 }
@@ -115,6 +119,16 @@ function setDatum(){
   $('f-datum').value = ds(aktDatum);
   $('f-datum').min = ds(new Date());
 }
+// Ist die Vorgabe "09:00" heute schon vorbei, nächste Viertelstunde vorschlagen
+function zeitVorschlag(){
+  const jetzt = new Date();
+  const m = jetzt.getHours()*60 + jetzt.getMinutes();
+  if(m < 9*60 || m >= 22*60) return;
+  const start = Math.ceil((m + 1) / 15) * 15;
+  const s = $('f-start'), e = $('f-ende');
+  s._cs ? s._cs.setzen(minutenZuUhrzeit(start)) : s.value = minutenZuUhrzeit(start);
+  e._cs ? e._cs.setzen(minutenZuUhrzeit(Math.min(23*60 + 59, start + 60))) : e.value = minutenZuUhrzeit(Math.min(23*60 + 59, start + 60));
+}
 function tag(n){ aktDatum.setDate(aktDatum.getDate() + n); setDatum(); render(); }
 function heute(){ aktDatum = new Date(); setDatum(); render(); }
 
@@ -122,16 +136,16 @@ function heute(){ aktDatum = new Date(); setDatum(); render(); }
 async function zeigeApp(){
   $('login-screen').style.display = 'none';
   $('app').style.display = 'block';
-  $('user-name').textContent = currentUser.name + (currentUser.ist_admin ? ' (Administrator)' : '');
+  kopfAktualisieren();
   $('user-rolle').textContent = istGast() ? 'Testsystem' : 'eingeloggt';
   adminTestAnsicht = false;
   bannerAktualisieren();
   $('gast-limit').textContent = `Max. ${GAST_LIMIT} Änderungen in ${GAST_LIMIT_MINUTEN} Min.`;
-  $('avatar').textContent = currentUser.name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
   const appEl = $('app');
   appEl.classList.remove('in'); void appEl.offsetWidth; appEl.classList.add('in');
   netzAn(false);
   setDatum();
+  zeitVorschlag();
   await etagenNeuLaden();
   if(!currentUser) return;   // während des Ladens abgemeldet
   const start = [urlParameter('etage'), leseGespeicherteEtage(), ETAGEN[0] && ETAGEN[0].id].find(id => id && etageById(id));
@@ -142,7 +156,7 @@ async function zeigeApp(){
 function versteckeApp(){
   clearInterval(renderTimer); renderTimer = null;
   allBookings = [];
-  modalClose(); slotModalClose();
+  modalClose(); slotModalClose(); profilSchliessen();
   $('app').style.display = 'none';
   $('login-screen').style.display = 'flex';
   netzAn(true);
@@ -167,10 +181,10 @@ function ortTabsZeichnen(){
   $('etage-tabs').innerHTML = etagen.map(e =>
     `<button type="button" data-etage="${esc(e.id)}" class="${e.id === aktEtageId ? 'active' : ''}">${esc(e.name)}</button>`).join('')
     || '<button type="button" disabled>Keine Etagen</button>';
-  // Etagen anlegen/bearbeiten: Admin (für alle) und Gäste (nur für die eigene Sitzung)
-  const darfEditieren = istAdmin() || istGast();
-  $('admin-tabs').style.display = darfEditieren ? 'flex' : 'none';
-  $('btn-etage-bearbeiten').style.display = darfEditieren && etage ? '' : 'none';
+  // Etagen anlegen: alle Angemeldeten (Gäste nur für die eigene Sitzung).
+  // Bearbeiten: Admin und Gäste immer, andere nur ihre eigenen Datenbank-Etagen.
+  $('admin-tabs').style.display = currentUser ? 'flex' : 'none';
+  $('btn-etage-bearbeiten').style.display = etage && darfEtageBearbeiten(etage) ? '' : 'none';
   $('btn-testsystem').style.display = istAdmin() ? '' : 'none';
 }
 
@@ -201,18 +215,22 @@ function switchView(which){
 }
 
 // ── Formular: Raum / Tisch ──
-function optionenSetzen(sel, eintraege){
-  // nur bei Änderung neu aufbauen, sonst flackert ein offenes Dropdown
-  const sig = JSON.stringify(eintraege);
-  if(sel._sig === sig) return;
-  sel._sig = sig;
-  const bisher = sel.value;
-  sel.replaceChildren(...eintraege.map(([wert, text]) => new Option(text, wert)));
-  if(eintraege.some(([w]) => w === bisher)) sel.value = bisher;
+// Raum-Dropdown: gruppiert nach Art, mit Belegung des gewählten Tages
+function raumEintraege(){
+  const k = statusKontext();
+  return raeumeDerEtage().map(r => {
+    const frei = r.tische.filter(t => tischStatus(r, t.code, allBookings, k.istHeute, k.jetzt, k.datum) === 'frei').length;
+    const status = frei === r.kapazitaet ? 'frei' : frei ? 'teil' : 'belegt';
+    return {
+      wert: r.name, text: r.name, status,
+      icon: r.typ === 'meeting' ? '👥' : '🪑',
+      hinweis: r.typ === 'meeting' ? (frei ? 'frei' : 'belegt') + (r.nfc ? ' · NFC' : '') : `${frei}/${r.kapazitaet} Tische frei`,
+      gruppe: r.typ === 'meeting' ? 'Meetingräume' : 'ShareDesks',
+    };
+  }).sort((a, b) => a.gruppe.localeCompare(b.gruppe, 'de'));
 }
 function initRaumDropdown(){
-  const sel = $('f-raum');
-  optionenSetzen(sel, raeumeDerEtage().map(r => [r.name, `${r.name} (${r.kapazitaet} Tisch${r.kapazitaet > 1 ? 'e' : ''})`]));
+  optionenSetzen($('f-raum'), raumEintraege());
   initTischDropdown();
   updateGanztagVisibility();
 }
@@ -224,9 +242,11 @@ function initTischDropdown(){
   if(!raum){ optionenSetzen(sel, []); $('f-tisch-wrap').style.display = 'none'; return; }
   const k = statusKontext();
   $('f-tisch-wrap').style.display = raum.tische.length > 1 ? 'block' : 'none';
-  optionenSetzen(sel, raum.tische.map(t => [t.code,
-    raum.tische.length > 1 && tischStatus(raum, t.code, allBookings, k.istHeute, k.jetzt, k.datum) === 'belegt'
-      ? `Tisch ${t.code} – ${k.istHeute ? 'aktuell' : 'an diesem Tag'} belegt` : `Tisch ${t.code}`]));
+  optionenSetzen(sel, raum.tische.map(t => {
+    const belegt = tischStatus(raum, t.code, allBookings, k.istHeute, k.jetzt, k.datum) === 'belegt';
+    return { wert: t.code, text: `Tisch ${t.code}`, status: belegt ? 'belegt' : 'frei',
+             hinweis: belegt ? (k.istHeute ? 'gerade belegt' : 'an diesem Tag belegt') : 'frei' };
+  }));
 }
 // ShareDesks dürfen ganztägig gebucht werden, Meetingräume nicht.
 function updateGanztagVisibility(){
@@ -294,6 +314,7 @@ function zeichneAlles(){
   const agenda = istTestModus() ? allBookings.filter(b => raumByName(b.raum)) : allBookings;
   setzeHtml($('agenda-list'), agendaHtml(agenda, istMeine));
   drawFloor();
+  optionenSetzen($('f-raum'), raumEintraege());
   initTischDropdown();
   const raeume = raeumeDerEtage();
   const kal = $('kalender');
@@ -497,10 +518,13 @@ function initEreignisse(){
 function start(){
   enhanceSelect($('f-raum'));
   enhanceSelect($('f-tisch'));
-  enhanceTime($('f-start'), startGeaendert);
-  enhanceTime($('f-ende'));
+  // heute bereits vergangene Uhrzeiten in der Liste ausgrauen
+  const vorbei = z => $('f-datum').value === ds(new Date()) && z < zeitStempel(new Date()).slice(11);
+  enhanceTime($('f-start'), startGeaendert, vorbei);
+  enhanceTime($('f-ende'), null, vorbei);
   initEreignisse();
   initEditor();
+  initProfil();
   netzStart();
 
   if(!CONFIGURED || !supa){

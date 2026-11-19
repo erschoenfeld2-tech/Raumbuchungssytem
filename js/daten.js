@@ -16,9 +16,9 @@ const BUCHUNG_SPALTEN = 'id,raum,tisch,nutzer_id,start,ende,quelle,test,gast_has
 // Tabelle noch (Migration nicht deployt), läuft die App mit den Datei-Etagen weiter.
 async function ladeDbEtagen(){
   if(!supa) return [];
-  const { data, error } = await supa.from('etagen').select('id,definition').order('id');
+  const { data, error } = await supa.from('etagen').select('id,definition,erstellt_von').order('id');
   if(error){ console.warn('[Etagen] Datenbank-Etagen nicht geladen:', error.message); return []; }
-  return data.map(z => z.definition);
+  return data.map(z => ({ ...z.definition, erstellt_von: z.erstellt_von }));
 }
 // Eigene Gast-Etagen (nur für diese Sitzung sichtbar)
 async function ladeGastEtagen(sitzung){
@@ -98,7 +98,8 @@ async function buchungLoeschen(id, user){
 }
 
 // ── Etagen speichern/löschen ──
-// Admin: in der DB für alle (Passwort wird in der DB geprüft)
+// Angemeldete Nutzer und Admin: in der DB für alle (Passwort wird in der DB
+// geprüft; Nicht-Admins dürfen nur ihre eigenen Etagen ändern/löschen)
 async function etageSpeichernDb(adminName, adminPasswort, definition){
   const { data, error } = await supa.rpc('etage_speichern',
     { p_admin_name: adminName, p_admin_passwort: adminPasswort, p_definition: definition });
@@ -127,4 +128,23 @@ async function gastZuruecksetzen(sitzung){
 async function testsystemLeeren(adminName, adminPasswort){
   const { data, error } = await supa.rpc('testsystem_leeren', { p_admin_name: adminName, p_admin_passwort: adminPasswort });
   return error ? { fehler: error.message } : data;
+}
+
+// ── Profil ──
+// Eigene Buchungen ab heute (für die Übersicht im Profil)
+async function ladeMeineBuchungen(userId, abDatum){
+  const { data, error } = await supa.from('buchungen').select(BUCHUNG_SPALTEN)
+    .eq('nutzer_id', userId).eq('test', false).gt('ende', abDatum + ' 00:00').order('start').limit(200);
+  return error ? { fehler: error.message, buchungen: [] } : { buchungen: data };
+}
+// Name und/oder Bild ändern (Passwort wird in der DB geprüft)
+async function profilSpeichern(name, passwort, neuerName, bildAendern, bild){
+  const { data, error } = await supa.rpc('profil_speichern',
+    { p_name: name, p_passwort: passwort, p_neuer_name: neuerName, p_bild_aendern: bildAendern, p_bild: bild });
+  return error ? { fehler: error.message } : (data && data[0]) || {};
+}
+async function passwortAendern(name, alt, neu){
+  const { data, error } = await supa.rpc('nutzer_passwort_aendern', { p_name: name, p_altes: alt, p_neues: neu });
+  if(error) return { fehler: error.message };
+  return data ? {} : { fehler: 'Das aktuelle Passwort ist falsch.' };
 }

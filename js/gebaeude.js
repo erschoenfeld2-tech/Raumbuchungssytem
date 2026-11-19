@@ -98,6 +98,8 @@ function normalisiereEtage(def, quelle){
     texte: liste(def.texte).map(t => ({ x: zahlFeld(t.x, 0, breite, 0), y: zahlFeld(t.y, 0, hoehe, 0), t: textFeld(t.t, 60) })),
     raeume: [],
     quelle: quelle || 'datei',
+    // wer eine Datenbank-Etage angelegt hat (nur für Bearbeitungsrechte, nie angezeigt)
+    erstelltVon: Number.isFinite(def.erstellt_von) ? def.erstellt_von : null,
   };
   if(def.hintergrund && !etage.hintergrund) fehler.push('Hintergrundbild hat ein nicht erlaubtes Format');
 

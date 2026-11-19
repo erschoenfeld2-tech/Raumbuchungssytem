@@ -15,9 +15,10 @@
 
 let currentUser = null;
 let pwWechselNutzer = null;   // Nutzer, der gerade sein Startpasswort ändern muss
-// Admin-Passwort nur im Arbeitsspeicher (nie im localStorage, nie angezeigt) –
-// wird für Admin-Aktionen gebraucht, weil die DB das Passwort erneut prüft.
-let adminPasswortSitzung = null;
+// Eigenes Passwort nur im Arbeitsspeicher (nie im localStorage, nie angezeigt) –
+// wird für Etagen speichern, Profil und Admin-Aktionen gebraucht, weil die DB
+// das Passwort jedes Mal erneut prüft. Nach dem Neuladen wird verdeckt nachgefragt.
+let passwortSitzung = null;
 
 const istGast = () => !!(currentUser && currentUser.gast);
 
@@ -38,7 +39,7 @@ async function anmelden(){
   if(error){ loginFehler('Anmeldung fehlgeschlagen: ' + error.message); return; }
   if(!data || !data.length){ loginFehler('Nutzername oder Passwort falsch'); return; }
   const u = data[0];
-  const user = { id: u.id, name: u.name, ist_admin: u.ist_admin };
+  const user = { id: u.id, name: u.name, ist_admin: u.ist_admin, bild: u.bild || null };
   if(u.muss_aendern){
     pwWechselNutzer = { name: u.name, altesPw: pw, user };
     document.getElementById('pw-wechsel').style.display = 'block';
@@ -46,7 +47,7 @@ async function anmelden(){
     document.getElementById('pw-neu').focus();
     return;
   }
-  if(user.ist_admin) adminPasswortSitzung = pw;
+  passwortSitzung = pw;
   loginAbschliessen(user);
 }
 
@@ -82,7 +83,7 @@ async function passwortWechseln(){
   if(error){ loginFehler(error.message); return; }
   if(!data){ loginFehler('Passwortwechsel fehlgeschlagen.'); return; }
   const user = pwWechselNutzer.user;
-  if(user.ist_admin) adminPasswortSitzung = neu;
+  passwortSitzung = neu;
   pwWechselZuruecksetzen();
   loginAbschliessen(user);
 }
@@ -108,7 +109,7 @@ function abmelden(){
   try { localStorage.removeItem(SPEICHER_USER); } catch(e) {}
   pwWechselZuruecksetzen();
   currentUser = null;
-  adminPasswortSitzung = null;
+  passwortSitzung = null;
   versteckeApp();
 }
 

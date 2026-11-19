@@ -60,11 +60,13 @@
       <div class="sub">Hausmesse-Präsentation · Fachinformatik Systemintegration</div>
     </div>
     <div class="user-info">
-      <div class="avatar" id="avatar">?</div>
-      <div>
-        <div style="font-weight:600" id="user-name">Lade...</div>
-        <div style="color:var(--muted);font-size:11px" id="user-rolle">eingeloggt</div>
-      </div>
+      <button type="button" class="profil-knopf" id="btn-profil" title="Mein Profil öffnen">
+        <span class="avatar" id="avatar">?</span>
+        <span>
+          <span style="font-weight:600;display:block" id="user-name">Lade...</span>
+          <span style="color:var(--muted);font-size:11px;display:block" id="user-rolle">eingeloggt</span>
+        </span>
+      </button>
       <button type="button" id="btn-abmelden">Abmelden</button>
     </div>
   </div>
@@ -265,6 +267,38 @@
   </div>
 </div>
 
+<!-- ══════════ Mein Profil (nur angemeldete Nutzer, nur für sich selbst sichtbar) ══════════ -->
+<div class="modal-bg" id="profil-modal">
+  <div class="modal profil" role="dialog" aria-modal="true" aria-labelledby="pr-titel">
+    <h3 id="pr-titel" style="display:flex;justify-content:space-between;align-items:center">Mein Profil
+      <button type="button" id="pr-schliessen">✕</button></h3>
+    <div class="profil-kopf">
+      <div class="profil-bild" id="pr-bild"></div>
+      <div class="editor-knoepfe" style="flex:1;min-width:180px">
+        <label class="knopf">🖼 Bild wählen<input type="file" id="pr-bild-datei" accept="image/png,image/jpeg,image/webp,image/gif"/></label>
+        <button type="button" id="pr-bild-weg">Bild entfernen</button>
+      </div>
+    </div>
+    <div class="profil-abschnitt">
+      <h4>Nutzername</h4>
+      <input type="text" id="pr-name" maxlength="40" autocomplete="username"/>
+    </div>
+    <div class="profil-abschnitt">
+      <h4>Passwort ändern (optional)</h4>
+      <div class="editor-zeile">
+        <input type="password" id="pr-pw-neu" placeholder="Neues Passwort" autocomplete="new-password" aria-label="Neues Passwort"/>
+        <input type="password" id="pr-pw-neu2" placeholder="Wiederholen" autocomplete="new-password" aria-label="Neues Passwort wiederholen"/>
+      </div>
+    </div>
+    <button type="button" class="btn-book" id="pr-speichern">✓ Profil speichern</button>
+    <div id="pr-meldung" class="editor-meldung"></div>
+    <div class="profil-abschnitt">
+      <h4 style="display:flex;justify-content:space-between">Meine Buchungen <span class="profil-zusammenfassung" id="pr-zusammenfassung"></span></h4>
+      <div class="profil-liste" id="pr-buchungen"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ Rückfrage (statt confirm(), optional mit verdecktem Passwortfeld) ══════════ -->
 <div class="modal-bg" id="frage-modal">
   <div class="modal modal-breit" role="alertdialog" aria-modal="true" aria-labelledby="frage-text">
@@ -300,6 +334,7 @@
 <script src="js/kalender.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/editor.js"></script>
+<script src="js/profil.js"></script>
 <script src="js/hintergrund.js"></script>
 <script src="js/app.js"></script>
 </body>

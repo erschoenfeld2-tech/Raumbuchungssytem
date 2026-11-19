@@ -10,9 +10,12 @@
 // Die Datenbank prüft beim Speichern das Admin-Passwort erneut
 // (RPC etage_speichern, Migration 20261119150100).
 //
-// Gäste dürfen den Editor ebenfalls benutzen: Ihre Etagen landen über
-// gast_etage_speichern() nur in ihrer eigenen Sitzung (für niemanden sonst
-// sichtbar) und zählen zum Änderungslimit des Testsystems.
+// Wer darf was:
+//   • Admin: alle Etagen anlegen/ändern/löschen, auch Datei-Etagen ersetzen
+//   • angemeldete Nutzer: eigene Etagen anlegen, ändern, löschen – dauerhaft
+//     und für alle sichtbar (Migration 20261119170000)
+//   • Gäste: wie Nutzer, aber nur in der eigenen Sitzung sichtbar und mit
+//     Verfallszeit; zählt zum Änderungslimit des Testsystems
 // ══════════════════════════════════════════════════════════
 
 const ED_RASTER = 5;                  // Einrasten in 5-px-Schritten
@@ -38,26 +41,30 @@ function leereDefinition(){
 
 // Öffnen: etage = bestehende Etage zum Bearbeiten, null = neue Etage
 function editorOeffnen(etage){
-  if(!currentUser || !(currentUser.ist_admin || istGast())) return;
+  if(!currentUser) return;
+  if(etage && !darfEtageBearbeiten(etage)) return;
   const gast = istGast();
+  const admin = istAdmin();
   const def = etage ? etageAlsDefinition(etage) : leereDefinition();
   def.raeume = def.raeume || []; def.bereiche = def.bereiche || [];
   // Löschen geht nur für Etagen, die man selbst gespeichert hat (Admin: DB, Gast: eigene Sitzung)
-  const loeschbar = !!etage && etage.quelle === (gast ? 'gast' : 'datenbank');
+  const loeschbar = !!etage && (gast ? etage.quelle === 'gast'
+    : etage.quelle === 'datenbank' && (admin || etage.erstelltVon === currentUser.id));
   ed = { def, auswahl: null, idManuell: !!etage, vorschau: false, loeschbar, bildRoh: null };
   ed.stand = JSON.stringify(def);   // zum Erkennen ungespeicherter Änderungen
   edEl('ed-titel').textContent = (etage ? `Etage bearbeiten: ${etage.gebaeude} · ${etage.name}` : 'Neue Etage / neues Gebäude')
     + (gast ? ' (Testsystem)' : '');
   // Passwortfeld nie vorausfüllen; nur zeigen, wenn es gebraucht wird
   edEl('ed-pw').value = '';
-  edEl('ed-pw-zeile').style.display = !gast && !adminPasswortSitzung ? 'block' : 'none';
-  edEl('ed-speichern').textContent = gast ? '💾 Speichern (nur für mich)' : '💾 In Datenbank speichern';
-  edEl('ed-db-loeschen').textContent = gast ? '🗑 Meine Etage löschen' : '🗑 DB-Etage löschen';
+  edEl('ed-pw-zeile').style.display = !gast && !passwortSitzung ? 'block' : 'none';
+  edEl('ed-speichern').textContent = gast ? '💾 Speichern (nur für mich)' : admin ? '💾 In Datenbank speichern' : '💾 Speichern (für alle sichtbar)';
+  edEl('ed-db-loeschen').textContent = admin ? '🗑 DB-Etage löschen' : '🗑 Meine Etage löschen';
   edEl('ed-gebaeude-liste').innerHTML = gebaeudeListe().map(g => `<option value="${esc(g)}"></option>`).join('');
   edMeldung(gast
     ? `Testsystem: Deine Etagen sieht nur deine Sitzung, sie werden nach ${GAST_ETAGEN_MINUTEN} Min. ohne Änderung automatisch gelöscht.`
     : etage && etage.quelle === 'datei'
-      ? 'Diese Etage stammt aus einer Datei. Speichern in der Datenbank legt eine Kopie an, die die Datei-Version ersetzt.' : '');
+      ? 'Diese Etage stammt aus einer Datei. Speichern in der Datenbank legt eine Kopie an, die die Datei-Version ersetzt.'
+      : admin ? '' : 'Deine Etage ist nach dem Speichern dauerhaft für alle sichtbar und buchbar. Ändern und löschen kannst nur du (und der Admin).');
   edFormularFuellen();
   edZeichnen();
   edEl('editor-bg').classList.add('open');
@@ -394,13 +401,18 @@ function edPruefen(){
     const vorhanden = raumByName(r.name);
     return vorhanden && vorhanden.etageId !== etage.id;
   }) : [];
+  // Nicht-Admins dürfen keine fremde (oder Datei-)Etage über ihre ID ersetzen
+  const vorhanden = etage && etageById(etage.id);
+  if(vorhanden && !istGast() && !istAdmin() && !(vorhanden.quelle === 'datenbank' && vorhanden.erstelltVon === currentUser.id)){
+    fehler.push(`Die ID „${etage.id}“ ist schon vergeben – bitte eine andere ID oder Etagen-Nr. wählen.`);
+  }
   doppelt.forEach(r => fehler.push(`Raumname "${r.name}" gibt es schon in Etage "${raumByName(r.name).etageId}" (Namen müssen eindeutig sein)`));
   if(fehler.length){ edMeldung('Bitte korrigieren:\n• ' + fehler.join('\n• '), 'fehler'); return null; }
   return etage;
 }
 // Admin-Passwort: aus der Anmeldung (nur im Speicher) oder aus dem verdeckten Feld
 function edAdminPasswort(){
-  return adminPasswortSitzung || edEl('ed-pw').value;
+  return passwortSitzung || edEl('ed-pw').value;
 }
 async function edInDbSpeichern(){
   const etage = edPruefen();
@@ -417,7 +429,7 @@ async function edInDbSpeichern(){
     if(gast && await sitzungPruefen(r.fehler)) return;
     edMeldung('Speichern fehlgeschlagen: ' + r.fehler, 'fehler'); return;
   }
-  if(!gast) adminPasswortSitzung = pw;
+  if(!gast) passwortSitzung = pw;
   limitAnzeigen(r.verbleibend);
   await etagenNeuLaden();
   editorSchliessen(false);
@@ -433,7 +445,7 @@ async function edDbLoeschen(){
   if(!ok) return;
   const r = gast ? await gastEtageLoeschen(currentUser.sitzung, ed.def.id) : await etageLoeschenDb(currentUser.name, pw, ed.def.id);
   if(r.fehler){ edMeldung('Löschen fehlgeschlagen: ' + r.fehler, 'fehler'); return; }
-  if(!gast) adminPasswortSitzung = pw;
+  if(!gast) passwortSitzung = pw;
   limitAnzeigen(r.verbleibend);
   await etagenNeuLaden();
   editorSchliessen(false);
@@ -472,6 +484,8 @@ function edExportJs(){
 // ── Verdrahtung ──
 function initEditor(){
   modalRegistrieren('editor-bg', () => editorSchliessen(true));
+  enhanceSelect(edEl('ed-neu-art'));
+  enhanceSelect(edEl('ed-el-typ'));
   edEl('ed-schliessen').addEventListener('click', () => editorSchliessen(true));
   edEl('ed-bild').addEventListener('change', e => { edBildLaden(e.target.files[0]); e.target.value = ''; });
   edEl('ed-datei').addEventListener('change', e => { edDateiImportieren(e.target.files[0]); e.target.value = ''; });

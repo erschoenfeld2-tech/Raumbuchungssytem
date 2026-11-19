@@ -347,6 +347,80 @@ label.knopf input{display:none}
 .ed-griff{fill:var(--amber);stroke:#0f1117;stroke-width:1.5;cursor:nwse-resize}
 .ed-neu{fill:rgba(34,197,94,.15);stroke:var(--green);stroke-width:2;stroke-dasharray:5 4;pointer-events:none}
 
+/* ══ Dropdowns v2: Gruppen, Status-Punkte, Häkchen, Suche, Öffnen nach oben ══ */
+.cs-btn{min-height:38px}
+.cs-btn-inhalt{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.cs-btn-inhalt .cs-haken{display:none}
+.cs-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cs-hinweis{font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.cs-icon{flex-shrink:0;width:18px;text-align:center}
+.cs-punkt{width:9px;height:9px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 3px rgba(255,255,255,.04)}
+.cs-punkt.frei{background:var(--green)}
+.cs-punkt.teil{background:var(--amber)}
+.cs-punkt.belegt{background:var(--red)}
+.cs-list{padding:6px;max-height:280px;transform-origin:top center}
+.cs.cs-open .cs-list{animation:csAuf .14s cubic-bezier(.2,.7,.2,1)}
+.cs.cs-oben .cs-list{top:auto;bottom:calc(100% + 4px);transform-origin:bottom center}
+@keyframes csAuf{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
+.cs-opt{display:flex;align-items:center;gap:8px;padding:8px 10px;min-height:36px;border-radius:8px}
+.cs-opt .cs-haken{width:14px;text-align:right;color:var(--accent);font-weight:800;flex-shrink:0}
+.cs-opt.selected{background:rgba(79,110,247,.16);color:var(--text)}
+.cs-opt.selected .cs-hinweis{color:var(--text);opacity:.75}
+.cs-opt.active{background:var(--surface2);box-shadow:inset 0 0 0 1px var(--border)}
+.cs-opt.selected.active{background:rgba(79,110,247,.26)}
+.cs-opt.cs-aus{opacity:.4;cursor:not-allowed}
+.cs-opt.cs-vorbei .cs-text{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(136,145,180,.5)}
+.cs-opt.cs-weg{display:none}
+.cs-gruppe{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  padding:10px 10px 4px}
+.cs-gruppe:first-child,.cs-suche + .cs-gruppe{padding-top:4px}
+.cs-suche{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;
+  padding:7px 10px;font-size:13px;margin-bottom:6px;outline:none;position:sticky;top:0;z-index:1}
+.cs-suche:focus{border-color:var(--accent)}
+.cs-btn:focus-visible,.cs-time input:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,110,247,.25)}
+
+/* ══ Häkchen als Schalter (gilt für alle Checkboxen) ══ */
+input[type=checkbox]{appearance:none;-webkit-appearance:none;position:relative;width:38px;height:22px;flex-shrink:0;
+  margin:0;border-radius:999px;background:var(--surface2);border:1px solid var(--border);cursor:pointer;
+  transition:background .2s,border-color .2s,box-shadow .2s;vertical-align:middle}
+input[type=checkbox]::before{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+  background:var(--muted);transition:transform .2s cubic-bezier(.2,.7,.2,1),background .2s;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+input[type=checkbox]:checked{background:linear-gradient(100deg,var(--accent),var(--purple));border-color:transparent}
+input[type=checkbox]:checked::before{transform:translateX(16px);background:#fff}
+input[type=checkbox]:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(79,110,247,.3)}
+input[type=checkbox]:disabled{opacity:.45;cursor:not-allowed}
+.ganztag-row,.editor-check{gap:10px!important;padding:6px 0;user-select:none}
+.ganztag-row:hover input,.editor-check:hover input{border-color:var(--accent)}
+
+/* ══ Profil ══ */
+.user-info .profil-knopf{display:flex;align-items:center;gap:10px;background:transparent;border:none;padding:0;
+  color:var(--text);text-align:left;cursor:pointer}
+.user-info .profil-knopf:hover .avatar{box-shadow:0 0 0 3px rgba(79,110,247,.45)}
+.user-info .profil-knopf:hover{background:transparent}
+.user-info .profil-knopf:disabled{cursor:default;opacity:1}
+.avatar{overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.profil{width:560px;max-height:calc(100vh - 32px);overflow-y:auto}
+.profil-kopf{display:flex;gap:18px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.profil-bild{width:96px;height:96px;border-radius:50%;flex-shrink:0;overflow:hidden;display:flex;align-items:center;
+  justify-content:center;font-size:32px;font-weight:800;color:#fff;
+  background:linear-gradient(135deg,var(--accent),var(--purple));box-shadow:0 12px 30px -10px rgba(124,58,237,.7)}
+.profil-bild img{width:100%;height:100%;object-fit:cover}
+.profil-abschnitt{border-top:1px solid var(--border);margin-top:14px;padding-top:12px}
+.profil-abschnitt h4{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.profil input[type=text],.profil input[type=password]{width:100%;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);padding:9px 10px;border-radius:8px;font-size:13px;outline:none}
+.profil input[type=text]:focus,.profil input[type=password]:focus{border-color:var(--accent)}
+.profil-tag{font-size:12px;font-weight:700;color:var(--text);margin:10px 0 4px;display:flex;justify-content:space-between;align-items:center}
+.profil-tag button{font-size:11px;padding:4px 10px}
+.profil-buchung{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:var(--surface2);
+  margin-bottom:4px;font-size:12px}
+.profil-buchung .zeit{color:var(--accent);font-weight:700;min-width:88px;font-variant-numeric:tabular-nums}
+.profil-buchung .ort{flex:1;min-width:0}
+.profil-buchung button{padding:4px 8px;font-size:12px}
+.profil-liste{max-height:260px;overflow-y:auto;padding-right:4px}
+.profil-zusammenfassung{font-size:12px;color:var(--muted)}
+
 /* ── Mobile ── */
 @media (max-width:720px){
   #app{padding:14px}
