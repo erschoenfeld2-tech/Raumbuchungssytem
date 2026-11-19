@@ -11,6 +11,11 @@
 
 alter table buchungen add column if not exists test boolean not null default false;
 
+-- Zeitpunkt der Anlage: Die Spalte steht zwar im Ausgangsschema, fehlt aber in
+-- der live angelegten Tabelle (create table if not exists hat sie dort nie ergänzt).
+-- Bestehende Zeilen bekommen now(); relevant ist sie nur für test = true.
+alter table buchungen add column if not exists erstellt timestamptz not null default now();
+
 -- Gemeinsamer Gast-Nutzer (kein Passwort, kein NFC -> normaler Login unmöglich,
 -- nutzer_login verlangt einen passwort_hash)
 insert into nutzer (name, passwort_muss_aendern) values ('Gast', false)
