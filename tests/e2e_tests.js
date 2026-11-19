@@ -76,15 +76,16 @@ async function main(){
     await page.waitForFunction(t => { const el = document.getElementById('toast'); return el.className.includes('show') && el.textContent.includes(t); }, enthaelt, { timeout: 5000 });
     return page.textContent('#toast');
   };
-  const waehle = async (selectId, text) => {
+  // eigenes Dropdown bedienen: öffnen und den Eintrag mit diesem Wert anklicken
+  const waehle = async (selectId, wert) => {
     await page.click(`.cs:has(#${selectId}) .cs-btn`);
-    await page.click(`.cs.cs-open .cs-opt:has-text("${text}")`);
+    await page.click(`.cs.cs-open .cs-opt[data-v="${wert}"]`);
   };
   const zeit = async (id, wert) => { await page.fill('#' + id, wert); await page.keyboard.press('Enter'); };
   const buche = async (raum, tisch, von, bis) => {
     await page.fill('#f-datum', morgen); await page.dispatchEvent('#f-datum', 'change');
-    await waehle('f-raum', raum + ' (');
-    if(tisch) await waehle('f-tisch', 'Tisch ' + tisch);
+    await waehle('f-raum', raum);
+    if(tisch) await waehle('f-tisch', tisch);
     await zeit('f-start', von); await zeit('f-ende', bis);
     await page.click('#btn-buchen');
   };
@@ -131,7 +132,8 @@ async function main(){
     erwarte(JSON.stringify(tabs) === '["Etage 1","Etage 2"]', 'Tabs: ' + tabs);
     erwarte(!(await page.isVisible('#gebaeude-tabs')), 'Gebäude-Tabs bei nur einem Gebäude sichtbar');
     erwarte(await page.$$eval('.cal-header > div', d => d.length) === 8, 'Spaltenzahl falsch');
-    erwarte(!(await page.isVisible('#admin-tabs')), 'Admin-Knöpfe für Nicht-Admin sichtbar');
+    erwarte(await page.isVisible('#btn-etage-neu'), 'Etagen-Editor für Nutzer nicht sichtbar');
+    erwarte(!(await page.isVisible('#btn-testsystem')), 'Admin-Knopf „Testsystem“ für Nicht-Admin sichtbar');
   });
   await test('Buchung über das Formular (eigene Dropdowns, Zeitfelder)', async () => {
     await buche('ShareDesk 1', '1.302', '09:00', '10:30');
@@ -139,6 +141,31 @@ async function main(){
     erwarte(sql(`select count(*) from buchungen where raum='ShareDesk 1' and tisch='1.302' and start='${morgen} 09:00' and ende='${morgen} 10:30' and not test`) === '1', 'nicht in DB');
     await page.waitForSelector('.cal-seg.mine');
     await page.screenshot({ path: path.join(BILDER, '02-kalender.png') });
+  });
+  await test('Dropdowns: Gruppen, Status-Punkte, Häkchen am gewählten Eintrag, Tastatur', async () => {
+    await page.click('.cs:has(#f-raum) .cs-btn');
+    const gruppen = await page.$$eval('.cs.cs-open .cs-gruppe', g => g.map(x => x.textContent));
+    erwarte(JSON.stringify(gruppen) === '["Meetingräume","ShareDesks"]', 'Gruppen: ' + gruppen);
+    erwarte(await page.$$eval('.cs.cs-open .cs-list .cs-punkt', p => p.length) === 7, 'Status-Punkte fehlen');
+    erwarte((await page.textContent('.cs.cs-open .cs-opt.selected .cs-haken')).includes('✓'), 'kein Häkchen');
+    erwarte(await page.isVisible('.cs.cs-open .cs-opt[data-v="ShareDesk 1"] .cs-hinweis'), 'Hinweis fehlt');
+    await page.keyboard.press('Escape');
+    erwarte(!(await page.$('.cs.cs-open')), 'Escape schließt nicht');
+    // Tastatur: Pfeil runter öffnet, Enter wählt
+    await page.focus('.cs:has(#f-raum) .cs-btn');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    erwarte(!(await page.$('.cs.cs-open')), 'Enter schließt nicht');
+    await page.screenshot({ path: path.join(BILDER, '02b-dropdown.png') });
+  });
+  await test('Häkchen sind Schalter (Ganztägig)', async () => {
+    await waehle('f-raum', 'ShareDesk 1');
+    const stil = await page.$eval('#f-ganztag', el => getComputedStyle(el).appearance);
+    erwarte(stil === 'none', 'Checkbox nicht als Schalter gestaltet: ' + stil);
+    await page.check('#f-ganztag');
+    erwarte(await page.isDisabled('#f-start'), 'Ganztägig sperrt die Zeitfelder nicht');
+    await page.uncheck('#f-ganztag');
   });
   await test('gleicher Tisch überlappend → abgelehnt', async () => {
     await buche('ShareDesk 1', '1.302', '10:00', '11:00');
@@ -160,7 +187,7 @@ async function main(){
   await test('Vergangenheit kann nicht gebucht werden', async () => {
     const gestern = new Date(Date.now() - 86400000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
     await page.evaluate(d => { document.getElementById('f-datum').value = d; }, gestern);
-    await waehle('f-raum', 'ShareDesk 3 (');
+    await waehle('f-raum', 'ShareDesk 3');
     await zeit('f-start', '09:00'); await zeit('f-ende', '10:00');
     await page.click('#btn-buchen');
     await toastText('Vergangenheit');
@@ -248,6 +275,64 @@ async function main(){
     await page.reload(); await page.waitForSelector('.cal-header');
     erwarte(!jsFehler.length, 'JS-Fehler: ' + jsFehler.join(' | '));
   });
+  await test('Angemeldeter Nutzer legt eine Etage an – dauerhaft und für alle sichtbar', async () => {
+    erwarte(await page.isVisible('#btn-etage-neu'), 'Editor-Knopf für Nutzer fehlt');
+    erwarte(!(await page.isVisible('#btn-etage-bearbeiten')), 'Datei-Etage für Nutzer bearbeitbar');
+    erwarte(!(await page.isVisible('#btn-testsystem')), 'Testsystem-Knopf für Nutzer sichtbar');
+    await page.click('#btn-etage-neu');
+    await page.waitForSelector('#editor-bg.open');
+    // nach dem Neuladen ist das Passwort nicht mehr im Speicher → verdeckt nachfragen
+    if(await page.isVisible('#ed-pw')){
+      erwarte(await page.inputValue('#ed-pw') === '', 'Passwortfeld vorausgefüllt');
+      await page.fill('#ed-pw', 'geheim123');
+    }
+    await page.fill('#ed-gebaeude', 'Maries Haus'); await page.fill('#ed-nr', '1');
+    await page.dispatchEvent('#ed-nr', 'input');
+    const box = await page.locator('#ed-svg').boundingBox();
+    const f = box.width / 960;
+    await page.mouse.move(box.x + 40*f, box.y + 40*f); await page.mouse.down();
+    await page.mouse.move(box.x + 400*f, box.y + 220*f, { steps: 6 }); await page.mouse.up();
+    await page.fill('#ed-el-name', 'Maries Raum');
+    await page.click('#ed-speichern');
+    await toastText('Etage gespeichert');
+    erwarte(sql(`select e.erstellt_von = n.id from etagen e, nutzer n where e.id = 'maries-haus-1' and n.name = 'Marie'`) === 't', 'Ersteller fehlt');
+    erwarte(await page.isVisible('#btn-etage-bearbeiten'), 'eigene Etage nicht bearbeitbar');
+    await page.evaluate(() => switchEtage('hauptgebaeude-1'));
+  });
+  await test('Profil: Bild, Name, Passwort und „Meine Buchungen“', async () => {
+    await page.click('#btn-profil');
+    await page.waitForSelector('#profil-modal.open');
+    await page.waitForSelector('#pr-buchungen .profil-buchung');
+    erwarte((await page.textContent('#pr-zusammenfassung')).match(/\d+ Buchung/), 'Zusammenfassung fehlt');
+    await page.screenshot({ path: path.join(BILDER, '12-profil.png') });
+    // Bild + Name (Passwort aus der Anmeldung im Speicher → keine Rückfrage)
+    await page.setInputFiles('#pr-bild-datei', path.join(__dirname, 'fixtures', 'profilbild.png'));
+    await page.waitForSelector('#pr-bild img');
+    await page.fill('#pr-name', 'Marie K.');
+    await page.click('#pr-speichern');
+    await page.waitForSelector('#pr-meldung.ok');
+    erwarte(sql(`select count(*) from nutzer where name = 'Marie K.' and bild like 'data:image/jpeg;base64,%'`) === '1', 'Profil nicht gespeichert');
+    erwarte(await page.isVisible('#avatar img'), 'Avatar zeigt kein Bild');
+    erwarte((await page.textContent('#user-name')).trim() === 'Marie K.', 'Name im Kopf nicht aktualisiert');
+    // Passwort ändern: aktuelles Passwort wird verdeckt abgefragt
+    await page.fill('#pr-pw-neu', 'neuesPW456'); await page.fill('#pr-pw-neu2', 'neuesPW456');
+    await page.click('#pr-speichern');
+    await page.waitForSelector('#frage-modal.open');
+    erwarte(await page.getAttribute('#frage-pw', 'type') === 'password', 'Passwortfeld nicht verdeckt');
+    await page.fill('#frage-pw', 'geheim123');
+    await page.click('#frage-ok');
+    await page.waitForSelector('#pr-meldung.ok');
+    erwarte(sql(`select count(*) from nutzer where name = 'Marie K.' and passwort_hash = extensions.crypt('neuesPW456', passwort_hash)`) === '1', 'Passwort nicht geändert');
+    // Buchung aus dem Profil löschen
+    const vorher = await page.$$eval('#pr-buchungen .profil-buchung', b => b.length);
+    await page.click('#pr-buchungen [data-loeschen] >> nth=0');
+    await page.click('#frage-ok');
+    await toastText('gelöscht');
+    await page.waitForFunction(n => document.querySelectorAll('#pr-buchungen .profil-buchung').length === n - 1, vorher);
+    // Zum Tag springen schließt das Profil und zeigt den Tag
+    await page.click('#pr-buchungen [data-tag] >> nth=0');
+    await page.waitForSelector('#profil-modal.open', { state: 'hidden' });
+  });
   await test('Abmelden stoppt die Aktualisierung', async () => {
     await page.click('#btn-abmelden');
     await page.waitForSelector('#login-screen', { state: 'visible' });
@@ -303,7 +388,7 @@ async function main(){
     await page.click('#ed-speichern');
     await toastText('nur für dich sichtbar');
     await page.waitForSelector('#gebaeude-tabs [data-gebaeude="Anbau"]');
-    erwarte(sql(`select count(*) from etagen`) === '0', 'Gast-Etage in der öffentlichen Tabelle');
+    erwarte(sql(`select count(*) from etagen where id = 'anbau-eg'`) === '0', 'Gast-Etage in der öffentlichen Tabelle');
     await gast2.goto(BASIS + '?gast');
     await gast2.waitForSelector('#gast-banner', { state: 'visible' });
     await gast2.waitForSelector('.cal-header');
@@ -368,9 +453,9 @@ async function main(){
     await page.fill('#ed-el-tische', '4');
     await ziehe(340, 30, 635, 195);
     await page.fill('#ed-el-name', 'Werkstatt B');
-    await page.selectOption('#ed-el-typ', 'meeting');
+    await waehle('ed-el-typ', 'meeting');
     await page.check('#ed-el-nfc');
-    await page.selectOption('#ed-neu-art', 'bereiche');
+    await waehle('ed-neu-art', 'bereiche');
     await ziehe(645, 30, 930, 195);
     await page.fill('#ed-el-name', 'Lager');
     const lager = JSON.parse(await page.evaluate(() => JSON.stringify(ed.def.bereiche[0])));

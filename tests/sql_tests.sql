@@ -42,7 +42,7 @@ do $$ declare r record; begin
   if exists (select 1 from nutzer_login('Gast', '')) then raise exception 'TEST FEHLGESCHLAGEN: Gast kann sich mit Passwort anmelden'; end if;
 end $$;
 select pg_temp.muss_scheitern($$select admin_pruefen('Admin_Universal','System-2026!')$$, 'permission denied');
-select pg_temp.muss_scheitern($$select etage_speichern('Admin_Universal','System-2026!','{"id":"x","raeume":[{"name":"A"}]}')$$, 'Nur Administratoren');
+select pg_temp.muss_scheitern($$select etage_speichern('Admin_Universal','System-2026!','{"id":"x","raeume":[{"name":"A"}]}')$$, 'Nur angemeldete Nutzer');
 do $$ begin
   if not nutzer_passwort_aendern('Admin_Universal', 'System-2026!', 'NeuesAdminPW1') then raise exception 'TEST FEHLGESCHLAGEN: Admin-Passwortwechsel'; end if;
   if exists (select 1 from nutzer_login('Admin_Universal', 'System-2026!')) then raise exception 'TEST FEHLGESCHLAGEN: altes Admin-Passwort gilt noch'; end if;
@@ -51,7 +51,7 @@ end $$;
 
 -- 3. Etagen: lesen ja, direkt schreiben nein, über RPC nur mit Admin-Passwort
 select pg_temp.muss_scheitern($$insert into etagen (id, definition) values ('hack', '{}')$$, 'permission denied');
-select pg_temp.muss_scheitern($$select etage_speichern('Marie','123','{"id":"x","raeume":[{"name":"A"}]}')$$, 'Nur Administratoren');
+select pg_temp.muss_scheitern($$select etage_speichern('Marie','123','{"id":"x","raeume":[{"name":"A"}]}')$$, 'Nur angemeldete Nutzer');
 select pg_temp.muss_scheitern($$select etage_speichern('Admin_Universal','NeuesAdminPW1','{"id":"Böse ID","raeume":[{"name":"A"}]}')$$, 'Ungültige Etagen-ID');
 select pg_temp.muss_scheitern($$select etage_speichern('Admin_Universal','NeuesAdminPW1','{"id":"leer","raeume":[]}')$$, 'mindestens einen');
 do $$ begin
@@ -64,7 +64,7 @@ do $$ begin
   if (select count(*) from etagen) <> 1 then raise exception 'TEST FEHLGESCHLAGEN: Etage doppelt'; end if;
 end $$;
 select pg_temp.muss_scheitern($$select etage_speichern('Admin_Universal','NeuesAdminPW1','{"id":"werkstatt-2","raeume":[{"name":"Werkbank 1"}]}')$$, 'gibt es schon');
-select pg_temp.muss_scheitern($$select etage_loeschen('Marie','123','werkstatt-1')$$, 'Nur Administratoren');
+select pg_temp.muss_scheitern($$select etage_loeschen('Marie','123','werkstatt-1')$$, 'Nur angemeldete Nutzer');
 do $$ begin
   perform etage_loeschen('Admin_Universal', 'NeuesAdminPW1', 'werkstatt-1');
   if exists (select 1 from etagen) then raise exception 'TEST FEHLGESCHLAGEN: Etage nicht gelöscht'; end if;
@@ -167,6 +167,55 @@ do $$ declare vorher int; begin
   if exists (select 1 from buchungen where test) then raise exception 'TEST FEHLGESCHLAGEN: Test-Buchungen nicht gelöscht'; end if;
   if (select count(*) from gast_etagen_laden((select id from s where name = 'b'))) <> 0 then raise exception 'TEST FEHLGESCHLAGEN: alte Gast-Etage nicht gelöscht'; end if;
   if (select count(*) from buchungen where not test) <> vorher then raise exception 'TEST FEHLGESCHLAGEN: echte Buchungen gelöscht'; end if;
+end $$;
+
+-- 9. Profil: Name und Bild ändern (nur mit eigenem Passwort), Name nur für sich selbst sichtbar
+do $$ begin
+  if not nutzer_passwort_aendern('David Mayer', '123', 'DavidPW99') then raise exception 'TEST FEHLGESCHLAGEN: Passwortwechsel David'; end if;
+end $$;
+select pg_temp.muss_scheitern($$select * from profil_speichern('David Mayer', 'falsch', 'Dave', false, null)$$, 'Passwort falsch');
+select pg_temp.muss_scheitern($$select * from profil_speichern('David Mayer', 'DavidPW99', 'Marie', false, null)$$, 'schon vergeben');
+select pg_temp.muss_scheitern($$select * from profil_speichern('David Mayer', 'DavidPW99', 'gast', false, null)$$, 'schon vergeben');
+select pg_temp.muss_scheitern($$select * from profil_speichern('David Mayer', 'DavidPW99', '<b>x</b>', false, null)$$, '2–40 Zeichen');
+select pg_temp.muss_scheitern($$select * from profil_speichern('David Mayer', 'DavidPW99', null, true, 'javascript:alert(1)')$$, 'nutzer_bild_pruefen');
+do $$ declare r record; begin
+  insert into buchungen (raum, tisch, nutzer_id, name, start, ende) values ('ShareDesk 9', '2.401', 2, 'David Mayer', '2030-02-01 09:00', '2030-02-01 10:00');
+  select * into r from profil_speichern('David Mayer', 'DavidPW99', 'David M.', true, 'data:image/jpeg;base64,AAAA');
+  if r.name <> 'David M.' or r.bild <> 'data:image/jpeg;base64,AAAA' then raise exception 'TEST FEHLGESCHLAGEN: Profil %', r; end if;
+  select * into r from nutzer_login('david m.', 'DavidPW99');
+  if r.bild is null or r.name <> 'David M.' then raise exception 'TEST FEHLGESCHLAGEN: Login nach Umbenennen %', r; end if;
+  -- Bild entfernen, Name bleibt
+  select * into r from profil_speichern('David M.', 'DavidPW99', null, true, null);
+  if r.bild is not null or r.name <> 'David M.' then raise exception 'TEST FEHLGESCHLAGEN: Bild entfernen %', r; end if;
+end $$;
+reset role;
+do $$ begin
+  if (select name from buchungen where raum = 'ShareDesk 9' and start = '2030-02-01 09:00') <> 'David M.' then
+    raise exception 'TEST FEHLGESCHLAGEN: Namenskopie in buchungen nicht nachgezogen';
+  end if;
+end $$;
+set role anon;
+do $$ begin
+  -- Profilbilder (und Namen) anderer sind über den anon key nicht lesbar: RLS liefert 0 Zeilen
+  if exists (select 1 from nutzer where bild is not null or true) then raise exception 'TEST FEHLGESCHLAGEN: nutzer lesbar'; end if;
+end $$;
+
+-- 10. Etagen: angemeldete Nutzer dürfen anlegen; ändern/löschen nur Ersteller oder Admin
+do $$ begin
+  if etage_speichern('David M.', 'DavidPW99', '{"id":"davids-etage","raeume":[{"name":"Davids Raum"}]}') <> 'davids-etage'
+  then raise exception 'TEST FEHLGESCHLAGEN: Nutzer kann keine Etage anlegen'; end if;
+  perform etage_speichern('David M.', 'DavidPW99', '{"id":"davids-etage","name":"Neu","raeume":[{"name":"Davids Raum"}]}');
+  if not nutzer_passwort_aendern('Dion Himaj', '123', 'DionPW99') then raise exception 'TEST FEHLGESCHLAGEN: Passwortwechsel Dion'; end if;
+end $$;
+select pg_temp.muss_scheitern($$select etage_speichern('Dion Himaj', 'DionPW99', '{"id":"davids-etage","raeume":[{"name":"Dions Raum"}]}')$$, 'jemand anderes');
+select pg_temp.muss_scheitern($$select etage_loeschen('Dion Himaj', 'DionPW99', 'davids-etage')$$, 'Nur der Ersteller');
+do $$ begin
+  -- der Admin darf fremde Etagen ändern und löschen
+  perform etage_speichern('Admin_Universal', 'NeuesAdminPW1', '{"id":"davids-etage","name":"Vom Admin","raeume":[{"name":"Davids Raum"}]}');
+  if (select definition->>'name' from etagen where id = 'davids-etage') <> 'Vom Admin' then raise exception 'TEST FEHLGESCHLAGEN: Admin-Änderung'; end if;
+  if (select erstellt_von from etagen where id = 'davids-etage') <> 2 then raise exception 'TEST FEHLGESCHLAGEN: Ersteller überschrieben'; end if;
+  perform etage_loeschen('David M.', 'DavidPW99', 'davids-etage');
+  if exists (select 1 from etagen where id = 'davids-etage') then raise exception 'TEST FEHLGESCHLAGEN: Ersteller kann nicht löschen'; end if;
 end $$;
 
 reset role;
