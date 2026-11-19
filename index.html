@@ -203,6 +203,67 @@
   .cs-clock:hover{background:transparent;color:var(--text)}
   .cs-time:has(input:disabled) .cs-clock{pointer-events:none;opacity:.4}
 
+
+  /* ══ Promo-Look (angelehnt an hausmesse.wara.de/Stand23): Spotlight, Verlauf, Animationen ══ */
+  body{overflow-x:hidden}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+    background:radial-gradient(500px circle at var(--mx,50%) var(--my,30%),rgba(79,110,247,.13),transparent 60%)}
+  #login-screen,#app{position:relative;z-index:2}
+  #net{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+  .grad{background:linear-gradient(100deg,var(--accent),var(--purple) 55%,#c084fc);
+    -webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% 100%;
+    animation:shift 8s ease-in-out infinite alternate}
+  @keyframes shift{to{background-position:100% 0}}
+  @keyframes rise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+  @keyframes ping{70%{box-shadow:0 0 0 10px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
+  @keyframes floaty{50%{transform:translateY(-5px)}}
+  @keyframes popin{from{opacity:0;transform:scale(.92) translateY(8px)}to{opacity:1;transform:none}}
+
+  .login-box{border-radius:22px;padding:36px 32px;animation:rise .9s cubic-bezier(.2,.7,.2,1) both;
+    background:linear-gradient(160deg,var(--surface),#151824);box-shadow:0 30px 80px -30px rgba(79,110,247,.45)}
+  .login-logo{animation:floaty 4s ease-in-out infinite;box-shadow:0 12px 34px -8px rgba(124,58,237,.7);border-radius:16px}
+  .login-box h1{font-size:24px;letter-spacing:-.03em}
+  .login-box input{transition:border-color .2s,box-shadow .2s}
+  .login-box input:focus{box-shadow:0 0 0 3px rgba(79,110,247,.22)}
+  .login-box button,.btn-book{position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s,opacity .2s}
+  .login-box button:hover,.btn-book:hover{transform:translateY(-2px);box-shadow:0 12px 30px -8px rgba(124,58,237,.65)}
+  .login-box button::after,.btn-book::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent);transform:skewX(-20deg);transition:left .6s}
+  .login-box button:hover::after,.btn-book:hover::after{left:130%}
+  #gast-btn:hover{border-color:var(--accent)!important}
+
+  #app.in > *{animation:rise .8s cubic-bezier(.2,.7,.2,1) both}
+  #app.in > :nth-child(3){animation-delay:.08s}#app.in > :nth-child(4){animation-delay:.16s}
+  #app.in > :nth-child(5){animation-delay:.24s}#app.in > :nth-child(6){animation-delay:.32s}
+  #app.in > :nth-child(n+7){animation-delay:.4s}
+  .top h1{font-size:26px;font-weight:800;letter-spacing:-.03em}
+  .card,.user-info,.cal,.plan-wrap,.modal{border-radius:18px}
+  .card{transition:border-color .3s,box-shadow .3s}
+  .card:hover{border-color:var(--accent);box-shadow:0 20px 50px -28px rgba(79,110,247,.5)}
+  button{transition:background .2s,transform .15s,border-color .2s}
+  button:active{transform:scale(.97)}
+  .view-tabs,.etage-tabs{border-radius:999px}
+  .view-tabs button,.etage-tabs button{border-radius:999px}
+  .view-tabs button.active,.etage-tabs button.active{background:linear-gradient(100deg,var(--accent),var(--purple));
+    box-shadow:0 8px 22px -8px rgba(124,58,237,.7)}
+  .user-info .avatar{box-shadow:0 0 0 0 rgba(124,58,237,.6);animation:ping 2.4s infinite}
+  .live{border-radius:999px;padding:7px 14px}
+  .live .dot{animation:pulse 1.5s infinite,ping 2s infinite}
+  .cal-seg{transition:filter .15s,transform .15s}
+  .cal-seg:hover{transform:scale(1.02)}
+  .cal-block-in{border-radius:11px}
+  .plan-room:hover .plan-fill{filter:brightness(1.3) drop-shadow(0 0 8px rgba(79,110,247,.6))}
+  .plan-desk:hover{filter:brightness(1.25) drop-shadow(0 0 6px rgba(34,197,94,.7))}
+  .modal-bg.open{animation:fade .25s ease}
+  .modal-bg.open .modal{animation:popin .35s cubic-bezier(.2,.7,.2,1)}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .agenda-row{transition:background .2s,padding-left .2s}
+  .agenda-row:hover{background:rgba(79,110,247,.08);padding-left:6px}
+  #toast{border-radius:999px;padding:12px 22px;box-shadow:0 12px 30px -8px rgba(0,0,0,.6)}
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  }
+
   /* ── Mobile ── */
   @media (max-width:720px){
     #app{padding:14px}
@@ -213,12 +274,13 @@
 </style>
 </head>
 <body>
+<canvas id="net" aria-hidden="true"></canvas>
 
 <!-- ══════════ LOGIN ══════════ -->
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">🏢</div>
-    <h1>Raumbuchungssystem</h1>
+    <h1><span class="grad">Raumbuchungssystem</span></h1>
     <div class="login-sub">Bitte anmelden</div>
     <label for="login-name">Nutzername</label>
     <input type="text" id="login-name" placeholder="Nutzername" autofocus/>
@@ -244,14 +306,14 @@
   <div class="live"><div class="dot"></div>Live</div>
 
   <div id="gast-banner" style="display:none;background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.35);
-    border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px">
+    border-radius:14px;padding:8px 80px 8px 14px;margin-bottom:12px;font-size:13px">
     🧪 <strong>Testsystem (Gast)</strong> – Buchungen werden nach 2 Minuten automatisch gelöscht.
     Besprechungs- &amp; Konferenzraum sind hier nur per NFC buchbar.
   </div>
 
   <div class="top">
     <div>
-      <h1>🏢 Raumbuchungssystem</h1>
+      <h1>🏢 <span class="grad">Raumbuchungssystem</span></h1>
       <div class="sub">Hausmesse-Präsentation · Fachinformatik Systemintegration</div>
     </div>
     <div class="user-info">
@@ -568,6 +630,7 @@ function loginAbschliessen(user){
   zeigeApp();
 }
 function abmelden(){
+  netzAn(true);
   localStorage.removeItem('rb_user2');
   pwWechselNutzer = null;
   currentUser = null;
@@ -579,6 +642,9 @@ async function zeigeApp(){
   document.getElementById('app').style.display = 'block';
   document.getElementById('user-name').textContent = currentUser.name + (currentUser.ist_admin ? ' (Administrator)' : '');
   document.getElementById('gast-banner').style.display = istGast() ? 'block' : 'none';
+  const appEl = document.getElementById('app');
+  appEl.classList.remove('in'); void appEl.offsetWidth; appEl.classList.add('in');
+  netzAn(false);
   document.getElementById('avatar').textContent = currentUser.name.split(' ').map(w=>w[0]).join('').slice(0,2);
   setDatum();
   await ladeNutzerMap();
@@ -1341,6 +1407,51 @@ function startGeaendert(z){
     ende.value = minutenZuUhrzeit(m);
   }
 }
+
+// ── Hintergrund: Cursor-Spotlight + animiertes Netz (nur im Login) ──
+document.addEventListener('pointermove', e => {
+  document.body.style.setProperty('--mx', e.clientX + 'px');
+  document.body.style.setProperty('--my', e.clientY + 'px');
+});
+const netCv = document.getElementById('net');
+let netAktiv = true, netLaeuft = false, netPunkte = [];
+function netzAn(an){
+  netAktiv = an;
+  netCv.style.display = an ? 'block' : 'none';
+  if(an && !netLaeuft) netZeichnen();
+}
+function netGroesse(){
+  netCv.width = innerWidth; netCv.height = innerHeight;
+  const n = Math.min(70, Math.round(innerWidth * innerHeight / 22000));
+  netPunkte = Array.from({length:n}, () => ({x:Math.random()*netCv.width, y:Math.random()*netCv.height,
+    vx:(Math.random()-.5)*.35, vy:(Math.random()-.5)*.35}));
+}
+function netZeichnen(){
+  if(!netAktiv){ netLaeuft = false; return; }
+  netLaeuft = true;
+  const c = netCv.getContext('2d');
+  c.clearRect(0, 0, netCv.width, netCv.height);
+  for(const p of netPunkte){
+    p.x += p.vx; p.y += p.vy;
+    if(p.x < 0 || p.x > netCv.width) p.vx *= -1;
+    if(p.y < 0 || p.y > netCv.height) p.vy *= -1;
+  }
+  for(let i = 0; i < netPunkte.length; i++){
+    const a = netPunkte[i];
+    c.fillStyle = 'rgba(124,138,247,.7)';
+    c.beginPath(); c.arc(a.x, a.y, 1.8, 0, 6.3); c.fill();
+    for(let j = i + 1; j < netPunkte.length; j++){
+      const b = netPunkte[j], d = Math.hypot(a.x-b.x, a.y-b.y);
+      if(d < 140){
+        c.strokeStyle = `rgba(79,110,247,${.28 * (1 - d/140)})`;
+        c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(netZeichnen);
+}
+addEventListener('resize', netGroesse);
+netGroesse(); netZeichnen();
 
 // ── Init ──
 enhanceSelect(document.getElementById('f-raum'));
