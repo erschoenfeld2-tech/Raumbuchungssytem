@@ -29,10 +29,32 @@ select pg_temp.muss_scheitern($$select name from buchungen$$, 'permission denied
 select pg_temp.muss_scheitern($$select * from buchungen$$, 'permission denied');
 select pg_temp.muss_scheitern($$select gast_sitzung from buchungen$$, 'permission denied');
 select pg_temp.muss_scheitern($$select * from gast_etagen$$, 'permission denied');
+-- Tabelle nutzer (Namen, Karten-UIDs, Passwort-Hashes) ist komplett gesperrt
+select pg_temp.muss_scheitern($$select name from nutzer$$, 'permission denied');
+select pg_temp.muss_scheitern($$select passwort_hash from nutzer$$, 'permission denied');
+select pg_temp.muss_scheitern($$select nfc_uid from nutzer$$, 'permission denied');
 do $$ begin
-  if (select count(*) from nutzer) <> 0 then raise exception 'TEST FEHLGESCHLAGEN: anon kann nutzer lesen'; end if;
   perform id, raum, tisch, nutzer_id, start, ende, quelle, test, erstellt, gast_hash from buchungen;   -- erlaubte Spalten
 end $$;
+
+-- Live-Zustand nachstellen: freie Lese-Policy + Leserecht wie in der von Hand
+-- angelegten Live-Tabelle → die Sperr-Migration muss das wieder schließen
+reset role;
+create policy "alt_alle_duerfen_lesen" on nutzer for select using (true);
+grant select on nutzer to anon;
+set role anon;
+do $$ begin
+  if (select count(*) from nutzer) = 0 then raise exception 'TEST FEHLGESCHLAGEN: Live-Zustand nicht nachgestellt'; end if;
+end $$;
+reset role;
+\i supabase/migrations/20261119180000_nutzer_tabelle_sperren.sql
+set role anon;
+select pg_temp.muss_scheitern($$select name from nutzer$$, 'permission denied');
+reset role;
+do $$ begin
+  if exists (select 1 from pg_policies where tablename = 'nutzer') then raise exception 'TEST FEHLGESCHLAGEN: Policy auf nutzer übrig'; end if;
+end $$;
+set role anon;
 
 -- 2. Admin-Login läuft über die DB; Startpasswort muss geändert werden
 do $$ declare r record; begin
@@ -195,10 +217,8 @@ do $$ begin
   end if;
 end $$;
 set role anon;
-do $$ begin
-  -- Profilbilder (und Namen) anderer sind über den anon key nicht lesbar: RLS liefert 0 Zeilen
-  if exists (select 1 from nutzer where bild is not null or true) then raise exception 'TEST FEHLGESCHLAGEN: nutzer lesbar'; end if;
-end $$;
+-- Profilbilder (und Namen) anderer sind über den anon key nicht lesbar
+select pg_temp.muss_scheitern($$select bild from nutzer$$, 'permission denied');
 
 -- 10. Etagen: angemeldete Nutzer dürfen anlegen; ändern/löschen nur Ersteller oder Admin
 do $$ begin
