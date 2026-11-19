@@ -8,3 +8,6 @@ nfc_test.db
 
 # Editor/OS
 .DS_Store
+
+# Screenshots der lokalen Browser-Tests (tests/e2e_tests.js)
+tests/screenshots/
