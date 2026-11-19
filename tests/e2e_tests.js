@@ -331,6 +331,7 @@ async function main(){
   await test('Raumname, der schon existiert, wird im Editor abgelehnt', async () => {
     await page.click('#btn-etage-neu');
     await page.setInputFiles('#ed-datei', path.join(__dirname, 'fixtures', 'beispiel-etage.json'));
+    await page.waitForSelector('#ed-meldung.ok');   // Datei wird asynchron gelesen – erst danach die ID ändern
     await page.fill('#ed-id', 'anbau-kopie');
     await page.dispatchEvent('#ed-id', 'input');
     await page.click('#ed-speichern');
