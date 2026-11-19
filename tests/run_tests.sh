@@ -5,7 +5,7 @@
 #   1. Unit-Tests (Node, ohne Browser/DB)          tests/unit_tests.js
 #      + Kapazitätslogik der NFC-Brücke (Python)   tests/bridge_tests.py
 #   2. Migrationen auf eine FRISCHE lokale Postgres-Datenbank anwenden
-#      (inkl. zweitem Durchlauf der neuen Migrationen → idempotent?)
+#      (neue Migrationen je zweimal direkt hintereinander → idempotent?)
 #   3. SQL-Verhaltenstests als Rolle anon          tests/sql_tests.sql
 #   4. Browser-Tests mit Chromium/Playwright        tests/e2e_tests.js
 #
@@ -43,20 +43,18 @@ frische_db(){
   $P -c "drop database if exists rbtest" -c "create database rbtest"
   psql -X -q -v ON_ERROR_STOP=1 -f tests/supabase_stub.sql
   for f in supabase/migrations/*.sql; do
-    psql -X -q -v ON_ERROR_STOP=1 --single-transaction -f "$f" 2>&1 | grep -v NOTICE || true
-    [ "${PIPESTATUS[0]}" = 0 ] || { echo "✗ Migration $f fehlgeschlagen"; exit 1; }
+    # neue Migrationen (ab dem Etagen-Umbau) direkt zweimal → idempotent?
+    durchlaeufe=1; [[ "$(basename "$f")" > "20261119150000" ]] && durchlaeufe=2
+    for i in $(seq $durchlaeufe); do
+      psql -X -q -v ON_ERROR_STOP=1 --single-transaction -f "$f" 2>&1 | grep -v NOTICE || true
+      [ "${PIPESTATUS[0]}" = 0 ] || { echo "✗ Migration $f fehlgeschlagen (Durchlauf $i)"; exit 1; }
+    done
   done
 }
 
 echo "▶ Migrationen auf frische Datenbank"
 frische_db
-echo "  ✓ $(ls supabase/migrations/*.sql | wc -l) Migrationen angewendet"
-echo "▶ Neue Migrationen ein zweites Mal (idempotent?)"
-for f in supabase/migrations/202611191[5-9]*.sql; do
-  psql -X -q -v ON_ERROR_STOP=1 --single-transaction -f "$f" 2>&1 | grep -v NOTICE || true
-done
-echo "  ✓ ok"
-
+echo "  ✓ $(ls supabase/migrations/*.sql | wc -l) Migrationen angewendet (neue je zweimal → idempotent)"
 echo "▶ SQL-Tests"
 psql -X -q -v ON_ERROR_STOP=1 -o /dev/null -f tests/sql_tests.sql
 
