@@ -49,10 +49,11 @@ Only one is real. Always check which file you're touching before assuming it aff
   `1.302`) derive from each room's explicit `nr` — never renumber existing rooms;
   `tests/unit_tests.js` asserts the Hauptgebäude codes still match the pre-split layout.
 - There is no real auth. Normal users log in via the `nutzer_login(p_name, p_passwort)` RPC
-  (bcrypt hash in `nutzer.passwort_hash`, security-definer, never exposed via `nutzer_public`);
-  initial password is `123` with `passwort_muss_aendern = true`, so the first login forces a new
+  (bcrypt hash in `nutzer.passwort_hash`, security-definer, never exposed to the anon key);
+  the initial password (set in migration `20261007120000_*`; don't repeat it in docs or UI) comes
+  with `passwort_muss_aendern = true`, so the first login forces a new
   password (`nutzer_passwort_aendern` RPC, migration `20261007120000_*`). Since migration
-  `20261119150000_*` the admin (`Admin_Universal`) logs in the same way (its old frontend password
+  `20261119150000_*` the admin account (`ist_admin`) logs in the same way (its old frontend password
   became the initial hash with forced change) — there is no password in the frontend anymore. The
   admin password is kept in memory only (`adminPasswortSitzung`) because `etage_speichern`
   re-checks it server-side. The resulting user object (including `ist_admin`) is cached in
@@ -63,18 +64,34 @@ Only one is real. Always check which file you're touching before assuming it aff
   UI-only, not DB-enforced. Anyone with the (public) anon key could bypass it via the REST API
   directly. Fixing that properly means adding real Supabase Auth, which is a deliberate
   out-of-scope tradeoff for this project's size — don't "fix" it without discussing it first.
-- `nutzer_public` is a **view**, not the base table — created in
-  `supabase/migrations/20260821120000_harden_nutzer_exposure.sql` to keep `nfc_uid` (NFC card
-  UIDs) out of reach of the anon key; the base `nutzer` table has no anon/authenticated select
-  policy left. Always query `nutzer_public` from the frontend, never `nutzer` directly, unless you
-  also add the column you need to the view (and think about whether it's safe to expose).
-- Guest/test mode (`?gast` deep link or "Als Gast testen"): shared `Gast` user, bookings with
-  `test = true`, strictly separated from real ones in every query, deleted after 2 min by
-  `test_buchungen_aufraeumen()`. Rooms with `nfc: true` are web-bookable only outside guest mode.
-- Trigger `buchungen_pruefen` (migration `20261119150200_*`) sets `erstellt` server-side, requires
-  `start < ende` and rejects overlapping bookings of the same `tisch` (per `test` flag). Room
-  *capacity* is not known to the DB — it's enforced by `kapazitaetPruefen()` (`js/belegung.js`)
-  and `freie_plaetze()` in the NFC bridge.
+- **Privacy rule (project owner's requirement): never show passwords or other users' names.**
+  Since migration `20261119160000_*` the anon key cannot read user names at all: `nutzer_public`
+  (a view created in `20260821120000_*` to hide `nfc_uid`) is revoked, and `buchungen` only grants
+  column-level SELECT on `id, raum, tisch, nutzer_id, start, ende, quelle, test, erstellt,
+  gast_hash` — so always select explicit columns (`select('*')` fails), and PostgREST writes must
+  not ask for `return=representation` of other columns (the NFC bridge uses `?select=id`). The UI
+  labels bookings "Du" (own) or "belegt"; only `nutzer_login()` returns the user's own name.
+  Password inputs are never prefilled; admin actions reuse the in-memory login password or ask
+  via the in-page `bestaetigen(..., {passwort:true})` dialog (no `confirm()`/`prompt()`).
+- Guest/test mode (`?gast` deep link or "Als Gast testen"): each guest gets a secret session from
+  `gast_sitzung_starten()` (stored in the cached user object). Test bookings (`test = true`) can
+  only be created through `gast_buchen()` (the trigger rejects direct test inserts); own ones are
+  recognised via `gast_hash` = SHA-256 of the session. Guests may use the floor editor — their
+  floors live in `gast_etagen`, visible only to their session (`gast_etagen_laden`). All guest
+  writes go through RPCs that enforce **max 10 changes per session in 2 min**
+  (`gast_aenderung_zaehlen`). `gast_zuruecksetzen()` removes only the caller's bookings/floors;
+  `test_buchungen_aufraeumen()` expires test bookings after 2 min and guest floors after 15 min.
+  The admin can switch into the test system ("🧪 Testsystem"), delete any test booking and wipe
+  everything with `testsystem_leeren()` (password-checked). Rooms with `nfc: true` are not
+  web-bookable for guests.
+- Trigger `buchungen_pruefen` (migrations `20261119150200_*`, extended in `20261119160000_*`) sets
+  `erstellt` server-side, requires `start < ende`, guards `test`/`gast_sitzung` and rejects
+  overlapping bookings of the same `tisch` (per `test` flag). Room *capacity* is not known to the
+  DB — it's enforced by `kapazitaetPruefen()` (`js/belegung.js`) and `freie_plaetze()` in the NFC
+  bridge.
+- Floor plans render in layers (floor → furniture → walls/doors → labels on top) and doors in
+  the Hauptgebäude files open into the corridor; `e2e_tests.js` asserts no door arc intersects a
+  label or furniture.
 - DB schema is **not** hand-applied anymore — `supabase/migrations/*.sql` is the source of truth,
   deployed automatically by `.github/workflows/supabase-deploy.yml` (Supabase CLI `supabase db
   push`) on every push to `main` that touches `supabase/migrations/**`, gated behind the reusable

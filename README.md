@@ -10,10 +10,12 @@ Hausmesse 2026.
 | 🧪 **Testsystem (ohne Anmeldung ausprobieren)** | <https://erschoenfeld2-tech.github.io/Raumbuchungssytem/?gast> |
 | 🗺 Direkt zu einer Etage | `…/Raumbuchungssytem/?etage=hauptgebaeude-2` |
 
-> Das **Testsystem** läuft auf derselben Datenbank, ist aber strikt vom Echtbetrieb getrennt:
-> Gast-Buchungen sieht nur der Gast-Modus, und sie werden nach 2 Minuten automatisch gelöscht.
-> Räume mit NFC-Reader (Besprechungs- und Konferenzraum) sind dort nur per Karte buchbar,
-> damit sie für die Live-Demo am Stand frei bleiben.
+> Das **Testsystem** läuft auf derselben Datenbank, ist aber strikt vom Echtbetrieb getrennt.
+> Jeder Gast bekommt eine **eigene Sitzung**: Er kann buchen und sogar eigene Etagen anlegen
+> (die nur er sieht), alles mit einem Klick **zurücksetzen** und höchstens **10 Änderungen in
+> 2 Minuten** machen. Gast-Buchungen werden nach 2 Minuten, Gast-Etagen nach 15 Minuten
+> automatisch gelöscht. Räume mit NFC-Reader sind dort nur per Karte buchbar, damit sie für
+> die Live-Demo am Stand frei bleiben.
 
 ---
 
@@ -41,7 +43,11 @@ Hausmesse 2026.
 - **NFC-Check-in** – Karte an den Reader am Raum halten → automatische 60-Minuten-Buchung,
   erneutes Auflegen verlängert. Die Buchung erscheint sofort im Browser (📡).
 - **Persönliche Logins** – Passwörter werden gehasht in der Datenbank geprüft, beim ersten Login
-  muss das Startpasswort geändert werden. Ein Admin darf alle Buchungen löschen und Etagen anlegen.
+  muss das Startpasswort geändert werden. Ein Admin darf alle Buchungen löschen, Etagen anlegen
+  und das Testsystem verwalten.
+- **Datenschutz** – Namen anderer Personen und Passwörter werden nie angezeigt: fremde Buchungen
+  erscheinen nur als „belegt", eigene als „Du". Auch über die öffentliche Schnittstelle sind
+  Nutzernamen nicht abrufbar.
 - **Testsystem** für Messebesucher – ein Klick auf „Als Gast testen" oder der Link oben.
 - **Dunkles Design**, läuft auf Desktop und Handy, kein App-Download nötig.
 
@@ -74,9 +80,9 @@ flowchart LR
 
 ### 2.1 Für Nutzerinnen und Nutzer
 
-1. **Anmelden** mit Nutzername und Passwort. Beim ersten Mal (Startpasswort `123`) wirst du
-   aufgefordert, ein eigenes Passwort (mind. 6 Zeichen) zu wählen.
-   Nur schauen? → **„👤 Als Gast testen"**.
+1. **Anmelden** mit Nutzername und Passwort (Zugangsdaten gibt der Admin persönlich weiter).
+   Beim ersten Mal wirst du aufgefordert, ein eigenes Passwort (mind. 6 Zeichen) zu wählen.
+   Nur schauen? → **„👤 Als Gast testen"** (siehe 2.3).
 2. **Gebäude/Etage wählen** über die Tabs oben (Gebäude-Tabs erscheinen, sobald es mehr als ein
    Gebäude gibt).
 3. **Buchen**:
@@ -84,8 +90,8 @@ flowchart LR
    - in der **Liste** in ein freies Feld klicken → freien Tisch für diese halbe Stunde buchen, *oder*
    - im **Grundriss** auf einen Tisch klicken → er wird ins Formular übernommen.
    - ShareDesks lassen sich auch **ganztägig** buchen.
-4. **Eigene Buchungen** sind gelb umrandet. Anklicken → Details → **Löschen**.
-   Auf dem Handy steht oben eine anklickbare **Agenda** des Tages.
+4. **Eigene Buchungen** sind gelb umrandet und mit „Du" beschriftet, fremde heißen nur „belegt".
+   Anklicken → Details → **Löschen**. Auf dem Handy steht oben eine anklickbare **Agenda** des Tages.
 5. **Tischnummern**: `Etage.RaumTisch`, z. B. **1.203** = Etage 1, Raum 2, Tisch 3.
    Gebäude mit Kürzel bekommen ein Präfix, z. B. **A-0.201**.
 
@@ -96,11 +102,29 @@ flowchart LR
 3. `py nfc_supabase_bridge.py` starten (Python **3.13**, `pip install pyscard requests`).
 4. Karte auflegen → grüne LED = gebucht/verlängert, rote LED = unbekannte Karte oder Raum voll.
 
-### 2.3 Für Admins: neue Etage oder neues Gebäude
+### 2.3 Testsystem (Gäste)
+
+- **„👤 Als Gast testen"** startet eine eigene, geheime Gast-Sitzung (bleibt beim Neuladen erhalten).
+- Gäste können buchen, ihre eigenen Test-Buchungen löschen und über **„＋ Etage / Gebäude"**
+  bzw. **„✎ Etage bearbeiten"** eigene Etagen anlegen oder bestehende verändern – diese
+  Änderungen sieht **nur die eigene Sitzung**, niemand sonst.
+- **„↺ Meine Änderungen zurücksetzen"** löscht alle eigenen Test-Buchungen und Etagen sofort.
+  Die Änderungen anderer Gäste bleiben bestehen, bis sie automatisch gelöscht werden
+  (Buchungen nach 2 Minuten, Etagen nach 15 Minuten ohne Änderung).
+- **Limit:** höchstens **10 Änderungen in 2 Minuten** je Gast (Buchen, Löschen, Etage speichern
+  oder löschen). Der Banner zeigt, wie viele noch übrig sind; die Datenbank setzt das Limit durch.
+
+**Admin im Testsystem:** Über **„🧪 Testsystem"** wechselt der Admin in die Testsystem-Ansicht,
+sieht dort alle Test-Buchungen, darf jede davon löschen und mit **„🗑 Testsystem komplett leeren"**
+alle Test-Buchungen und Gast-Etagen auf einmal entfernen (echte Buchungen bleiben unberührt).
+**„🏢 Zurück zum Echtbetrieb"** wechselt zurück.
+
+### 2.4 Für Admins: neue Etage oder neues Gebäude
 
 **Variante A – im Browser (ohne Programmieren):**
 
-1. Als `Admin_Universal` anmelden → **„＋ Etage / Gebäude"**.
+1. Mit dem Admin-Konto anmelden → **„＋ Etage / Gebäude"**. (Gäste können dasselbe – ihre Etagen
+   bleiben aber privat in ihrer Sitzung, siehe 2.3.)
 2. **Grundlage wählen:**
    - **🖼 Grundriss-Bild laden** (PNG, JPG, SVG, WebP – z. B. ein Foto oder Scan des Fluchtplans).
      Das Bild wird verkleinert und auf Wunsch fürs dunkle Design invertiert.
@@ -131,13 +155,16 @@ Version ersetzt die Datei-Version mit gleicher ID; „DB-Etage löschen" stellt 
 > **Wichtig:** Raumnamen müssen im ganzen System eindeutig sein, und die Raum-Nummern (`nr`)
 > bestehender Räume nicht mehr ändern – sie stecken in den Tischcodes gespeicherter Buchungen.
 
-### 2.4 Admin-Passwort
+### 2.5 Admin-Passwort
 
-Das Admin-Passwort liegt seit Migration `20261119150000` gehasht in der Datenbank (vorher stand es
-im Klartext im öffentlichen Frontend). Beim **ersten Admin-Login nach dem Deployment** gilt noch
-das bisherige Passwort und muss sofort durch ein neues ersetzt werden – genau wie bei allen
-anderen Nutzern. Passwort vergessen → im Supabase-SQL-Editor:
-`update nutzer set passwort_hash = extensions.crypt('Neu123!', extensions.gen_salt('bf')), passwort_muss_aendern = true where name = 'Admin_Universal';`
+Das Admin-Passwort liegt seit Migration `20261119150000` nur noch als Hash in der Datenbank (vorher
+stand es im Klartext im öffentlichen Frontend). Beim **ersten Admin-Login nach dem Deployment** gilt
+noch das bisherige Passwort und muss sofort durch ein neues ersetzt werden – genau wie bei allen
+anderen Nutzern. Die Seite zeigt Passwörter nie an; für Admin-Aktionen wird das Passwort aus der
+Anmeldung verwendet (nur im Arbeitsspeicher) oder verdeckt abgefragt.
+Passwort vergessen → im Supabase-SQL-Editor ein vorläufiges Passwort setzen (das beim nächsten
+Login sofort geändert werden muss):
+`update nutzer set passwort_hash = extensions.crypt('<vorläufiges-passwort>', extensions.gen_salt('bf')), passwort_muss_aendern = true where ist_admin;`
 
 ---
 
@@ -175,9 +202,10 @@ direkt per Doppelklick (`file://`) funktioniert.
 | Tabelle/View | Spalten (Auszug) | Zugriff mit dem öffentlichen anon key |
 |---|---|---|
 | `nutzer` | `id, name, nfc_uid, ist_admin, passwort_hash, passwort_muss_aendern` | **kein** direkter Zugriff |
-| `nutzer_public` (View) | `id, name, ist_admin` | lesen |
-| `buchungen` | `id, raum, tisch, nutzer_id, name, start, ende, quelle ('web'/'nfc'), test, erstellt` | lesen/schreiben (siehe Einschränkung) |
-| `etagen` | `id, definition (jsonb), aktualisiert` | nur lesen; schreiben nur per RPC |
+| `nutzer_public` (View) | `id, name, ist_admin` | **gesperrt** (seit `20261119160000`) |
+| `buchungen` | `id, raum, tisch, nutzer_id, name, start, ende, quelle ('web'/'nfc'), test, erstellt, gast_sitzung, gast_hash` | lesen ohne `name` und `gast_sitzung`; schreiben (siehe Einschränkung); Test-Buchungen nur per RPC |
+| `etagen` | `id, definition (jsonb), aktualisiert` | nur lesen; schreiben nur per RPC (Admin) |
+| `gast_sitzungen`, `gast_etagen`, `gast_aenderungen` | Gast-Sitzungen, private Gast-Etagen, Änderungszähler | kein direkter Zugriff, nur per RPC |
 
 `start`/`ende` sind Texte im Format `YYYY-MM-DD HH:MM` (lokale Zeit) – dadurch funktionieren
 Überlappungsabfragen als einfacher Textvergleich.
@@ -185,11 +213,17 @@ direkt per Doppelklick (`file://`) funktioniert.
 **Funktionen (RPC, `security definer`):**
 `nutzer_login`, `nutzer_passwort_aendern` (bcrypt via pgcrypto), `nutzer_by_nfc` (Karten-UID →
 Nutzer, ohne die UID-Liste preiszugeben), `test_buchungen_aufraeumen` (Gast-Buchungen > 2 Min),
-`etage_speichern` / `etage_loeschen` (prüfen das Admin-Passwort serverseitig).
+`etage_speichern` / `etage_loeschen` (prüfen das Admin-Passwort serverseitig);
+Testsystem: `gast_sitzung_starten`, `gast_buchen`, `gast_buchung_loeschen`, `gast_etagen_laden`,
+`gast_etage_speichern`, `gast_etage_loeschen` (alle mit Limit 10 Änderungen / 2 Min. je Sitzung),
+`gast_zuruecksetzen` (nur die eigene Sitzung), `testsystem_leeren` (Admin).
+Die Gast-Sitzung ist eine geheime UUID; lesbar ist nur ihr SHA-256-Hash (`gast_hash`), an dem der
+Browser die eigenen Test-Buchungen erkennt.
 
-**Trigger `buchungen_pruefen`:** setzt `erstellt` immer serverseitig, verlangt `start < ende` und
-verhindert, dass derselbe Tisch für überlappende Zeiten zweimal gebucht wird – auch wenn zwei
-Browser gleichzeitig klicken (pro Raum serialisiert über einen Advisory-Lock).
+**Trigger `buchungen_pruefen`:** setzt `erstellt` immer serverseitig, verlangt `start < ende`,
+lässt Test-Buchungen nur über `gast_buchen` zu und verhindert, dass derselbe Tisch für
+überlappende Zeiten zweimal gebucht wird – auch wenn zwei Browser gleichzeitig klicken (pro Raum
+serialisiert über einen Advisory-Lock).
 
 ### 3.3 Etagen-Format
 
@@ -226,13 +260,17 @@ Format und ersetzen Datei-Etagen mit gleicher `id`.
 - Der Supabase-**anon key ist öffentlich** (steht in `js/config.js`) – das ist bei Supabase so
   vorgesehen. Rechte regeln die Row-Level-Security-Policies und `security definer`-Funktionen.
 - Passwörter (auch Admin) nur als bcrypt-Hash, Prüfung ausschließlich in der Datenbank.
-- Karten-UIDs (`nfc_uid`) sind über den anon key nicht auslesbar.
+- Karten-UIDs (`nfc_uid`) und Nutzernamen sind über den anon key nicht auslesbar; die Seite zeigt
+  nur den eigenen Namen, fremde Buchungen als „belegt".
+- Gast-Sitzungen sind geheime Zufalls-IDs; private Gast-Etagen und das Zurücksetzen hängen daran,
+  das Änderungslimit prüft die Datenbank.
 - Alle Texte aus Datenbank und Etagen-Dateien werden vor der Anzeige escaped; importierte
   Etagen-Dateien werden geparst, nie ausgeführt.
 - **Bekannte, bewusst akzeptierte Einschränkung:** Es gibt keine echte Supabase-Auth-Sitzung.
   Die Policies auf `buchungen` sind daher offen (`using (true)`); „nur eigene Buchungen löschen"
   wird in der Oberfläche durchgesetzt, nicht in der Datenbank. Wer den anon key direkt gegen die
-  REST-API benutzt, könnte das umgehen. Eine Lösung wäre echte Supabase-Auth (siehe `CLAUDE.md`).
+  REST-API benutzt, könnte das umgehen. Ebenso kann ein Gast durch eine neue Sitzung das
+  Änderungslimit neu starten. Eine Lösung wäre echte Supabase-Auth (siehe `CLAUDE.md`).
 
 ---
 
@@ -267,7 +305,7 @@ bash tests/run_tests.sh
 | NFC-Brücke | `tests/bridge_tests.py` | Kapazitätslogik der Brücke = Logik im Browser |
 | Migrationen | `tests/run_tests.sh` | alle Migrationen auf **frischer** Datenbank, neue zusätzlich ein zweites Mal (idempotent) |
 | SQL | `tests/sql_tests.sql` | als Rolle `anon`: Admin-Login, Passwortwechsel, Etagen-Rechte, Doppelbuchungs-Trigger, `erstellt`, Aufräumen |
-| Browser | `tests/e2e_tests.js` | Chromium klickt alle Abläufe durch (Login, Buchen, Kapazität, Grundriss, Etagenwechsel, Löschen, XSS, Gast, Admin, Editor mit Bild-/JSON-Import, Export, Löschen) und speichert Screenshots in `tests/screenshots/` |
+| Browser | `tests/e2e_tests.js` | Chromium klickt alle Abläufe durch (Login, Buchen, Kapazität, Grundriss, Etagenwechsel, Türen überdecken nichts, Löschen, Datenschutz/XSS, zwei Gäste mit privaten Etagen, Zurücksetzen, Limit, Admin, Admin im Testsystem, Editor mit Bild-/JSON-Import, Export, Löschen) und speichert Screenshots in `tests/screenshots/` |
 
 Die Browser-Tests leiten alle Supabase-Aufrufe über `tests/mini_postgrest.js` auf eine **lokale**
 Test-Datenbank um (`tests/supabase_stub.sql` bildet die Supabase-Rollen nach) – die echte
@@ -344,10 +382,13 @@ letzte Pages-Workflow grün ist; Settings → Pages kontrollieren.
 
 **Admin-Login klappt nicht** – Sind die Migrationen deployt (Actions → „Supabase Schema Deploy")?
 Vor `20261119150000` kennt `nutzer_login` keine Admins. Beim ersten Login nach dem Deployment gilt
-das bisherige Admin-Passwort, danach das neu gewählte. Zurücksetzen: siehe 2.4.
+das bisherige Admin-Passwort, danach das neu gewählte. Zurücksetzen: siehe 2.5.
 
 **Login schlägt fehl trotz korrektem Passwort** – Der Name wird ohne Groß-/Kleinschreibung
-verglichen, muss aber exakt existieren (`select name from nutzer_public;`).
+verglichen, muss aber exakt existieren (im Supabase-SQL-Editor: `select name from nutzer;`).
+
+**Gast: „Limit erreicht"** – gewollt: höchstens 10 Änderungen in 2 Minuten je Gast-Sitzung.
+Kurz warten; der Zähler läuft automatisch ab.
 
 **Neue Etage erscheint nicht** – Browser-Konsole öffnen: `[Etagen] … ignoriert: …` nennt den
 Grund (z. B. doppelter Raumname). Bei Datei-Etagen `node tests/unit_tests.js` ausführen und
