@@ -232,6 +232,8 @@
       <input type="password" id="pw-neu2" placeholder="Wiederholen"/>
     </div>
     <button id="login-btn" onclick="anmelden()">Anmelden</button>
+    <button id="gast-btn" type="button" onclick="gastAnmelden()"
+      style="background:var(--surface2);border:1px solid var(--border);margin-top:10px">👤 Als Gast testen</button>
     <div class="login-error" id="login-err"></div>
     <div id="config-banner"></div>
   </div>
@@ -240,6 +242,12 @@
 <!-- ══════════ APP ══════════ -->
 <div id="app">
   <div class="live"><div class="dot"></div>Live</div>
+
+  <div id="gast-banner" style="display:none;background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.35);
+    border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px">
+    🧪 <strong>Testsystem (Gast)</strong> – Buchungen werden nach 2 Minuten automatisch gelöscht.
+    Besprechungs- &amp; Konferenzraum sind hier nur per NFC buchbar.
+  </div>
 
   <div class="top">
     <div>
@@ -377,6 +385,14 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const ADMIN_NAME = 'Admin_Universal';
 const ADMIN_PASSWORT = 'System-2026!';
 const H_START = 7, H_ENDE = 20;
+const GAST_NAME = 'Gast';       // gemeinsamer Nutzer des Testsystems (siehe Migration 20261119120000)
+const istGast = () => !!(currentUser && currentUser.gast);
+// Im Testsystem sind Meetingräume nur per NFC buchbar, damit sie für die Live-Demo frei bleiben.
+function webBuchungErlaubt(raumName){
+  const r = ROOMS.find(x => x.name === raumName);
+  return !(istGast() && r && r.typ === 'meeting');
+}
+const WEB_GESPERRT_MSG = '✗ Im Testsystem ist dieser Raum nur per NFC buchbar.';
 
 const CONFIGURED = SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY.length > 20;
 const supa = CONFIGURED ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
@@ -521,6 +537,13 @@ async function anmelden(){
   }
   loginAbschliessen({ id: u.id, name: u.name, ist_admin: u.ist_admin });
 }
+async function gastAnmelden(){
+  document.getElementById('login-err').className = 'login-error';
+  if(!CONFIGURED){ loginFehler('Supabase ist noch nicht konfiguriert.'); return; }
+  const { data, error } = await supa.from('nutzer_public').select('id,name').eq('name', GAST_NAME).maybeSingle();
+  if(error || !data){ loginFehler('Gast-Zugang ist nicht eingerichtet (Migration fehlt).'); return; }
+  loginAbschliessen({ id: data.id, name: 'Gast', ist_admin: false, gast: true });
+}
 async function passwortWechseln(){
   const neu = document.getElementById('pw-neu').value;
   const neu2 = document.getElementById('pw-neu2').value;
@@ -555,6 +578,7 @@ async function zeigeApp(){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('user-name').textContent = currentUser.name + (currentUser.ist_admin ? ' (Administrator)' : '');
+  document.getElementById('gast-banner').style.display = istGast() ? 'block' : 'none';
   document.getElementById('avatar').textContent = currentUser.name.split(' ').map(w=>w[0]).join('').slice(0,2);
   setDatum();
   await ladeNutzerMap();
@@ -864,10 +888,12 @@ async function ladeNutzerMap(){
 
 async function ladeBuchungen(datum){
   if(!CONFIGURED) return [];
-  const { data, error } = await supa.from('buchungen')
-    .select('*')
-    .like('start', datum + '%')
-    .order('start');
+  if(istGast()) await supa.rpc('test_buchungen_aufraeumen'); // abgelaufene Test-Buchungen (>2 Min) löschen
+  let q = supa.from('buchungen').select('*').like('start', datum + '%');
+  // Echtbetrieb: nur echte Buchungen. Testsystem: Test-Buchungen + die per NFC
+  // gebuchten Meetingräume, damit man deren Belegung auch dort sieht.
+  q = istGast() ? q.or('test.eq.true,raum.in.(Besprechungsraum,Konferenzraum)') : q.eq('test', false);
+  const { data, error } = await q.order('start');
   if(error){ console.error(error); toast('Fehler beim Laden: ' + error.message, 'error'); return []; }
   return data.map(b => ({...b, name: nutzerMap[b.nutzer_id] || '?'}));
 }
@@ -877,6 +903,7 @@ async function pruefeKapazitaet(raum, start, ende, tisch){
   const { data, error } = await supa.from('buchungen')
     .select('id,tisch')
     .eq('raum', raum)
+    .eq('test', istGast())
     .lt('start', ende)
     .gt('ende', start);
   if(error) return { ok:false, msg:'Fehler bei Kapazitätsprüfung: ' + error.message };
@@ -1036,12 +1063,13 @@ async function buchen(){
     endeVoll = datum + ' ' + ende;
   }
 
+  if(!webBuchungErlaubt(raum)){ toast(WEB_GESPERRT_MSG, 'error'); return; }
   const kap = await pruefeKapazitaet(raum, startVoll, endeVoll, tisch);
   if(!kap.ok){ toast('✗ ' + kap.msg, 'error'); return; }
 
   const { error } = await supa.from('buchungen').insert({
     raum, tisch, nutzer_id: currentUser.id, name: currentUser.name,
-    start: startVoll, ende: endeVoll, quelle: 'web'
+    start: startVoll, ende: endeVoll, quelle: 'web', test: istGast()
   });
   if(error){ toast('✗ Fehler: ' + error.message, 'error'); return; }
   toast('✓ Buchung erstellt', 'success');
@@ -1097,7 +1125,7 @@ function zelleOeffnen(raumName, slotStart, slotEnde){
   }
 
   const freieTische = room.tische.filter(t => !treffer.some(b => b.tisch === t.code));
-  if(currentUser && belegt < room.kapazitaet && freieTische.length){
+  if(currentUser && webBuchungErlaubt(raumName) && belegt < room.kapazitaet && freieTische.length){
     html += `<label style="margin-top:12px">Freien Tisch buchen (${slotStart.slice(11)}–${slotEnde.slice(11)} Uhr)</label>
       <select id="slot-tisch-sel">${freieTische.map(t => `<option value="${t.code}">Tisch ${t.code}</option>`).join('')}</select>
       <button class="btn-book" onclick="slotSchnellbuchen('${raumName}','${slotStart}','${slotEnde}')">✓ Buchen</button>`;
@@ -1116,12 +1144,13 @@ function maxGleichzeitig(treffer, von, bis){
 function slotModalClose(){ document.getElementById('slot-modal').classList.remove('open'); }
 
 async function slotSchnellbuchen(raumName, slotStart, slotEnde){
+  if(!webBuchungErlaubt(raumName)){ toast(WEB_GESPERRT_MSG, 'error'); return; }
   const tisch = document.getElementById('slot-tisch-sel').value;
   const kap = await pruefeKapazitaet(raumName, slotStart, slotEnde, tisch);
   if(!kap.ok){ toast('✗ ' + kap.msg, 'error'); return; }
   const { error } = await supa.from('buchungen').insert({
     raum: raumName, tisch, nutzer_id: currentUser.id, name: currentUser.name,
-    start: slotStart, ende: slotEnde, quelle: 'web'
+    start: slotStart, ende: slotEnde, quelle: 'web', test: istGast()
   });
   if(error){ toast('✗ Fehler: ' + error.message, 'error'); return; }
   toast('✓ Buchung erstellt', 'success');
