@@ -28,10 +28,10 @@ registriereEtage({
     {typ:'wc',     name:'WC',       x:820, y:270, w:120, h:190},
   ],
 
+  // Türen schlagen in den Flur auf (s: 1 = nach unten, -1 = nach oben)
   tueren: [
-    {o:'h', x:110, y:190, len:32, s:-1}, {o:'h', x:315, y:190, len:32, s:-1}, {o:'h', x:520, y:190, len:32, s:-1},
-    {o:'h', x:715, y:190, len:32, s:-1}, {o:'h', x:865, y:190, len:32, s:-1},
-    {o:'h', x:130, y:270, len:32, s:1},  {o:'h', x:380, y:270, len:40, s:1},  {o:'h', x:640, y:270, len:32, s:1},
-    {o:'h', x:865, y:270, len:32, s:1},
-  ],
-});
+    {o:'h', x:110, y:190, len:32, s:1},  {o:'h', x:315, y:190, len:32, s:1},  {o:'h', x:520, y:190, len:32, s:1},
+    {o:'h', x:715, y:190, len:32, s:1},  {o:'h', x:865, y:190, len:32, s:1},
+    {o:'h', x:130, y:270, len:32, s:-1}, {o:'h', x:380, y:270, len:40, s:-1}, {o:'h', x:640, y:270, len:32, s:-1},
+    {o:'h', x:865, y:270, len:32, s:-1},
+  ],});

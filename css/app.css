@@ -146,14 +146,15 @@ select,input[type=date],input[type=time],input.cs-input{width:100%;background:va
 .plan-extra{fill:#232637;stroke:none}
 .plan-label{fill:var(--text);font-size:12px;font-weight:700;pointer-events:none;text-anchor:middle;
   paint-order:stroke;stroke:#0f1117;stroke-width:3px;stroke-linejoin:round}
-.plan-sub{fill:var(--muted);font-size:9px;pointer-events:none;text-anchor:middle;font-style:italic}
+.plan-sub{fill:var(--muted);font-size:9px;pointer-events:none;text-anchor:middle;font-style:italic;
+  paint-order:stroke;stroke:#0f1117;stroke-width:3px;stroke-linejoin:round}
 .plan-flur{fill:#12141c;stroke:none}
 .plan-flur-label{fill:#4a5075;font-size:12px;letter-spacing:.25em;text-anchor:middle;text-transform:uppercase}
 .plan-wall{fill:none;stroke:#b9c0e6;stroke-width:4;stroke-linejoin:miter}
 .plan-wall.outer{stroke-width:7}
 .plan-window{fill:#0f1117;stroke:var(--accent);stroke-width:1.2}
 .plan-door{fill:none;stroke:var(--muted);stroke-width:1}
-.plan-text{fill:#6c7499;font-size:9px;pointer-events:none}
+.plan-text{fill:#6c7499;font-size:9px;pointer-events:none;paint-order:stroke;stroke:#0f1117;stroke-width:3px}
 .plan-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--muted)}
 .plan-legend span{display:flex;align-items:center;gap:6px}
 .plan-legend .sw{width:14px;height:14px;border-radius:3px;border:1px solid var(--border)}
@@ -167,7 +168,11 @@ select,input[type=date],input[type=time],input.cs-input{width:100%;background:va
 .desk-badge.belegt{fill:var(--red)}
 .plan-desk.selected .desk-badge{stroke:var(--amber);stroke-width:2.5}
 .desk-plus{fill:#fff;font-size:14px;font-weight:800;text-anchor:middle;dominant-baseline:central;pointer-events:none}
-.desk-code{fill:var(--muted);font-size:9px;text-anchor:middle;pointer-events:none}
+.desk-code{fill:var(--muted);font-size:9px;text-anchor:middle;pointer-events:none;
+  paint-order:stroke;stroke:#0f1117;stroke-width:3px;stroke-linejoin:round}
+.plan-desk-moebel{cursor:pointer}
+.plan-desk-moebel:hover{filter:brightness(1.25)}
+.plan-room-sd{cursor:pointer}
 
 /* ── Eigene Dropdowns / Zeitfelder im Dark-Design ── */
 .cs{position:relative}
@@ -272,6 +277,14 @@ button:active{transform:scale(.97)}
 /* Grid-Spalten dürfen schmaler als ihr Inhalt werden – der Kalender scrollt dann in sich,
    statt die ganze Seite auf dem Handy seitlich zu verbreitern */
 .container > *{min-width:0}
+
+#gast-banner .banner-zeile{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#gast-banner button{font-size:12px;padding:6px 12px;border-color:rgba(245,158,11,.5)}
+.banner-limit{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;
+  background:rgba(245,158,11,.18);font-weight:600;font-variant-numeric:tabular-nums}
+.btn-admin.aktiv{background:rgba(245,158,11,.18);border-color:var(--amber)}
+#frage-pw{margin-top:2px}
+#frage-modal{z-index:400}   /* auch über dem Etagen-Editor */
 
 /* ── Gebäude-/Etagen-Auswahl ── */
 .ort-tabs{display:flex;gap:16px;flex-wrap:wrap}

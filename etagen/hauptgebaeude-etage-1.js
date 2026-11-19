@@ -30,13 +30,14 @@ registriereEtage({
     {typ:'wc',      name:'WC',      x:820, y:270, w:120, h:190},
   ],
 
+  // Türen schlagen in den Flur auf (s: 1 = nach unten, -1 = nach oben), damit
+  // Türbögen keine Möbel oder Beschriftungen in den Räumen überdecken
   tueren: [
-    {o:'h', x:60,  y:190, len:32, s:-1}, {o:'h', x:250, y:190, len:32, s:-1}, {o:'h', x:520, y:190, len:32, s:-1},
-    {o:'h', x:745, y:190, len:32, s:-1}, {o:'h', x:865, y:190, len:32, s:-1},
-    {o:'h', x:70,  y:270, len:32, s:1},  {o:'h', x:240, y:270, len:32, s:1},  {o:'h', x:410, y:270, len:32, s:1},
-    {o:'h', x:575, y:270, len:40, s:1},  {o:'h', x:740, y:270, len:32, s:1},  {o:'h', x:865, y:270, len:32, s:1},
+    {o:'h', x:110, y:190, len:32, s:1},  {o:'h', x:250, y:190, len:32, s:1},  {o:'h', x:520, y:190, len:32, s:1},
+    {o:'h', x:745, y:190, len:32, s:1},  {o:'h', x:865, y:190, len:32, s:1},
+    {o:'h', x:70,  y:270, len:32, s:-1}, {o:'h', x:240, y:270, len:32, s:-1}, {o:'h', x:410, y:270, len:32, s:-1},
+    {o:'h', x:575, y:270, len:40, s:-1}, {o:'h', x:740, y:270, len:32, s:-1}, {o:'h', x:865, y:270, len:32, s:-1},
     {o:'v', x:20,  y:215, len:40, s:1},
   ],
-
   texte: [{x:70, y:234, t:'Eingang'}],
 });

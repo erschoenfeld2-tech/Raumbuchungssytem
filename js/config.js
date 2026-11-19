@@ -16,11 +16,14 @@ const ZEILE_PX = 48;
 // Wie oft die Ansicht neue Buchungen lädt (Millisekunden)
 const AKTUALISIERUNG_MS = 5000;
 
-// Gemeinsamer Nutzer des Testsystems (siehe Migration 20261119120000_gast_testsystem.sql)
+// Anzeigename im Testsystem (jeder Gast hat seine eigene, geheime Sitzung)
 const GAST_NAME = 'Gast';
-// Nach wie vielen Minuten Test-Buchungen gelöscht werden (nur Anzeige-Text –
-// der echte Wert steht in der Funktion test_buchungen_aufraeumen() in der DB)
-const GAST_LOESCH_MINUTEN = 2;
+// Regeln des Testsystems – nur für Anzeigetexte; die echten Werte prüft die
+// Datenbank (Migration 20261119160000_gast_sitzungen_und_datenschutz.sql)
+const GAST_LOESCH_MINUTEN = 2;          // Test-Buchungen werden danach gelöscht
+const GAST_ETAGEN_MINUTEN = 15;         // eigene Gast-Etagen ohne Änderung danach
+const GAST_LIMIT = 10;                  // Änderungen je Gast-Sitzung …
+const GAST_LIMIT_MINUTEN = 2;           // … in diesem Zeitraum
 
 // localStorage-Schlüssel (nur Komfort: angemeldeter Nutzer, letzte Etage)
 const SPEICHER_USER = 'rb_user2';

@@ -10,6 +10,8 @@
 // globalen Listen ETAGEN (alle Etagen) und ROOMS (alle buchbaren Räume)
 // zusammengeführt. Eine Datenbank-Etage mit derselben id ersetzt die
 // gleichnamige Datei-Etage (so kann ein Admin eine Etage im Browser anpassen).
+// Im Testsystem kommen zuletzt die Gast-Etagen der eigenen Sitzung dazu
+// (nur dort sichtbar); auch sie ersetzen Etagen mit gleicher id.
 //
 // Raumnamen müssen systemweit eindeutig sein: buchungen.raum speichert nur
 // den Namen, und die NFC-Brücke (nfc_bridge_config.py) schreibt ihn 1:1.
@@ -125,8 +127,8 @@ function normalisiereEtage(def, quelle){
   return { etage: fehler.length ? null : etage, fehler };
 }
 
-// Führt Datei- und Datenbank-Etagen zusammen und baut ETAGEN/ROOMS neu auf.
-function etagenAufbauen(dbDefinitionen){
+// Führt Datei-, Datenbank- und Gast-Etagen zusammen und baut ETAGEN/ROOMS neu auf.
+function etagenAufbauen(dbDefinitionen, gastDefinitionen){
   const warnungen = [];
   const nachId = new Map();
   const hinzufuegen = (def, quelle) => {
@@ -136,6 +138,7 @@ function etagenAufbauen(dbDefinitionen){
   };
   DATEI_ETAGEN.forEach(d => hinzufuegen(d, 'datei'));
   (dbDefinitionen || []).forEach(d => hinzufuegen(d, 'datenbank'));
+  (gastDefinitionen || []).forEach(d => hinzufuegen(d, 'gast'));
 
   const raumBesitzer = new Map();
   const ergebnis = [];

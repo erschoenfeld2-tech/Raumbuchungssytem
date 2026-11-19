@@ -9,6 +9,10 @@
 //      exportieren (.js → in etagen/ ablegen und in index.html eintragen)
 // Die Datenbank prüft beim Speichern das Admin-Passwort erneut
 // (RPC etage_speichern, Migration 20261119150100).
+//
+// Gäste dürfen den Editor ebenfalls benutzen: Ihre Etagen landen über
+// gast_etage_speichern() nur in ihrer eigenen Sitzung (für niemanden sonst
+// sichtbar) und zählen zum Änderungslimit des Testsystems.
 // ══════════════════════════════════════════════════════════
 
 const ED_RASTER = 5;                  // Einrasten in 5-px-Schritten
@@ -16,7 +20,7 @@ const ED_MIN = 20;                    // kleinste Raumgröße
 const ED_MAX_BILD_PX = 1600;          // Bilder werden auf diese Breite verkleinert
 const ED_MAX_BILD_ZEICHEN = 3500000;  // ~2,6 MB Bild (Grenze der DB-Funktion: 4 MB gesamt)
 
-let ed = null;   // { def, auswahl:{art:'raeume'|'bereiche', i}|null, idManuell, vorschau, quelleDb, bildRoh }
+let ed = null;   // { def, auswahl:{art:'raeume'|'bereiche', i}|null, idManuell, vorschau, loeschbar, bildRoh }
 
 function edEl(id){ return document.getElementById(id); }
 function edRaster(v){ return Math.round(v / ED_RASTER) * ED_RASTER; }
@@ -34,25 +38,37 @@ function leereDefinition(){
 
 // Öffnen: etage = bestehende Etage zum Bearbeiten, null = neue Etage
 function editorOeffnen(etage){
-  if(!currentUser || !currentUser.ist_admin) return;
+  if(!currentUser || !(currentUser.ist_admin || istGast())) return;
+  const gast = istGast();
   const def = etage ? etageAlsDefinition(etage) : leereDefinition();
   def.raeume = def.raeume || []; def.bereiche = def.bereiche || [];
-  ed = { def, auswahl: null, idManuell: !!etage, vorschau: false, quelleDb: !!etage && etage.quelle === 'datenbank', bildRoh: null };
+  // Löschen geht nur für Etagen, die man selbst gespeichert hat (Admin: DB, Gast: eigene Sitzung)
+  const loeschbar = !!etage && etage.quelle === (gast ? 'gast' : 'datenbank');
+  ed = { def, auswahl: null, idManuell: !!etage, vorschau: false, loeschbar, bildRoh: null };
   ed.stand = JSON.stringify(def);   // zum Erkennen ungespeicherter Änderungen
-  edEl('ed-titel').textContent = etage ? `Etage bearbeiten: ${etage.gebaeude} · ${etage.name}` : 'Neue Etage / neues Gebäude';
-  edEl('ed-pw').value = adminPasswortSitzung || '';
+  edEl('ed-titel').textContent = (etage ? `Etage bearbeiten: ${etage.gebaeude} · ${etage.name}` : 'Neue Etage / neues Gebäude')
+    + (gast ? ' (Testsystem)' : '');
+  // Passwortfeld nie vorausfüllen; nur zeigen, wenn es gebraucht wird
+  edEl('ed-pw').value = '';
+  edEl('ed-pw-zeile').style.display = !gast && !adminPasswortSitzung ? 'block' : 'none';
+  edEl('ed-speichern').textContent = gast ? '💾 Speichern (nur für mich)' : '💾 In Datenbank speichern';
+  edEl('ed-db-loeschen').textContent = gast ? '🗑 Meine Etage löschen' : '🗑 DB-Etage löschen';
   edEl('ed-gebaeude-liste').innerHTML = gebaeudeListe().map(g => `<option value="${esc(g)}"></option>`).join('');
-  edMeldung(etage && etage.quelle === 'datei'
-    ? 'Diese Etage stammt aus einer Datei. Speichern in der Datenbank legt eine Kopie an, die die Datei-Version ersetzt.' : '');
+  edMeldung(gast
+    ? `Testsystem: Deine Etagen sieht nur deine Sitzung, sie werden nach ${GAST_ETAGEN_MINUTEN} Min. ohne Änderung automatisch gelöscht.`
+    : etage && etage.quelle === 'datei'
+      ? 'Diese Etage stammt aus einer Datei. Speichern in der Datenbank legt eine Kopie an, die die Datei-Version ersetzt.' : '');
   edFormularFuellen();
   edZeichnen();
   edEl('editor-bg').classList.add('open');
 }
 // nachfragen = true: bei ungespeicherten Änderungen erst bestätigen lassen
-function editorSchliessen(nachfragen){
+async function editorSchliessen(nachfragen){
   if(!ed) return;
-  if(nachfragen !== false && JSON.stringify(ed.def) !== ed.stand
-     && !confirm('Ungespeicherte Änderungen an der Etage verwerfen?')) return;
+  if(nachfragen !== false && JSON.stringify(ed.def) !== ed.stand){
+    const { ok } = await bestaetigen('Ungespeicherte Änderungen an der Etage verwerfen?', { knopf: 'Verwerfen' });
+    if(!ok) return;
+  }
   edEl('editor-bg').classList.remove('open');
   ed = null;
 }
@@ -68,7 +84,7 @@ function edFormularFuellen(){
   edEl('ed-breite').value = d.breite;
   edEl('ed-hoehe').value = d.hoehe;
   edEl('ed-bild-entfernen').style.display = d.hintergrund ? '' : 'none';
-  edEl('ed-db-loeschen').style.display = ed.quelleDb ? '' : 'none';
+  edEl('ed-db-loeschen').style.display = ed.loeschbar ? '' : 'none';
   edAuswahlFormular();
 }
 function edKopfUebernehmen(){
@@ -358,7 +374,7 @@ function edDateiImportieren(datei){
       const { fehler } = normalisiereEtage(def, 'import');
       def.raeume = Array.isArray(def.raeume) ? def.raeume : [];
       def.bereiche = Array.isArray(def.bereiche) ? def.bereiche : [];
-      ed.def = def; ed.auswahl = null; ed.idManuell = true; ed.quelleDb = false;
+      ed.def = def; ed.auswahl = null; ed.idManuell = true; ed.loeschbar = false;
       edFormularFuellen();
       edZeichnen();
       edMeldung(fehler.length ? 'Datei geladen, aber noch fehlerhaft:\n• ' + fehler.join('\n• ') : `Datei "${datei.name}" geladen (${def.raeume.length} Räume).`, fehler.length ? 'fehler' : 'ok');
@@ -382,31 +398,43 @@ function edPruefen(){
   if(fehler.length){ edMeldung('Bitte korrigieren:\n• ' + fehler.join('\n• '), 'fehler'); return null; }
   return etage;
 }
+// Admin-Passwort: aus der Anmeldung (nur im Speicher) oder aus dem verdeckten Feld
+function edAdminPasswort(){
+  return adminPasswortSitzung || edEl('ed-pw').value;
+}
 async function edInDbSpeichern(){
   const etage = edPruefen();
   if(!etage) return;
-  const pw = edEl('ed-pw').value;
-  if(!pw){ edMeldung('Zum Speichern das Admin-Passwort eingeben.', 'fehler'); edEl('ed-pw').focus(); return; }
+  const gast = istGast();
+  const pw = gast ? null : edAdminPasswort();
+  if(!gast && !pw){ edMeldung('Zum Speichern dein Passwort eingeben.', 'fehler'); edEl('ed-pw').focus(); return; }
   const def = etageAlsDefinition(etage);
   const btn = edEl('ed-speichern');
   btn.disabled = true;
-  const { fehler, id } = await etageSpeichernDb(currentUser.name, pw, def);
+  const r = gast ? await gastEtageSpeichern(currentUser.sitzung, def) : await etageSpeichernDb(currentUser.name, pw, def);
   btn.disabled = false;
-  if(fehler){ edMeldung('Speichern fehlgeschlagen: ' + fehler, 'fehler'); return; }
-  adminPasswortSitzung = pw;
+  if(r.fehler){
+    if(gast && await sitzungPruefen(r.fehler)) return;
+    edMeldung('Speichern fehlgeschlagen: ' + r.fehler, 'fehler'); return;
+  }
+  if(!gast) adminPasswortSitzung = pw;
+  limitAnzeigen(r.verbleibend);
   await etagenNeuLaden();
   editorSchliessen(false);
-  switchEtage(etageById(id) ? id : (ETAGEN[0] && ETAGEN[0].id));
-  toast('✓ Etage gespeichert', 'success');
+  switchEtage(etageById(r.id) ? r.id : (ETAGEN[0] && ETAGEN[0].id));
+  toast(gast ? '✓ Etage gespeichert (nur für dich sichtbar)' : '✓ Etage gespeichert', 'success');
 }
 async function edDbLoeschen(){
-  if(!ed || !ed.quelleDb) return;
-  const pw = edEl('ed-pw').value;
-  if(!pw){ edMeldung('Zum Löschen das Admin-Passwort eingeben.', 'fehler'); return; }
-  if(!confirm(`Datenbank-Etage "${ed.def.id}" wirklich löschen? Buchungen bleiben erhalten, die Räume sind aber nicht mehr sichtbar.`)) return;
-  const fehler = await etageLoeschenDb(currentUser.name, pw, ed.def.id);
-  if(fehler){ edMeldung('Löschen fehlgeschlagen: ' + fehler, 'fehler'); return; }
-  adminPasswortSitzung = pw;
+  if(!ed || !ed.loeschbar) return;
+  const gast = istGast();
+  const pw = gast ? null : edAdminPasswort();
+  if(!gast && !pw){ edMeldung('Zum Löschen dein Passwort eingeben.', 'fehler'); return; }
+  const { ok } = await bestaetigen(`Etage „${ed.def.name || ed.def.id}“ wirklich löschen? Buchungen bleiben erhalten, die Räume sind aber nicht mehr sichtbar.`, { knopf: '🗑 Löschen' });
+  if(!ok) return;
+  const r = gast ? await gastEtageLoeschen(currentUser.sitzung, ed.def.id) : await etageLoeschenDb(currentUser.name, pw, ed.def.id);
+  if(r.fehler){ edMeldung('Löschen fehlgeschlagen: ' + r.fehler, 'fehler'); return; }
+  if(!gast) adminPasswortSitzung = pw;
+  limitAnzeigen(r.verbleibend);
   await etagenNeuLaden();
   editorSchliessen(false);
   switchEtage(etageById(aktEtageId) ? aktEtageId : (ETAGEN[0] && ETAGEN[0].id));
@@ -447,9 +475,9 @@ function initEditor(){
   edEl('ed-schliessen').addEventListener('click', () => editorSchliessen(true));
   edEl('ed-bild').addEventListener('change', e => { edBildLaden(e.target.files[0]); e.target.value = ''; });
   edEl('ed-datei').addEventListener('change', e => { edDateiImportieren(e.target.files[0]); e.target.value = ''; });
-  edEl('ed-leer').addEventListener('click', () => {
-    if(ed.def.raeume.length && !confirm('Alle Räume dieser Zeichnung verwerfen?')) return;
-    ed.def = leereDefinition(); ed.auswahl = null; ed.idManuell = false; ed.quelleDb = false; ed.bildRoh = null;
+  edEl('ed-leer').addEventListener('click', async () => {
+    if(ed.def.raeume.length && !(await bestaetigen('Alle Räume dieser Zeichnung verwerfen?', { knopf: 'Verwerfen' })).ok) return;
+    ed.def = leereDefinition(); ed.auswahl = null; ed.idManuell = false; ed.loeschbar = false; ed.bildRoh = null;
     edFormularFuellen(); edZeichnen(); edMeldung('');
   });
   edEl('ed-invert').addEventListener('change', () => edBildVerarbeiten(false));

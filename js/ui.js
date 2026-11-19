@@ -60,6 +60,31 @@ document.addEventListener('keydown', e => {
   if(offen && modalSchliesser[offen.id]) modalSchliesser[offen.id]();
 });
 
+// ── Bestätigungsdialog in der Seite (statt confirm(), das manche Browser-
+// Ansichten blockieren). Optional mit Passwortfeld (Eingabe bleibt verdeckt).
+// Liefert ein Promise: { ok:true/false, passwort }
+let frageAntwort = null;
+function bestaetigen(text, optionen){
+  const o = optionen || {};
+  document.getElementById('frage-text').textContent = text;
+  document.getElementById('frage-ok').textContent = o.knopf || 'Ja';
+  const pwZeile = document.getElementById('frage-pw-zeile');
+  const pw = document.getElementById('frage-pw');
+  pwZeile.style.display = o.passwort ? 'block' : 'none';
+  pw.value = '';
+  document.getElementById('frage-modal').classList.add('open');
+  (o.passwort ? pw : document.getElementById('frage-ok')).focus();
+  return new Promise(ok => { frageAntwort = ok; });
+}
+function frageBeenden(ok){
+  const pw = document.getElementById('frage-pw');
+  document.getElementById('frage-modal').classList.remove('open');
+  const antwort = frageAntwort;
+  frageAntwort = null;
+  if(antwort) antwort({ ok, passwort: ok ? pw.value : '' });
+  pw.value = '';
+}
+
 // ── Eigene Dropdowns im Dark-Design ──
 // Die echten <select>/<input>-Elemente bleiben als Datenquelle erhalten
 // (value wird weiter wie bisher gelesen/gesetzt), die Oberfläche kommt von hier.

@@ -51,9 +51,11 @@ registriereEtage({
   ],
 
   // Türen: o 'h' = in waagerechter Wand, 'v' = in senkrechter Wand; len = Breite;
-  // s = Aufschlagrichtung (1 / -1)
+  // s = Aufschlagrichtung: 1 = nach unten/rechts, -1 = nach oben/links.
+  // Tipp: Türen in den Flur aufschlagen lassen – dann überdecken die Bögen
+  // keine Möbel und Beschriftungen im Raum.
   tueren: [
-    {o:'h', x:150, y:190, len:32, s:-1},
+    {o:'h', x:150, y:190, len:32, s:1},
   ],
 
   // Freie Beschriftungen

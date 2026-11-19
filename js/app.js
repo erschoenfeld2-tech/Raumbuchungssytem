@@ -11,6 +11,7 @@ let modalBuchung = null;
 let renderTimer = null;
 let renderZaehler = 0, renderAngewendet = 0;
 let letzterLadeFehler = null;
+let adminTestAnsicht = false;   // Admin schaut ins Testsystem
 
 const $ = id => document.getElementById(id);
 function aktEtage(){ return etageById(aktEtageId); }
@@ -24,6 +25,89 @@ function webBuchungErlaubt(raumName){
   return !(istGast() && r && r.nfc);
 }
 const WEB_GESPERRT_MSG = '✗ Im Testsystem ist dieser Raum nur per NFC-Karte buchbar.';
+
+// ── Echtbetrieb / Testsystem ──
+// Testsystem = Gast, oder Admin, der über „🧪 Testsystem“ hineinschaut.
+function istAdmin(){ return !!(currentUser && currentUser.ist_admin); }
+function istTestModus(){ return istGast() || (istAdmin() && adminTestAnsicht); }
+// Geheime Sitzung, an der die eigenen Test-Buchungen hängen
+function testSitzung(){ return istGast() ? currentUser.sitzung : (istTestModus() ? currentUser.testSitzung : null); }
+function testHash(){ return istGast() ? currentUser.hash : (istTestModus() ? currentUser.testHash : null); }
+// Gehört eine Buchung mir? (Gäste teilen sich einen Nutzer → Erkennung über die Sitzung)
+function istMeine(b){
+  if(!currentUser) return false;
+  if(b.test) return !!testHash() && b.gast_hash === testHash();
+  return !istGast() && b.nutzer_id === currentUser.id;
+}
+function darfLoeschen(b){
+  if(istAdmin()) return true;
+  if(istGast()) return b.test && istMeine(b);
+  return !b.test && b.nutzer_id === currentUser.id;
+}
+// Verbleibende Änderungen im Testsystem anzeigen (Wert kommt aus der DB)
+function limitAnzeigen(verbleibend){
+  if(typeof verbleibend !== 'number') return;
+  $('gast-limit').textContent = `Noch ${verbleibend} von ${GAST_LIMIT} Änderungen in ${GAST_LIMIT_MINUTEN} Min.`;
+}
+// Ist die Gast-Sitzung serverseitig abgelaufen (nach einem Tag), gibt es still eine neue
+async function sitzungPruefen(fehler){
+  if(!fehler || !/Sitzung abgelaufen/.test(fehler) || !istTestModus()) return false;
+  const s = await neueTestSitzung();
+  if(!s) return false;
+  if(istGast()){ currentUser.sitzung = s.sitzung; currentUser.hash = s.hash; }
+  else { currentUser.testSitzung = s.sitzung; currentUser.testHash = s.hash; }
+  nutzerSpeichern();
+  toast('Neue Test-Sitzung gestartet – bitte nochmal versuchen.', 'error');
+  return true;
+}
+function bannerAktualisieren(){
+  $('gast-banner').style.display = istTestModus() ? 'block' : 'none';
+  $('gast-teil').style.display = istGast() ? '' : 'none';
+  $('admin-test-teil').style.display = istGast() ? 'none' : '';
+  $('btn-testsystem').textContent = adminTestAnsicht ? '🏢 Zurück zum Echtbetrieb' : '🧪 Testsystem';
+  $('btn-testsystem').classList.toggle('aktiv', adminTestAnsicht);
+}
+async function adminTestsystemUmschalten(){
+  if(!istAdmin()) return;
+  if(!adminTestAnsicht && !currentUser.testSitzung){
+    const s = await neueTestSitzung();
+    if(!s){ toast('✗ Testsystem nicht verfügbar (Migration fehlt?)', 'error'); return; }
+    currentUser.testSitzung = s.sitzung; currentUser.testHash = s.hash;
+    nutzerSpeichern();
+  }
+  adminTestAnsicht = !adminTestAnsicht;
+  allBookings = [];
+  bannerAktualisieren();
+  zeichneAlles();
+  render();
+}
+async function meineAenderungenZuruecksetzen(){
+  const { ok } = await bestaetigen('Alle deine Test-Buchungen und deine eigenen Etagen im Testsystem zurücksetzen? Änderungen anderer Gäste bleiben bestehen.', { knopf: '↺ Zurücksetzen' });
+  if(!ok) return;
+  const r = await gastZuruecksetzen(testSitzung());
+  if(r.fehler){ if(!(await sitzungPruefen(r.fehler))) toast('✗ ' + r.fehler, 'error'); return; }
+  toast(`Zurückgesetzt: ${r.buchungen} Buchung(en), ${r.etagen} Etage(n)`, 'success');
+  await etagenNeuLaden();
+  switchEtage(etageById(aktEtageId) ? aktEtageId : (ETAGEN[0] && ETAGEN[0].id));
+}
+// Admin-Passwort: aus der Anmeldung (nur im Speicher) oder verdeckt abfragen
+async function adminPasswortHolen(frage, knopf){
+  if(adminPasswortSitzung){
+    const { ok } = await bestaetigen(frage, { knopf });
+    return ok ? adminPasswortSitzung : null;
+  }
+  const { ok, passwort } = await bestaetigen(frage + ' Zur Bestätigung bitte dein Passwort eingeben.', { knopf, passwort: true });
+  return ok && passwort ? passwort : null;
+}
+async function testsystemKomplettLeeren(){
+  const pw = await adminPasswortHolen('Das komplette Testsystem leeren? Alle Test-Buchungen und alle Gast-Etagen aller Gäste werden gelöscht. Echte Buchungen bleiben unberührt.', '🗑 Alles löschen');
+  if(!pw) return;
+  const r = await testsystemLeeren(currentUser.name, pw);
+  if(r.fehler){ toast('✗ ' + r.fehler, 'error'); return; }
+  adminPasswortSitzung = pw;
+  toast(`Testsystem geleert: ${r.buchungen} Buchung(en), ${r.etagen} Gast-Etage(n)`, 'success');
+  render();
+}
 
 // ── Datum ──
 function setDatum(){
@@ -40,13 +124,15 @@ async function zeigeApp(){
   $('app').style.display = 'block';
   $('user-name').textContent = currentUser.name + (currentUser.ist_admin ? ' (Administrator)' : '');
   $('user-rolle').textContent = istGast() ? 'Testsystem' : 'eingeloggt';
-  $('gast-banner').style.display = istGast() ? 'block' : 'none';
+  adminTestAnsicht = false;
+  bannerAktualisieren();
+  $('gast-limit').textContent = `Max. ${GAST_LIMIT} Änderungen in ${GAST_LIMIT_MINUTEN} Min.`;
   $('avatar').textContent = currentUser.name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
   const appEl = $('app');
   appEl.classList.remove('in'); void appEl.offsetWidth; appEl.classList.add('in');
   netzAn(false);
   setDatum();
-  await Promise.all([ladeNutzerMap(), etagenNeuLaden()]);
+  await etagenNeuLaden();
   if(!currentUser) return;   // während des Ladens abgemeldet
   const start = [urlParameter('etage'), leseGespeicherteEtage(), ETAGEN[0] && ETAGEN[0].id].find(id => id && etageById(id));
   switchEtage(start || null);
@@ -63,7 +149,8 @@ function versteckeApp(){
 }
 
 async function etagenNeuLaden(){
-  etagenAufbauen(await ladeDbEtagen());
+  const [db, gast] = await Promise.all([ladeDbEtagen(), istGast() ? ladeGastEtagen(currentUser.sitzung) : []]);
+  etagenAufbauen(db, gast);
   infoTextAktualisieren();
 }
 function leseGespeicherteEtage(){ try { return localStorage.getItem(SPEICHER_ETAGE); } catch(e) { return null; } }
@@ -80,9 +167,11 @@ function ortTabsZeichnen(){
   $('etage-tabs').innerHTML = etagen.map(e =>
     `<button type="button" data-etage="${esc(e.id)}" class="${e.id === aktEtageId ? 'active' : ''}">${esc(e.name)}</button>`).join('')
     || '<button type="button" disabled>Keine Etagen</button>';
-  const admin = !!(currentUser && currentUser.ist_admin);
-  $('admin-tabs').style.display = admin ? 'flex' : 'none';
-  $('btn-etage-bearbeiten').style.display = admin && etage ? '' : 'none';
+  // Etagen anlegen/bearbeiten: Admin (für alle) und Gäste (nur für die eigene Sitzung)
+  const darfEditieren = istAdmin() || istGast();
+  $('admin-tabs').style.display = darfEditieren ? 'flex' : 'none';
+  $('btn-etage-bearbeiten').style.display = darfEditieren && etage ? '' : 'none';
+  $('btn-testsystem').style.display = istAdmin() ? '' : 'none';
 }
 
 function switchEtage(id){
@@ -177,9 +266,10 @@ async function render(){
   if(!currentUser || !supa) return;
   const nr = ++renderZaehler;
   const datum = ds(aktDatum);
-  const { buchungen, fehler } = await ladeBuchungen(datum, istGast());
+  const testModus = istTestModus();
+  const { buchungen, fehler } = await ladeBuchungen(datum, testModus);
   // veraltete Antworten verwerfen (Tag inzwischen gewechselt / neuere Antwort schon da)
-  if(!currentUser || nr < renderAngewendet || datum !== ds(aktDatum)) return;
+  if(!currentUser || nr < renderAngewendet || datum !== ds(aktDatum) || testModus !== istTestModus()) return;
   renderAngewendet = nr;
   if(fehler){
     if(fehler !== letzterLadeFehler) toast('Fehler beim Laden: ' + fehler, 'error');
@@ -199,14 +289,17 @@ function setzeHtml(el, html){
 }
 function zeichneAlles(){
   const k = statusKontext();
-  setzeHtml($('agenda-list'), agendaHtml(allBookings));
+  // Im Testsystem nur Buchungen in Räumen zeigen, die man selbst kennt
+  // (Gast-Etagen anderer Gäste sind privat)
+  const agenda = istTestModus() ? allBookings.filter(b => raumByName(b.raum)) : allBookings;
+  setzeHtml($('agenda-list'), agendaHtml(agenda, istMeine));
   drawFloor();
   initTischDropdown();
   const raeume = raeumeDerEtage();
   const kal = $('kalender');
   kal.style.minWidth = Math.max(520, 60 + raeume.length * 95) + 'px';
   setzeHtml(kal, aktEtage()
-    ? kalenderHtml(raeume, allBookings, k.datum, currentUser && currentUser.id, k.istHeute)
+    ? kalenderHtml(raeume, allBookings, k.datum, istMeine, k.istHeute)
     : '<div class="etage-leer">Keine Etage vorhanden. Als Admin über „＋ Etage / Gebäude“ anlegen.</div>');
 }
 function drawFloor(){
@@ -234,11 +327,12 @@ function infoTextAktualisieren(){
 async function buchungAusfuehren(raum, tisch, start, ende){
   if(!webBuchungErlaubt(raum)){ toast(WEB_GESPERRT_MSG, 'error'); return false; }
   if(ende <= zeitStempel(new Date())){ toast('✗ Dieser Zeitraum liegt in der Vergangenheit.', 'error'); return false; }
-  const kap = await pruefeKapazitaet(raum, start, ende, tisch, istGast());
+  const kap = await pruefeKapazitaet(raum, start, ende, tisch, istTestModus());
   if(!kap.ok){ toast('✗ ' + kap.msg, 'error'); return false; }
-  const fehler = await buchungAnlegen(currentUser, raum, tisch, start, ende);
-  if(fehler){ toast('✗ Fehler: ' + fehler, 'error'); return false; }
-  toast('✓ Buchung erstellt', 'success');
+  const r = await buchungAnlegen(currentUser, testSitzung(), raum, tisch, start, ende);
+  if(r.fehler){ if(!(await sitzungPruefen(r.fehler))) toast('✗ Fehler: ' + r.fehler, 'error'); return false; }
+  limitAnzeigen(r.verbleibend);
+  toast('✓ Buchung erstellt' + (istTestModus() ? ' (Testsystem)' : ''), 'success');
   render();
   return true;
 }
@@ -270,19 +364,19 @@ function modalOpen(b){
   $('m-raum').textContent = b.raum;
   $('m-tisch-row').style.display = b.tisch ? 'block' : 'none';
   $('m-tisch').textContent = b.tisch || '';
-  $('m-nutzer').textContent = b.name;
+  $('m-nutzer').textContent = istMeine(b) ? 'Dir' : 'einer anderen Person';
   $('m-zeit').textContent = `${b.start.slice(11,16)} – ${b.ende.slice(11,16)} Uhr`;
   $('m-quelle').textContent = b.quelle === 'nfc' ? '📡 NFC-Buchung' : '🖥 Web-Buchung';
-  const darfLoeschen = currentUser && (b.nutzer_id === currentUser.id || currentUser.ist_admin);
-  $('m-delete').style.display = darfLoeschen ? 'block' : 'none';
+  $('m-delete').style.display = currentUser && darfLoeschen(b) ? 'block' : 'none';
   $('modal').classList.add('open');
 }
 function modalClose(){ $('modal').classList.remove('open'); modalBuchung = null; }
 async function modalDelete(){
   if(!modalBuchung) return;
-  const fehler = await buchungLoeschen(modalBuchung.id, currentUser);
+  const r = await buchungLoeschen(modalBuchung.id, currentUser);
   modalClose();
-  if(fehler){ toast('✗ ' + fehler, 'error'); return; }
+  if(r.fehler){ if(!(await sitzungPruefen(r.fehler))) toast('✗ ' + r.fehler, 'error'); return; }
+  limitAnzeigen(r.verbleibend);
   toast('Buchung gelöscht', 'success');
   render();
 }
@@ -303,7 +397,7 @@ function zelleOeffnen(raumName, slotStart, slotEnde){
       <div class="agenda-row" style="cursor:pointer" data-bid="${esc(b.id)}">
         <span class="agenda-time">${esc(b.tisch || raumName)}</span>
         <span class="agenda-raum">${esc(b.start.slice(11,16))}–${esc(b.ende.slice(11,16))}</span>
-        <span class="agenda-nutzer">${esc(b.name)}${b.quelle === 'nfc' ? ' · 📡' : ''}</span>
+        <span class="agenda-nutzer">${wer(b, istMeine)}${b.quelle === 'nfc' ? ' · 📡' : ''}</span>
       </div>`).join('') : '<p>Alle Tische frei.</p>';
   const freieTische = raum.tische.filter(t => !treffer.some(b => b.tisch === t.code));
   if(!webBuchungErlaubt(raumName)){
@@ -352,6 +446,13 @@ function initEreignisse(){
   $('slot-close').addEventListener('click', slotModalClose);
   modalRegistrieren('modal', modalClose);
   modalRegistrieren('slot-modal', slotModalClose);
+  modalRegistrieren('frage-modal', () => frageBeenden(false));
+  $('frage-ok').addEventListener('click', () => frageBeenden(true));
+  $('frage-abbrechen').addEventListener('click', () => frageBeenden(false));
+  $('frage-pw').addEventListener('keydown', e => { if(e.key === 'Enter') frageBeenden(true); });
+  $('btn-zuruecksetzen').addEventListener('click', meineAenderungenZuruecksetzen);
+  $('btn-testsystem').addEventListener('click', adminTestsystemUmschalten);
+  $('btn-test-leeren').addEventListener('click', testsystemKomplettLeeren);
 
   $('gebaeude-tabs').addEventListener('click', e => {
     const b = e.target.closest('[data-gebaeude]');

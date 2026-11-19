@@ -1,14 +1,22 @@
 // ══════════════════════════════════════════════════════════
 // Anmeldung. Es gibt keine echte Supabase-Auth (bewusste Vereinfachung,
 // siehe CLAUDE.md): Passwörter werden per RPC nutzer_login() in der DB
-// gegen den bcrypt-Hash geprüft – das gilt seit Migration 20261119150000
-// auch für den Admin. Der angemeldete Nutzer wird im localStorage gemerkt.
+// gegen den bcrypt-Hash geprüft – seit Migration 20261119150000 auch für
+// den Admin. Der angemeldete Nutzer wird im localStorage gemerkt.
+//
+// Datenschutz: Nutzernamen anderer Personen und Passwörter werden nie
+// angezeigt. Den eigenen Namen liefert nur nutzer_login() nach korrektem
+// Passwort; Passwortfelder sind immer verdeckt.
+//
+// Gäste bekommen eine eigene, geheime Sitzung (gast_sitzung_starten()).
+// Daran hängen ihre Test-Buchungen und Gast-Etagen; der SHA-256-Hash der
+// Sitzung (gast_hash) erkennt eigene Test-Buchungen in der Liste.
 // ══════════════════════════════════════════════════════════
 
 let currentUser = null;
 let pwWechselNutzer = null;   // Nutzer, der gerade sein Startpasswort ändern muss
-// Admin-Passwort nur im Arbeitsspeicher (nie im localStorage) – wird zum
-// Speichern von Etagen gebraucht, weil die DB das Passwort erneut prüft.
+// Admin-Passwort nur im Arbeitsspeicher (nie im localStorage, nie angezeigt) –
+// wird für Admin-Aktionen gebraucht, weil die DB das Passwort erneut prüft.
 let adminPasswortSitzung = null;
 
 const istGast = () => !!(currentUser && currentUser.gast);
@@ -42,12 +50,25 @@ async function anmelden(){
   loginAbschliessen(user);
 }
 
+// SHA-256 als Hex-Text (wie encode(sha256(...), 'hex') in der Datenbank)
+async function sha256Hex(text){
+  if(!window.crypto || !crypto.subtle) return '';   // ohne sichere Verbindung: eigene Test-Buchungen nicht markierbar
+  const puffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(puffer)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+// Neue geheime Test-Sitzung (für Gäste und für den Admin im Testsystem)
+async function neueTestSitzung(){
+  const { data, error } = await supa.rpc('gast_sitzung_starten');
+  if(error || !data) return null;
+  return { sitzung: data, hash: await sha256Hex(data) };
+}
+
 async function gastAnmelden(){
   loginFehlerAus();
   if(!CONFIGURED || !supa){ loginFehler('Supabase ist nicht erreichbar oder nicht konfiguriert.'); return; }
-  const { data, error } = await supa.from('nutzer_public').select('id,name').eq('name', GAST_NAME).maybeSingle();
-  if(error || !data){ loginFehler('Gast-Zugang ist nicht eingerichtet (Migration fehlt).'); return; }
-  loginAbschliessen({ id: data.id, name: GAST_NAME, ist_admin: false, gast: true });
+  const s = await neueTestSitzung();
+  if(!s){ loginFehler('Das Testsystem ist gerade nicht verfügbar (Migration fehlt?).'); return; }
+  loginAbschliessen({ id: null, name: GAST_NAME, ist_admin: false, gast: true, sitzung: s.sitzung, hash: s.hash });
 }
 
 async function passwortWechseln(){
@@ -73,9 +94,12 @@ function pwWechselZuruecksetzen(){
   document.getElementById('pw-neu2').value = '';
 }
 
+function nutzerSpeichern(){
+  try { localStorage.setItem(SPEICHER_USER, JSON.stringify(currentUser)); } catch(e) { /* privates Fenster o.ä. */ }
+}
 function loginAbschliessen(user){
   currentUser = user;
-  try { localStorage.setItem(SPEICHER_USER, JSON.stringify(user)); } catch(e) { /* privates Fenster o.ä. */ }
+  nutzerSpeichern();
   document.getElementById('login-pw').value = '';
   zeigeApp();
 }
@@ -93,6 +117,8 @@ function gespeicherterNutzer(){
   try {
     localStorage.removeItem('rb_user');   // Format vor den persönlichen Passwörtern
     const u = JSON.parse(localStorage.getItem(SPEICHER_USER) || 'null');
-    return u && typeof u.id === 'number' && typeof u.name === 'string' ? u : null;
+    if(!u || typeof u.name !== 'string') return null;
+    if(u.gast) return typeof u.sitzung === 'string' ? u : null;   // alte Gast-Anmeldung ohne Sitzung verwerfen
+    return typeof u.id === 'number' ? u : null;
   } catch(e) { return null; }
 }

@@ -127,35 +127,37 @@ function badgeSvg(x, y, status, skala){
 }
 
 // Hauptfunktion. st = { selRaum, selTisch, raumStatus(raum), tischStatus(raum, code) }
+// Gezeichnet wird in Ebenen, damit nichts Wichtiges verdeckt wird:
+//   1. Boden (Flure, Raumflächen)  2. Möbel  3. Wände, Fenster, Türen
+//   4. Beschriftungen und Tisch-Markierungen – immer obenauf.
 function grundrissSvg(etage, st){
   const mitBild = !!etage.hintergrund;
   const o = etage.aussenwand;
-  let s = '';
+  let boden = '', moebel = '', bau = '', oben = '';
 
   if(mitBild){
-    s += `<image class="plan-bild" href="${esc(etage.hintergrund)}" x="0" y="0" width="${etage.breite}" height="${etage.hoehe}" preserveAspectRatio="none"/>`;
+    boden += `<image class="plan-bild" href="${esc(etage.hintergrund)}" x="0" y="0" width="${etage.breite}" height="${etage.hoehe}" preserveAspectRatio="none"/>`;
   }
 
-  // Boden: Flure + freie Beschriftungen
+  // Flure + freie Beschriftungen
   etage.flure.forEach(fl => {
-    if(!mitBild) s += `<rect class="plan-flur" x="${fl.x}" y="${fl.y}" width="${fl.w}" height="${fl.h}"/>`;
-    if(fl.name) s += `<text class="plan-flur-label" x="${fl.x+fl.w/2}" y="${fl.y+fl.h/2+4}">${esc(fl.name)}</text>`;
+    if(!mitBild) boden += `<rect class="plan-flur" x="${fl.x}" y="${fl.y}" width="${fl.w}" height="${fl.h}"/>`;
+    if(fl.name) oben += `<text class="plan-flur-label" x="${fl.x+fl.w/2}" y="${fl.y+fl.h/2+4}">${esc(fl.name)}</text>`;
   });
-  etage.texte.forEach(t => { s += `<text class="plan-text" x="${t.x}" y="${t.y}">${esc(t.t)}</text>`; });
+  etage.texte.forEach(t => { oben += `<text class="plan-text" x="${t.x}" y="${t.y}">${esc(t.t)}</text>`; });
 
   // Nicht buchbare Bereiche
   etage.bereiche.forEach(e => {
     if(!mitBild){
-      s += `<rect class="plan-extra" x="${e.x}" y="${e.y}" width="${e.w}" height="${e.h}"/>`;
-      s += dekorSvg(e);
+      boden += `<rect class="plan-extra" x="${e.x}" y="${e.y}" width="${e.w}" height="${e.h}"/>`;
+      moebel += dekorSvg(e);
     }
-    if(e.typ !== 'wc' && e.name) s += `<text class="plan-sub" x="${e.x+e.w/2}" y="${istOben(e, etage) ? e.y+20 : e.y+e.h-10}">${esc(e.name)}</text>`;
+    if(e.typ !== 'wc' && e.name) oben += `<text class="plan-sub" x="${e.x+e.w/2}" y="${istOben(e, etage) ? e.y+20 : e.y+e.h-10}">${esc(e.name)}</text>`;
   });
 
   // Buchbare Räume
   etage.raeume.forEach(raum => {
     const r = raum;
-    const oben = istOben(r, etage);
     const istAusgewaehlt = raum.name === st.selRaum;
     const name = esc(raum.name);
     const bildKlasse = mitBild ? ' bild' : '';
@@ -163,43 +165,42 @@ function grundrissSvg(etage, st){
     if(raum.typ === 'meeting'){
       const status = st.raumStatus(raum);
       const cls = istAusgewaehlt ? 'selected' : `status-${status}`;
-      const code = raum.tische[0].code;
+      const code = esc(raum.tische[0].code);
+      const daten = `data-raum="${name}" data-tisch="${code}"`;
       let badge;
-      s += `<g class="plan-room" data-raum="${name}" data-tisch="${esc(code)}">`;
-      s += `<rect class="plan-fill${bildKlasse} ${cls}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`;
+      boden += `<g class="plan-room" ${daten}><rect class="plan-fill${bildKlasse} ${cls}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`;
       if(!mitBild){
         const sitze = r.sitze != null ? r.sitze : Math.max(1, Math.min(8, Math.floor((r.w - 70) / 24)));
         const stirn = r.stirn != null ? r.stirn : (r.w > 260 ? 1 : 0);
         const conf = furnConf(r, sitze, stirn);
-        s += conf.svg;
+        boden += conf.svg;
         badge = conf.badge;
       } else {
         badge = { x: r.x + r.w - 18, y: r.y + 18 };
       }
-      s += badgeSvg(badge.x, badge.y, status === 'free' ? 'frei' : 'belegt');
-      s += `<text class="plan-label" x="${r.x+r.w/2}" y="${r.y+24}">${name}</text>`;
-      s += `<text class="plan-sub" x="${r.x+r.w/2}" y="${r.y+r.h-12}">${r.sub ? esc(r.sub) + ' · ' : ''}Tisch ${esc(code)}</text>`;
-      s += `</g>`;
+      boden += `</g>`;
+      oben += `<g class="plan-room" ${daten}>${badgeSvg(badge.x, badge.y, status === 'free' ? 'frei' : 'belegt')}</g>`;
+      oben += `<text class="plan-label" x="${r.x+r.w/2}" y="${r.y+24}">${name}</text>`;
+      oben += `<text class="plan-sub" x="${r.x+r.w/2}" y="${r.y+r.h-12}">${r.sub ? esc(r.sub) + ' · ' : ''}Tisch ${code}</text>`;
     } else {
-      s += `<g class="plan-room-sd" data-raum="${name}" data-tisch="${esc(raum.tische[0].code)}">`;
-      s += `<rect class="plan-fill${bildKlasse}${istAusgewaehlt ? ' selected' : ''}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`;
-      s += `<text class="plan-label" x="${r.x+r.w/2}" y="${r.y+(oben ? 24 : r.h-12)}">${name}</text>`;
-      s += `</g>`;
-      const { skala, zentren } = deskLayout(r, raum.tische.length, oben);
+      const oberhalb = istOben(r, etage);
+      boden += `<g class="plan-room-sd" data-raum="${name}" data-tisch="${esc(raum.tische[0].code)}">`;
+      boden += `<rect class="plan-fill${bildKlasse}${istAusgewaehlt ? ' selected' : ''}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/></g>`;
+      oben += `<text class="plan-label" x="${r.x+r.w/2}" y="${r.y+(oberhalb ? 24 : r.h-12)}">${name}</text>`;
+      const { skala, zentren } = deskLayout(r, raum.tische.length, oberhalb);
       raum.tische.forEach((t, i) => {
         const c = zentren[i];
         const status = st.tischStatus(raum, t.code);
         const istSelektiert = istAusgewaehlt && t.code === st.selTisch;
-        s += `<g class="plan-desk${istSelektiert ? ' selected' : ''}" data-raum="${name}" data-tisch="${esc(t.code)}">`;
+        const daten = `data-raum="${name}" data-tisch="${esc(t.code)}"`;
         if(!mitBild){
-          s += `<g transform="translate(${c.x} ${c.y}) scale(${skala}) translate(${-c.x} ${-c.y})">${furnDeskSingle(c.x, c.y)}</g>`;
-          s += badgeSvg(c.x + 32*skala, c.y - 15*skala, status, skala);
-          s += `<text class="desk-code" x="${c.x}" y="${c.y + 41*skala}">${esc(t.code)}</text>`;
+          moebel += `<g class="plan-desk-moebel" ${daten} transform="translate(${c.x} ${c.y}) scale(${skala}) translate(${-c.x} ${-c.y})">${furnDeskSingle(c.x, c.y)}</g>`;
+          oben += `<g class="plan-desk${istSelektiert ? ' selected' : ''}" ${daten}>${badgeSvg(c.x + 32*skala, c.y - 15*skala, status, skala)}</g>`;
+          oben += `<text class="desk-code" x="${c.x}" y="${c.y + 41*skala}">${esc(t.code)}</text>`;
         } else {
-          s += badgeSvg(c.x, c.y, status, skala);
-          s += `<text class="desk-code" x="${c.x}" y="${c.y + 24*skala}" style="fill:var(--text)">${esc(t.code)}</text>`;
+          oben += `<g class="plan-desk${istSelektiert ? ' selected' : ''}" ${daten}>${badgeSvg(c.x, c.y, status, skala)}</g>`;
+          oben += `<text class="desk-code" x="${c.x}" y="${c.y + 24*skala}" style="fill:var(--text)">${esc(t.code)}</text>`;
         }
-        s += `</g>`;
       });
     }
   });
@@ -212,24 +213,24 @@ function grundrissSvg(etage, st){
         const len = Math.min(70, r.w - 60);
         if(len < 30) return;
         const x = r.x + r.w/2 - len/2;
-        if(r.y === o.y) s += `<rect class="plan-window" x="${x}" y="${o.y-3.5}" width="${len}" height="7"/>`;
-        if(r.y + r.h === o.y + o.h) s += `<rect class="plan-window" x="${x}" y="${o.y+o.h-3.5}" width="${len}" height="7"/>`;
+        if(r.y === o.y) bau += `<rect class="plan-window" x="${x}" y="${o.y-3.5}" width="${len}" height="7"/>`;
+        if(r.y + r.h === o.y + o.h) bau += `<rect class="plan-window" x="${x}" y="${o.y+o.h-3.5}" width="${len}" height="7"/>`;
       });
     }
-    // Wände (mit Türlücken per Maske)
+    // Wände (mit Türlücken per Maske) und Türbögen
     const maskeId = 'wandmaske-' + etage.id;
     const luecke = d => d.o === 'h' ? `<rect x="${d.x}" y="${d.y-6}" width="${d.len}" height="12" fill="#000"/>`
                                     : `<rect x="${d.x-6}" y="${d.y}" width="12" height="${d.len}" fill="#000"/>`;
-    s += `<mask id="${maskeId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${etage.breite}" height="${etage.hoehe}">
+    bau += `<mask id="${maskeId}" maskUnits="userSpaceOnUse" x="0" y="0" width="${etage.breite}" height="${etage.hoehe}">
             <rect x="0" y="0" width="${etage.breite}" height="${etage.hoehe}" fill="#fff"/>${etage.tueren.map(luecke).join('')}
           </mask>`;
-    s += `<g mask="url(#${maskeId})" style="pointer-events:none">`;
+    bau += `<g mask="url(#${maskeId})">`;
     [...etage.raeume, ...etage.bereiche].forEach(r => {
-      s += `<rect class="plan-wall" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`;
+      bau += `<rect class="plan-wall" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`;
     });
-    if(o) s += `<rect class="plan-wall outer" x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}"/>`;
-    s += `</g>`;
-    s += etage.tueren.map(tuerBogen).join('');
+    if(o) bau += `<rect class="plan-wall outer" x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}"/>`;
+    bau += `</g>`;
+    bau += etage.tueren.map(tuerBogen).join('');
   }
-  return s;
+  return boden + moebel + `<g style="pointer-events:none">${bau}</g>` + oben;
 }

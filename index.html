@@ -42,8 +42,16 @@
 <!-- ══════════ APP ══════════ -->
 <div id="app">
   <div id="gast-banner">
-    🧪 <strong>Testsystem (Gast)</strong> – Buchungen werden nach 2 Minuten automatisch gelöscht.
-    Räume mit NFC-Reader sind hier nur per Karte buchbar.
+    <div id="gast-teil" class="banner-zeile">
+      <span>🧪 <strong>Testsystem (Gast)</strong> – Buchungen werden nach 2 Min. gelöscht, eigene Etagen
+        nach 15 Min. und sind nur für dich sichtbar. Räume mit NFC-Reader nur per Karte.
+        <span class="banner-limit" id="gast-limit"></span></span>
+      <button type="button" id="btn-zuruecksetzen">↺ Meine Änderungen zurücksetzen</button>
+    </div>
+    <div id="admin-test-teil" class="banner-zeile">
+      <span>🧪 <strong>Admin-Ansicht des Testsystems</strong> – du siehst alle Test-Buchungen und darfst jede löschen.</span>
+      <button type="button" id="btn-test-leeren" class="btn-danger">🗑 Testsystem komplett leeren</button>
+    </div>
   </div>
 
   <div class="top">
@@ -80,6 +88,7 @@
       <div class="ort-tabs" id="admin-tabs" style="display:none">
         <button type="button" class="btn-admin" id="btn-etage-neu">＋ Etage / Gebäude</button>
         <button type="button" class="btn-admin" id="btn-etage-bearbeiten">✎ Etage bearbeiten</button>
+        <button type="button" class="btn-admin" id="btn-testsystem">🧪 Testsystem</button>
       </div>
     </div>
   </div>
@@ -155,7 +164,7 @@
     <h3 id="m-titel">Buchung</h3>
     <p>Raum: <strong id="m-raum"></strong></p>
     <p id="m-tisch-row">Tisch: <strong id="m-tisch"></strong></p>
-    <p>Nutzer: <strong id="m-nutzer"></strong></p>
+    <p>Gebucht von: <strong id="m-nutzer"></strong></p>
     <p>Zeit: <strong id="m-zeit"></strong></p>
     <p>Quelle: <strong id="m-quelle"></strong></p>
     <div class="modal-actions">
@@ -236,8 +245,10 @@
       </div>
 
       <h4>4 · Speichern</h4>
-      <label for="ed-pw">Admin-Passwort (wird in der Datenbank geprüft)</label>
-      <input type="password" id="ed-pw" autocomplete="current-password"/>
+      <div id="ed-pw-zeile">
+        <label for="ed-pw">Dein Passwort (wird in der Datenbank geprüft)</label>
+        <input type="password" id="ed-pw" autocomplete="current-password"/>
+      </div>
       <div class="editor-knoepfe">
         <button type="button" id="ed-speichern" class="btn-book" style="margin-top:0">💾 In Datenbank speichern</button>
         <button type="button" id="ed-export-js">⬇ Etagen-Datei (.js)</button>
@@ -250,6 +261,22 @@
     <div class="editor-flaeche">
       <svg id="ed-svg" viewBox="0 0 960 480" aria-label="Zeichenfläche des Etagen-Editors"></svg>
       <div class="editor-knoepfe"><button type="button" id="ed-vorschau">👁 Vorschau wie in der App</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ Rückfrage (statt confirm(), optional mit verdecktem Passwortfeld) ══════════ -->
+<div class="modal-bg" id="frage-modal">
+  <div class="modal modal-breit" role="alertdialog" aria-modal="true" aria-labelledby="frage-text">
+    <h3>Bitte bestätigen</h3>
+    <p id="frage-text"></p>
+    <div id="frage-pw-zeile" style="display:none">
+      <label for="frage-pw">Passwort</label>
+      <input type="password" id="frage-pw" class="cs-input" autocomplete="current-password"/>
+    </div>
+    <div class="modal-actions">
+      <button type="button" id="frage-abbrechen" style="flex:1">Abbrechen</button>
+      <button type="button" id="frage-ok" class="btn-danger" style="flex:1">Ja</button>
     </div>
   </div>
 </div>
