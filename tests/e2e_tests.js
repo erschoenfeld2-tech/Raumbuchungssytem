@@ -68,7 +68,8 @@ async function main(){
   const page = await ctx.newPage();
   const jsFehler = [], dialoge = [];
   page.on('pageerror', e => jsFehler.push(e.message));
-  page.on('console', m => { if(m.type() === 'error') jsFehler.push(m.text()); });
+  // 400er sind gewollte Ablehnungen der Datenbank (z.B. Gast-Limit) – keine Programmfehler
+  page.on('console', m => { if(m.type() === 'error' && !/status of 400/.test(m.text())) jsFehler.push(m.text()); });
   page.on('dialog', d => { if(d.type() === 'confirm') d.accept(); else { dialoge.push(d.message()); d.dismiss(); } });
 
   const toastText = async (enthaelt) => {
@@ -86,6 +87,11 @@ async function main(){
     if(tisch) await waehle('f-tisch', 'Tisch ' + tisch);
     await zeit('f-start', von); await zeit('f-ende', bis);
     await page.click('#btn-buchen');
+  };
+  const editorZu = async () => {
+    await page.keyboard.press('Escape');
+    if(await page.isVisible('#frage-modal.open')) await page.click('#frage-ok');
+    await page.waitForSelector('#editor-bg.open', { state: 'hidden' });
   };
   const anmelden = async (name, pw) => {
     await page.fill('#login-name', name); await page.fill('#login-pw', pw); await page.click('#login-btn');
@@ -181,6 +187,27 @@ async function main(){
     await page.click('#etage-tabs [data-etage="hauptgebaeude-1"]');
     await page.click('#view-cal');
   });
+  await test('Türbögen überdecken weder Beschriftungen noch Möbel', async () => {
+    await page.click('#view-office');
+    for(const id of ['hauptgebaeude-1', 'hauptgebaeude-2']){
+      await page.click(`#etage-tabs [data-etage="${id}"]`);
+      const treffer = await page.evaluate(() => {
+        const box = el => { const b = el.getBBox(); return { x1: b.x, y1: b.y, x2: b.x + b.width, y2: b.y + b.height }; };
+        const schneidet = (a, b) => a.x1 < b.x2 - 0.5 && a.x2 > b.x1 + 0.5 && a.y1 < b.y2 - 0.5 && a.y2 > b.y1 + 0.5;
+        const svg = document.getElementById('floorplan');
+        const tueren = [...svg.querySelectorAll('.plan-door')].map(box);
+        const andere = [...svg.querySelectorAll('text, .plan-desk-moebel rect, .plan-room rect:not(.plan-fill), .desk-badge')]
+          .map(el => ({ el: el.textContent || el.getAttribute('class') || el.tagName, b: box(el) }));
+        const funde = [];
+        tueren.forEach((t, i) => andere.forEach(a => { if(schneidet(t, a.b)) funde.push(`Tür ${i} ↔ ${a.el}`); }));
+        return funde;
+      });
+      erwarte(!treffer.length, `${id}: ${treffer.slice(0, 5).join(', ')}`);
+    }
+    await page.click('#etage-tabs [data-etage="hauptgebaeude-1"]');
+    await page.screenshot({ path: path.join(BILDER, '03b-tueren.png') });
+    await page.click('#view-cal');
+  });
   await test('Agenda-Eintrag öffnet Details, eigene Buchung löschen, Escape schließt', async () => {
     await page.setViewportSize({ width: 390, height: 844 });   // Agenda ist die Mobil-Ansicht
     await page.fill('#f-datum', morgen); await page.dispatchEvent('#f-datum', 'change');
@@ -197,7 +224,7 @@ async function main(){
     erwarte(sql(`select count(*) from buchungen where id=${bid}`) === '0', 'nicht gelöscht');
     await page.setViewportSize({ width: 1400, height: 900 });
   });
-  await test('Namen mit HTML/Anführungszeichen werden sicher angezeigt (kein XSS)', async () => {
+  await test('Datenschutz: fremde Namen erscheinen nirgends (nur „belegt“), kein XSS', async () => {
     const id = sql(`insert into nutzer (name) values ('<img src=x onerror=alert(1)> O''Brien') returning id`).split('\n').pop();
     sql(`insert into buchungen (raum, tisch, nutzer_id, name, start, ende) values ('ShareDesk 4', '1.601', ${id}, 'x', '${morgen} 13:00', '${morgen} 14:00')`);
     await page.reload();
@@ -208,7 +235,11 @@ async function main(){
     await page.waitForSelector('#slot-modal.open');
     await page.click('#slot-body [data-bid]');
     await page.waitForSelector('#modal.open');
-    erwarte((await page.textContent('#m-nutzer')).includes("<img src=x onerror=alert(1)> O'Brien"), 'Name falsch angezeigt');
+    erwarte((await page.textContent('#m-nutzer')) === 'einer anderen Person', 'Name angezeigt: ' + await page.textContent('#m-nutzer'));
+    erwarte(!(await page.isVisible('#m-delete')), 'fremde Buchung löschbar');
+    const html = await page.content();
+    for(const name of ["O'Brien", 'O&#39;Brien', 'David Mayer', 'Dion Himaj', 'Eric Schoenfeld', 'Luca Guinness', 'Admin_Universal'])
+      erwarte(!html.includes(name), 'Name im Seiteninhalt: ' + name);
     erwarte(!dialoge.length, 'Skript wurde ausgeführt: ' + dialoge);
     await page.keyboard.press('Escape');
   });
@@ -243,8 +274,69 @@ async function main(){
     await page.keyboard.press('Escape');
     await buche('ShareDesk 3', '1.502', '11:00', '12:00');
     await toastText('Buchung erstellt');
-    erwarte(sql(`select count(*) from buchungen where tisch='1.502' and test`) === '1', 'nicht als test gespeichert');
+    erwarte(sql(`select count(*) from buchungen where tisch='1.502' and test and gast_sitzung is not null`) === '1', 'nicht als Test-Buchung der Sitzung gespeichert');
+    erwarte((await page.textContent('#gast-limit')).includes('Noch 9 von 10'), 'Limit-Anzeige: ' + await page.textContent('#gast-limit'));
+    await page.waitForSelector('.cal-seg.mine');
     await page.screenshot({ path: path.join(BILDER, '06-gast.png') });
+  });
+  // zweiter Gast in einem eigenen Browser-Fenster (eigene Sitzung)
+  const ctx2 = await browser.newContext({ viewport: { width: 1400, height: 900 }, timezoneId: 'Europe/Berlin', locale: 'de-DE' });
+  await ctx2.route(/yugjccgblqsfjasienwa\.supabase\.co/, async route => {
+    const req = route.request();
+    const r = antwort(req.method(), req.url(), req.headers(), req.postData());
+    await route.fulfill({ status: r.status, body: r.body, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } });
+  });
+  const gast2 = await ctx2.newPage();
+  const gast2Bucht = async (raum, nr) => {
+    await gast2.evaluate(() => { document.getElementById('toast').textContent = ''; });
+    await gast2.click(`.cal-cell[data-raum="${raum}"] >> nth=${nr}`);
+    await gast2.click('#slot-buchen');
+    await gast2.waitForFunction(() => { const t = document.getElementById('toast'); return t.className.includes('show') && t.textContent.includes('Buchung erstellt'); });
+  };
+  gast2.on('pageerror', e => jsFehler.push('Gast 2: ' + e.message));
+  await test('Gast legt eigene Etage per Datei an – nur in seiner Sitzung sichtbar', async () => {
+    await page.click('#btn-etage-neu');
+    await page.waitForSelector('#editor-bg.open');
+    erwarte(!(await page.isVisible('#ed-pw')), 'Passwortfeld beim Gast sichtbar');
+    await page.setInputFiles('#ed-datei', path.join(__dirname, 'fixtures', 'beispiel-etage.json'));
+    await page.waitForSelector('#ed-meldung.ok');
+    await page.click('#ed-speichern');
+    await toastText('nur für dich sichtbar');
+    await page.waitForSelector('#gebaeude-tabs [data-gebaeude="Anbau"]');
+    erwarte(sql(`select count(*) from etagen`) === '0', 'Gast-Etage in der öffentlichen Tabelle');
+    await gast2.goto(BASIS + '?gast');
+    await gast2.waitForSelector('#gast-banner', { state: 'visible' });
+    await gast2.waitForSelector('.cal-header');
+    erwarte(!(await gast2.$('#gebaeude-tabs [data-gebaeude="Anbau"]')), 'fremde Gast-Etage sichtbar');
+  });
+  await test('Gäste sehen gegenseitig nur „belegt“ und können fremde Test-Buchungen nicht löschen', async () => {
+    await gast2.fill('#f-datum', morgen); await gast2.dispatchEvent('#f-datum', 'change');
+    await gast2.waitForSelector('.cal-seg[data-raum="ShareDesk 3"]');
+    erwarte(!(await gast2.$('.cal-seg.mine')), 'fremde Buchung als eigene markiert');
+    await gast2.click('.cal-seg[data-raum="ShareDesk 3"]');
+    await gast2.click('#slot-body [data-bid]');
+    erwarte((await gast2.textContent('#m-nutzer')) === 'einer anderen Person', 'Anzeige');
+    erwarte(!(await gast2.isVisible('#m-delete')), 'fremde Test-Buchung löschbar');
+    await gast2.keyboard.press('Escape');
+    // Gast 2 bucht selbst etwas (bleibt beim Zurücksetzen von Gast 1 bestehen)
+    await gast2Bucht('ShareDesk 5', 10);
+  });
+  await test('„Meine Änderungen zurücksetzen“ löscht nur die eigenen Buchungen und Etagen', async () => {
+    await page.click('#btn-zuruecksetzen');
+    await page.click('#frage-ok');
+    await toastText('Zurückgesetzt: 1 Buchung(en), 1 Etage(n)');
+    erwarte(!(await page.$('#gebaeude-tabs [data-gebaeude="Anbau"]')), 'eigene Etage noch da');
+    erwarte(sql(`select count(*) from buchungen where test`) === '1', 'Buchung von Gast 2 mit gelöscht');
+  });
+  await test('Limit: höchstens 10 Änderungen in 2 Minuten je Gast', async () => {
+    const sitzung = await page.evaluate(() => currentUser.sitzung);
+    // bisher gezählt: 1 Buchung + 1 gespeicherte Etage (Zurücksetzen zählt nicht) → 7 dazu = 9
+    sql(`insert into gast_aenderungen (sitzung) select '${sitzung}' from generate_series(1, 7)`);
+    await buche('ShareDesk 4', '1.601', '15:00', '16:00');
+    await toastText('Buchung erstellt');
+    erwarte((await page.textContent('#gast-limit')).includes('Noch 0 von 10'), await page.textContent('#gast-limit'));
+    await buche('ShareDesk 4', '1.602', '15:00', '16:00');
+    await toastText('höchstens 10 Änderungen');
   });
 
   console.log('Admin / Etagen-Editor');
@@ -317,7 +409,7 @@ async function main(){
     erwarte(fs.readFileSync(ziel, 'utf8').includes('registriereEtage({'), 'Inhalt');
     await page.setInputFiles('#ed-datei', ziel);
     await page.waitForSelector('#ed-meldung.ok');
-    await page.keyboard.press('Escape');
+    await editorZu();
   });
   await test('Neue Etage per JSON-Datei importieren (anderes Gebäude, Kürzel)', async () => {
     await page.click('#btn-etage-neu');
@@ -337,15 +429,43 @@ async function main(){
     await page.click('#ed-speichern');
     await page.waitForSelector('#ed-meldung.fehler');
     erwarte((await page.textContent('#ed-meldung')).includes('gibt es schon'), await page.textContent('#ed-meldung'));
-    await page.keyboard.press('Escape');
+    await editorZu();
   });
   await test('Datenbank-Etage löschen', async () => {
     await page.click('#gebaeude-tabs [data-gebaeude="Werkstatt"]');
     await page.click('#btn-etage-bearbeiten');
     await page.click('#ed-db-loeschen');
+    await page.click('#frage-ok');
     await toastText('Etage gelöscht');
     erwarte(!(await page.$('#gebaeude-tabs [data-gebaeude="Werkstatt"]')), 'Tab noch da');
     erwarte(sql(`select count(*) from etagen where id='werkstatt-1'`) === '0', 'noch in DB');
+  });
+  await test('Admin schaut ins Testsystem, löscht eine Gast-Buchung und leert alles', async () => {
+    erwarte(!(await page.isVisible('#ed-pw')), '');
+    await page.click('#btn-testsystem');
+    await page.waitForSelector('#admin-test-teil', { state: 'visible' });
+    await page.evaluate(() => switchEtage('hauptgebaeude-1'));
+    await page.click('#view-cal');
+    await page.fill('#f-datum', morgen); await page.dispatchEvent('#f-datum', 'change');
+    await page.waitForSelector('.cal-seg[data-raum="ShareDesk 5"]');
+    await page.screenshot({ path: path.join(BILDER, '11-admin-testsystem.png') });
+    await page.click('.cal-seg[data-raum="ShareDesk 5"]');
+    await page.click('#slot-body [data-bid]');
+    erwarte(await page.isVisible('#m-delete'), 'Admin darf Gast-Buchung nicht löschen');
+    await page.click('#m-delete');
+    await toastText('gelöscht');
+    // weitere Test-Daten anlegen und alles leeren
+    await gast2.fill('#f-datum', morgen); await gast2.dispatchEvent('#f-datum', 'change');
+    await gast2Bucht('ShareDesk 4', 4);
+    erwarte(sql(`select count(*) from buchungen where test`) !== '0', 'keine Test-Daten zum Leeren');
+    const echt = sql(`select count(*) from buchungen where not test`);
+    await page.click('#btn-test-leeren');
+    await page.click('#frage-ok');
+    await toastText('Testsystem geleert');
+    erwarte(sql(`select count(*) from buchungen where test`) === '0', 'Test-Buchungen übrig');
+    erwarte(sql(`select count(*) from buchungen where not test`) === echt, 'echte Buchungen gelöscht');
+    await page.click('#btn-testsystem');
+    await page.waitForSelector('#gast-banner', { state: 'hidden' });
   });
   await test('keine JavaScript-Fehler während des gesamten Laufs', async () => {
     erwarte(!jsFehler.length, jsFehler.join(' | '));

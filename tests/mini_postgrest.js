@@ -104,7 +104,9 @@ function antwort(method, urlText, headers, bodyText){
       const argSql = Object.entries(args).map(([k, v]) =>
         `${ident(k)} => ${typeof v === 'object' && v !== null ? lit(JSON.stringify(v)) : lit(v)}`).join(', ');
       const [setof, typ] = rpcTyp(fn).split(':');
-      const sql = setof === '1' ? `select coalesce(json_agg(t), '[]'::json) from ${fn}(${argSql}) t`
+      // setof <Tabelle/record> → Objekte; setof <einfacher Typ, z.B. jsonb> → Werte (wie PostgREST)
+      const sql = setof === '1' && typ === 'record' ? `select coalesce(json_agg(t), '[]'::json) from ${fn}(${argSql}) t`
+        : setof === '1' ? `select coalesce(json_agg(t.x), '[]'::json) from ${fn}(${argSql}) as t(x)`
         : typ === 'void' ? `select ${fn}(${argSql}); select 'null'` : `select to_json(${fn}(${argSql}))`;
       const r = psql(sql);
       if(r.fehler) return fehler(r.fehler);
@@ -131,19 +133,25 @@ function antwort(method, urlText, headers, bodyText){
       const zeilen = Array.isArray(daten) ? daten : [daten];
       const spalten = [...new Set(zeilen.flatMap(Object.keys))].map(ident);
       const werte = zeilen.map(z => '(' + spalten.map(s => z[s] === undefined ? 'default' : (typeof z[s] === 'boolean' ? String(z[s]) : lit(z[s]))).join(',') + ')').join(',');
-      const r = psql(`with neu as (insert into ${tabelle} (${spalten.join(',')}) values ${werte} returning *) select coalesce(json_agg(neu), '[]'::json) from neu`);
+      // Wie PostgREST: nur bei return=representation zurücklesen, und nur die
+      // per ?select= gewünschten Spalten (Spaltenrechte gelten auch hier)
+      const zurueck = prefer.includes('return=representation');
+      const sel = (url.searchParams.get('select') || '*').split(',').map(c => c === '*' ? '*' : ident(c.trim())).join(',');
+      const r = zurueck
+        ? psql(`with neu as (insert into ${tabelle} (${spalten.join(',')}) values ${werte} returning ${sel}) select coalesce(json_agg(neu), '[]'::json) from neu`)
+        : psql(`insert into ${tabelle} (${spalten.join(',')}) values ${werte}`);
       if(r.fehler) return fehler(r.fehler);
-      return prefer.includes('return=representation') ? { status: 201, body: r.text } : { status: 201, body: '' };
+      return zurueck ? { status: 201, body: r.text } : { status: 201, body: '' };
     }
     if(method === 'PATCH'){
       const daten = JSON.parse(bodyText);
       const set = Object.entries(daten).map(([k, v]) => `${ident(k)} = ${typeof v === 'boolean' ? v : lit(v)}`).join(', ');
-      const r = psql(`with g as (update ${tabelle} set ${set}${whereTeil(params)} returning *) select coalesce(json_agg(g), '[]'::json) from g`);
+      const r = psql(`update ${tabelle} set ${set}${whereTeil(params)}`);
       if(r.fehler) return fehler(r.fehler);
-      return prefer.includes('return=representation') ? { status: 200, body: r.text } : { status: 204, body: '' };
+      return { status: 204, body: '' };
     }
     if(method === 'DELETE'){
-      const r = psql(`with g as (delete from ${tabelle}${whereTeil(params)} returning *) select count(*) from g`);
+      const r = psql(`delete from ${tabelle}${whereTeil(params)}`);
       if(r.fehler) return fehler(r.fehler);
       return { status: 204, body: '' };
     }

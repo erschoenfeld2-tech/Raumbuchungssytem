@@ -27,7 +27,7 @@ const js = code => {
   return v && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v;
 };
 
-['js/ui.js', 'js/gebaeude.js', 'js/belegung.js', 'js/grundriss.js'].forEach(lade);
+['js/config.js', 'js/ui.js', 'js/gebaeude.js', 'js/belegung.js', 'js/grundriss.js', 'js/kalender.js'].forEach(lade);
 // Editor nur für jsObjektZuJson laden (der Rest braucht einen Browser)
 lade('js/editor.js');
 
@@ -93,6 +93,31 @@ test('Grundriss rendert jede Etage ohne Fehler', () => {
     const svg = js(`grundrissSvg(etageById(${JSON.stringify(e.id)}), { selRaum:null, selTisch:null, raumStatus:()=>'free', tischStatus:()=>'frei' })`);
     assert(svg.includes('data-raum'), e.id);
   });
+});
+
+test('Beschriftungen liegen über Türen (Ebenen-Reihenfolge)', () => {
+  js('ETAGEN').forEach(e => {
+    const svg = js(`grundrissSvg(etageById(${JSON.stringify(e.id)}), { raumStatus:()=>'free', tischStatus:()=>'frei' })`);
+    const letzteTuer = svg.lastIndexOf('plan-door');
+    const ersteSchrift = Math.min(...['plan-label', 'plan-sub', 'desk-code', 'plan-text', 'plan-flur-label'].map(k => svg.indexOf('class="' + k)).filter(i => i >= 0));
+    assert(letzteTuer < 0 || ersteSchrift > letzteTuer, e.id);
+  });
+});
+test('Türen der Datei-Etagen schlagen in den Flur auf', () => {
+  js('ETAGEN').filter(e => e.flure.length).forEach(e => e.tueren.filter(t => t.o === 'h').forEach(t => {
+    const ende = t.y + t.s * t.len;
+    assert(e.flure.some(f => ende >= f.y && ende <= f.y + f.h), `${e.id}: Tür bei x=${t.x} schlägt nicht in den Flur`);
+  }));
+});
+
+console.log('Datenschutz');
+test('Kalender und Agenda zeigen keine Namen, nur „Du“ / „belegt“', () => {
+  const bs = [{ id: 1, raum: 'ShareDesk 1', tisch: '1.301', nutzer_id: 2, name: 'Geheimer Name', start: '2030-01-01 09:00', ende: '2030-01-01 11:00', quelle: 'web' },
+              { id: 2, raum: 'ShareDesk 1', tisch: '1.302', nutzer_id: 1, name: 'Mein Name', start: '2030-01-01 09:00', ende: '2030-01-01 10:00', quelle: 'web' }];
+  const html = js(`kalenderHtml(ROOMS.filter(r => r.name === 'ShareDesk 1'), ${JSON.stringify(bs)}, '2030-01-01', b => b.nutzer_id === 1, false)`)
+    + js(`agendaHtml(${JSON.stringify(bs)}, b => b.nutzer_id === 1)`);
+  assert(!html.includes('Geheimer Name') && !html.includes('Mein Name'), 'Name im HTML');
+  assert(html.includes('Du') && html.includes('belegt'));
 });
 
 console.log('Etagen-Prüfung');
