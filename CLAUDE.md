@@ -29,7 +29,12 @@ Only one is real. Always check which file you're touching before assuming it aff
   dropdowns), `gebaeude.js` (floor registry/validation → globals `ETAGEN`, `ROOMS`), `belegung.js`
   (pure capacity/status logic, unit-tested in Node), `grundriss.js` (SVG renderer), `kalender.js`,
   `daten.js` (all Supabase calls), `auth.js`, `editor.js` (admin floor editor), `hintergrund.js`,
-  `app.js` (state, events, starts the app — must load last).
+  `profil.js` (own profile), `app.js` (state, events, starts the app — must load last).
+- Custom dropdowns: `enhanceSelect(sel)` in `ui.js` restyles a native `<select>` (which stays the
+  data source). Fill selects with `optionenSetzen(sel, [{wert, text, hinweis, status, icon,
+  gruppe}])` → hint text, status dot (`frei|teil|belegt`), icon, `<optgroup>` headers; ≥8 options
+  get a search box; lists open upwards when space below is short. All checkboxes are styled as
+  toggle switches via CSS (`input[type=checkbox]`), no extra markup.
 - **Never build HTML from DB/floor-file text without `esc()`**, and don't use inline
   `onclick="fn('${text}')"` — clicks are handled by delegation on `data-*` attributes in `app.js`.
 - Backend is **Supabase** (Postgres + PostgREST), talked to directly from the browser with the
@@ -38,9 +43,13 @@ Only one is real. Always check which file you're touching before assuming it aff
 - Floors/rooms come from two sources, merged by `etagenAufbauen()` in `js/gebaeude.js`:
   (1) one file per floor in `etagen/*.js` calling `registriereEtage({...})`, listed in the
   `<!-- ETAGEN -->` block of `index.html` (template: `etagen/_vorlage-etage.js`, not included);
-  (2) rows of the `etagen` table (jsonb `definition`, same format), written only via the
-  admin-password-checked RPCs `etage_speichern`/`etage_loeschen` from the in-browser floor editor
-  (image or JSON/JS import). A DB floor with the same `id` replaces the file floor. Currently:
+  (2) rows of the `etagen` table (jsonb `definition`, same format, `erstellt_von` = creator),
+  written only via the password-checked RPCs `etage_speichern`/`etage_loeschen` from the
+  in-browser floor editor (image or JSON/JS import). Since migration `20261119170000_*` **every
+  logged-in user** may create floors (persistent, visible to all) and edit/delete their own; the
+  admin may edit/delete all. A DB floor with the same `id` replaces the file floor — only the
+  admin may do that (enforced in the UI/editor, the DB doesn't know file floors). Guests use the
+  same editor but save to `gast_etagen` (see below). Currently:
   Hauptgebäude, Etage 1 (Besprechungsraum, Konferenzraum, ShareDesk 1–5) and Etage 2
   (ShareDesk 6–10). Capacity = number of tables (meeting room = 1).
 - **Room names are the booking key** (`buchungen.raum` stores the name, the NFC bridge writes it
@@ -55,8 +64,11 @@ Only one is real. Always check which file you're touching before assuming it aff
   password (`nutzer_passwort_aendern` RPC, migration `20261007120000_*`). Since migration
   `20261119150000_*` the admin account (`ist_admin`) logs in the same way (its old frontend password
   became the initial hash with forced change) — there is no password in the frontend anymore. The
-  admin password is kept in memory only (`adminPasswortSitzung`) because `etage_speichern`
-  re-checks it server-side. The resulting user object (including `ist_admin`) is cached in
+  login password is kept in memory only (`passwortSitzung`, any user) because `etage_speichern`,
+  `profil_speichern` and admin RPCs re-check it server-side; after a reload it is asked again via
+  the in-page dialog. **Profile** (`js/profil.js`, click avatar): own picture (`nutzer.bild`, ≤300 KB
+  data URL, 192 px JPEG), user name (`profil_speichern`, also updates the `buchungen.name` copies),
+  password change, and an overview of own upcoming bookings — never shown to anyone else. The resulting user object (including `ist_admin`) is cached in
   `localStorage` (key `rb_user2`). `ist_admin` is the only thing that lets a user delete other people's
   bookings — regular users can only delete their own. **Known, accepted limitation:** because
   there's no real per-user Supabase session, RLS on `buchungen` can't distinguish "this specific

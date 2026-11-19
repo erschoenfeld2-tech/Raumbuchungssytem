@@ -39,7 +39,12 @@ Hausmesse 2026.
   (grün = frei, rot = belegt).
 - **Mehrere Gebäude und Etagen** – jede Etage ist eine eigene Datei (`etagen/*.js`) und hat ihre
   eigene Adresse (`?etage=<id>`). Neue Etagen entstehen aus einer Vorlage – oder ganz ohne
-  Programmieren im Browser aus einem **Grundriss-Bild** oder einer **JSON-Datei**.
+  Programmieren im Browser aus einem **Grundriss-Bild** oder einer **JSON-Datei**. Das kann jeder
+  angemeldete Nutzer (dauerhaft, für alle sichtbar) und jeder Gast (nur für sich, mit Verfallszeit).
+- **Mein Profil** – Profilbild, Nutzername und Passwort selbst ändern, dazu eine Übersicht aller
+  eigenen Buchungen nach Tagen.
+- **Bedienung** – Auswahllisten mit Gruppen, Frei/Belegt-Punkten, Häkchen und Suche; Häkchen als
+  Schalter; vergangene Uhrzeiten werden ausgegraut.
 - **NFC-Check-in** – Karte an den Reader am Raum halten → automatische 60-Minuten-Buchung,
   erneutes Auflegen verlängert. Die Buchung erscheint sofort im Browser (📡).
 - **Persönliche Logins** – Passwörter werden gehasht in der Datenbank geprüft, beim ersten Login
@@ -94,6 +99,15 @@ flowchart LR
    Anklicken → Details → **Löschen**. Auf dem Handy steht oben eine anklickbare **Agenda** des Tages.
 5. **Tischnummern**: `Etage.RaumTisch`, z. B. **1.203** = Etage 1, Raum 2, Tisch 3.
    Gebäude mit Kürzel bekommen ein Präfix, z. B. **A-0.201**.
+6. **Auswahllisten**: Räume sind nach Meetingräumen und ShareDesks gruppiert; der Punkt zeigt die
+   Belegung am gewählten Tag (grün frei, gelb teilweise, rot belegt), ✓ markiert die Auswahl.
+   Bedienbar auch mit der Tastatur (↑ ↓ Enter Esc); lange Listen haben ein Suchfeld.
+7. **Mein Profil**: Klick auf dein Bild/deinen Namen oben rechts.
+   - **Profilbild** wählen oder entfernen (wird automatisch quadratisch verkleinert),
+   - **Nutzername** ändern,
+   - **Passwort** ändern (das aktuelle Passwort wird dabei verdeckt abgefragt),
+   - **Meine Buchungen**: alle eigenen Buchungen ab heute nach Tagen, mit „Zum Tag →“ und Löschen.
+   Name und Bild sieht nur du selbst – anderen wird nichts davon angezeigt.
 
 ### 2.2 NFC am Stand
 
@@ -119,12 +133,17 @@ sieht dort alle Test-Buchungen, darf jede davon löschen und mit **„🗑 Tests
 alle Test-Buchungen und Gast-Etagen auf einmal entfernen (echte Buchungen bleiben unberührt).
 **„🏢 Zurück zum Echtbetrieb"** wechselt zurück.
 
-### 2.4 Für Admins: neue Etage oder neues Gebäude
+### 2.4 Neue Etage oder neues Gebäude (alle angemeldeten Nutzer)
+
+| Wer | darf anlegen | darf ändern/löschen | sichtbar für | bleibt |
+|---|---|---|---|---|
+| Nutzer | ✓ | eigene Etagen | alle | dauerhaft |
+| Admin | ✓ | alle, auch Datei-Etagen ersetzen | alle | dauerhaft |
+| Gast | ✓ | alles – aber nur in der eigenen Sitzung | nur sich selbst | 15 Min. ohne Änderung |
 
 **Variante A – im Browser (ohne Programmieren):**
 
-1. Mit dem Admin-Konto anmelden → **„＋ Etage / Gebäude"**. (Gäste können dasselbe – ihre Etagen
-   bleiben aber privat in ihrer Sitzung, siehe 2.3.)
+1. Anmelden → **„＋ Etage / Gebäude"**.
 2. **Grundlage wählen:**
    - **🖼 Grundriss-Bild laden** (PNG, JPG, SVG, WebP – z. B. ein Foto oder Scan des Fluchtplans).
      Das Bild wird verkleinert und auf Wunsch fürs dunkle Design invertiert.
@@ -136,12 +155,13 @@ alle Test-Buchungen und Gast-Etagen auf einmal entfernen (echte Buchungen bleibe
    *Meetingraum*/*ShareDesk*, Anzahl Tische, NFC-Reader), ziehen = verschieben, gelbe Ecke =
    Größe, `Entf` = löschen. „Beim Aufziehen anlegen als → Bereich" für Treppe, WC, Lounge …
 5. **👁 Vorschau** zeigt die Etage genau so, wie sie später in der App aussieht.
-6. **💾 In Datenbank speichern** (Admin-Passwort wird in der Datenbank erneut geprüft) – die Etage
-   ist sofort für alle sichtbar und buchbar. Alternativ **⬇ Etagen-Datei (.js)** exportieren und
-   wie bei Variante B ins Repo legen.
+6. **💾 Speichern** (dein Passwort wird in der Datenbank erneut geprüft – nach dem Neuladen der
+   Seite wird es einmal verdeckt abgefragt) – die Etage ist sofort für alle sichtbar und buchbar.
+   Alternativ **⬇ Etagen-Datei (.js)** exportieren und wie bei Variante B ins Repo legen.
 
-Bestehende Etagen lassen sich über **„✎ Etage bearbeiten"** anpassen. Eine im Browser gespeicherte
-Version ersetzt die Datei-Version mit gleicher ID; „DB-Etage löschen" stellt die Datei-Version wieder her.
+Eigene Etagen lassen sich über **„✎ Etage bearbeiten"** anpassen oder löschen. Der Admin darf jede
+Etage bearbeiten; eine von ihm gespeicherte Version ersetzt die Datei-Version mit gleicher ID,
+„DB-Etage löschen" stellt die Datei-Version wieder her.
 
 **Variante B – als Datei im Repository:**
 
@@ -177,7 +197,7 @@ Login sofort geändert werden muss):
 | `index.html` | Seitengerüst der Live-App (Login, Formular, Ansichten, Dialoge, Etagen-Editor). Kein Build-Schritt, kein Framework. |
 | `css/app.css` | Komplettes Styling (Dark-Theme, Mobil-Layout, Editor). |
 | `js/config.js` | Supabase-URL + öffentlicher anon key, Konstanten (Zeitraum, Aktualisierungsintervall …). |
-| `js/ui.js` | HTML-Escaping, Datum/Uhrzeit (lokale Zeit!), Toast, Dialoge, eigene Dropdowns/Zeitfelder. |
+| `js/ui.js` | HTML-Escaping, Datum/Uhrzeit (lokale Zeit!), Toast, Dialoge, eigene Dropdowns (Gruppen, Status, Suche) und Zeitfelder. |
 | `js/gebaeude.js` | **Etagen-Modell**: prüft und vereinheitlicht Datei- und Datenbank-Etagen → `ETAGEN`, `ROOMS`; Tischcodes. |
 | `etagen/*.js` | **Eine Datei pro Etage** (`registriereEtage({...})`), `_vorlage-etage.js` = Vorlage. |
 | `js/belegung.js` | Reine Logik ohne DOM/DB: gleichzeitige Belegung, Kapazitätsprüfung, Statusfarben, Kalender-Blöcke. |
@@ -186,6 +206,7 @@ Login sofort geändert werden muss):
 | `js/daten.js` | Alle Supabase-Zugriffe (Buchungen, Nutzer, Etagen, RPCs). |
 | `js/auth.js` | Login, Passwortwechsel, Gast-Zugang, Sitzung im `localStorage`. |
 | `js/editor.js` | Etagen-Editor (Bild-/Datei-Import, Zeichnen, Speichern, Export). |
+| `js/profil.js` | Mein Profil: Bild, Nutzername, Passwort, Übersicht der eigenen Buchungen. |
 | `js/hintergrund.js` | Animierter Netz-Hintergrund und Cursor-Spotlight. |
 | `js/app.js` | Zustand, Gebäude-/Etagenwechsel, Rendern, Buchen, Ereignisse – startet die App. |
 | `vendor/` | Supabase-JS-Client **2.119.0**, lokal mitgeliefert (keine CDN-Abhängigkeit am Stand). |
@@ -201,17 +222,18 @@ direkt per Doppelklick (`file://`) funktioniert.
 
 | Tabelle/View | Spalten (Auszug) | Zugriff mit dem öffentlichen anon key |
 |---|---|---|
-| `nutzer` | `id, name, nfc_uid, ist_admin, passwort_hash, passwort_muss_aendern` | **kein** direkter Zugriff |
+| `nutzer` | `id, name, nfc_uid, ist_admin, passwort_hash, passwort_muss_aendern, bild` | **kein** direkter Zugriff (eigener Name/Bild nur über `nutzer_login`) |
 | `nutzer_public` (View) | `id, name, ist_admin` | **gesperrt** (seit `20261119160000`) |
 | `buchungen` | `id, raum, tisch, nutzer_id, name, start, ende, quelle ('web'/'nfc'), test, erstellt, gast_sitzung, gast_hash` | lesen ohne `name` und `gast_sitzung`; schreiben (siehe Einschränkung); Test-Buchungen nur per RPC |
-| `etagen` | `id, definition (jsonb), aktualisiert` | nur lesen; schreiben nur per RPC (Admin) |
+| `etagen` | `id, definition (jsonb), aktualisiert, erstellt_von` | nur lesen; schreiben nur per RPC (angemeldete Nutzer: eigene, Admin: alle) |
 | `gast_sitzungen`, `gast_etagen`, `gast_aenderungen` | Gast-Sitzungen, private Gast-Etagen, Änderungszähler | kein direkter Zugriff, nur per RPC |
 
 `start`/`ende` sind Texte im Format `YYYY-MM-DD HH:MM` (lokale Zeit) – dadurch funktionieren
 Überlappungsabfragen als einfacher Textvergleich.
 
 **Funktionen (RPC, `security definer`):**
-`nutzer_login`, `nutzer_passwort_aendern` (bcrypt via pgcrypto), `nutzer_by_nfc` (Karten-UID →
+`nutzer_login` (liefert auch das eigene Profilbild), `nutzer_passwort_aendern` (bcrypt via pgcrypto),
+`profil_speichern` (Name/Bild, mit Passwortprüfung), `nutzer_by_nfc` (Karten-UID →
 Nutzer, ohne die UID-Liste preiszugeben), `test_buchungen_aufraeumen` (Gast-Buchungen > 2 Min),
 `etage_speichern` / `etage_loeschen` (prüfen das Admin-Passwort serverseitig);
 Testsystem: `gast_sitzung_starten`, `gast_buchen`, `gast_buchung_loeschen`, `gast_etagen_laden`,
