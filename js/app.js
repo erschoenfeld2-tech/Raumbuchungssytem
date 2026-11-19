@@ -90,10 +90,12 @@ function switchEtage(id){
   if(id){
     try { localStorage.setItem(SPEICHER_ETAGE, id); } catch(e) {}
     // Jede Etage hat so ihre eigene, teilbare Adresse: index.html?etage=<id>
-    const url = new URL(location.href);
-    url.searchParams.set('etage', id);
-    url.searchParams.delete('gast');
-    history.replaceState(null, '', url);
+    try {
+      const url = new URL(location.href);
+      url.searchParams.set('etage', id);
+      url.searchParams.delete('gast');
+      history.replaceState(null, '', url);
+    } catch(e) { /* z.B. in eingebetteten/abgeschotteten Ansichten nicht erlaubt – dann ohne Adresse */ }
   }
   ortTabsZeichnen();
   initRaumDropdown();
