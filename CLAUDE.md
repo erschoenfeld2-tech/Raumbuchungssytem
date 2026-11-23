@@ -210,6 +210,10 @@ deploy workflows) does `py_compile`, `node --check` on `js/ etagen/ tests/`, uni
 - Dark blue/black theme only — no light/white design. Palette used throughout `css/app.css`:
   `--bg:#0f1117 --surface:#1a1d27 --surface2:#22263a --border:#2e3250 --accent:#4f6ef7
   --purple:#7c3aed --green:#22c55e --red:#ef4444 --amber:#f59e0b --text:#e8eaf6 --muted:#8891b4`.
+  The "HUD-Look" block near the end of `css/app.css` (before the mobile media query) restyles cards,
+  calendar blocks, agenda rows and modals to match the Hausmesse promo material; it adds only
+  `--mono`, `--neon` (light accent) and translucent variants of the palette — no external fonts.
+  The calendar re-renders every minute (now-line), so don't put entrance animations on `.cal-block`.
 - Keep changes small and targeted — this is a two-to-three-person student project, not enterprise
   software; avoid introducing abstractions, frameworks, or infra beyond what's asked for.
 - After any frontend or migration change run `bash tests/run_tests.sh` and look at the screenshots
