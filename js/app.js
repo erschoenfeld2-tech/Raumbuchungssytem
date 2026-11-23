@@ -90,9 +90,10 @@ async function meineAenderungenZuruecksetzen(){
   if(!ok) return;
   const r = await gastZuruecksetzen(testSitzung());
   if(r.fehler){ if(!(await sitzungPruefen(r.fehler))) toast('✗ ' + r.fehler, 'error'); return; }
-  toast(`Zurückgesetzt: ${r.buchungen} Buchung(en), ${r.etagen} Etage(n)`, 'success');
+  // erst neu laden, dann melden – die Meldung soll den fertigen Zustand bestätigen
   await etagenNeuLaden();
   switchEtage(etageById(aktEtageId) ? aktEtageId : (ETAGEN[0] && ETAGEN[0].id));
+  toast(`Zurückgesetzt: ${r.buchungen} Buchung(en), ${r.etagen} Etage(n)`, 'success');
 }
 // Admin-Passwort: aus der Anmeldung (nur im Speicher) oder verdeckt abfragen
 async function passwortHolen(frage, knopf){
@@ -383,7 +384,9 @@ async function buchen(){
 function modalOpen(b){
   modalBuchung = b;
   $('m-raum').textContent = b.raum;
-  $('m-tisch-row').style.display = b.tisch ? 'block' : 'none';
+  $('m-tisch-row').style.display = b.tisch ? '' : 'none';
+  $('m-status').textContent = istMeine(b) ? 'Deine Buchung' : 'Belegt';
+  $('m-status').className = 'ticket-status ' + (istMeine(b) ? 'du' : 'fremd');
   $('m-tisch').textContent = b.tisch || '';
   $('m-nutzer').textContent = istMeine(b) ? 'Dir' : 'einer anderen Person';
   $('m-zeit').textContent = `${b.start.slice(11,16)} – ${b.ende.slice(11,16)} Uhr`;
@@ -413,13 +416,15 @@ function zelleOeffnen(raumName, slotStart, slotEnde){
   const treffer = allBookings.filter(b => b.raum === raumName && b.start < slotEnde && b.ende > slotStart);
   $('slot-title').textContent = `${raumName} · ${slotStart.slice(11)}–${slotEnde.slice(11)} Uhr`;
   const belegt = Math.min(maxGleichzeitig(treffer, slotStart, slotEnde), raum.kapazitaet);
-  let html = `<p style="margin-bottom:10px"><strong>${belegt}/${raum.kapazitaet}</strong> Tische belegt</p>`;
+  const anteil = Math.round(belegt / raum.kapazitaet * 100);
+  let html = `<div class="slot-belegung"><strong>${belegt}/${raum.kapazitaet}</strong> Tische belegt
+      <span class="slot-balken${belegt >= raum.kapazitaet ? ' voll' : ''}"><i style="width:${anteil}%"></i></span></div>`;
   html += treffer.length ? treffer.map(b => `
-      <div class="agenda-row" style="cursor:pointer" data-bid="${esc(b.id)}">
-        <span class="agenda-time">${esc(b.tisch || raumName)}</span>
-        <span class="agenda-raum">${esc(b.start.slice(11,16))}–${esc(b.ende.slice(11,16))}</span>
-        <span class="agenda-nutzer">${wer(b, istMeine)}${b.quelle === 'nfc' ? ' · 📡' : ''}</span>
-      </div>`).join('') : '<p>Alle Tische frei.</p>';
+      <div class="agenda-row${istMeine(b) ? ' mine' : ''}" data-bid="${esc(b.id)}">
+        <span class="agenda-time">${esc(b.start.slice(11,16))}<i>${esc(b.ende.slice(11,16))}</i></span>
+        <span class="agenda-raum">${b.tisch ? 'Tisch ' + esc(b.tisch) : esc(raumName)}</span>
+        ${chipsHtml(b, istMeine)}
+      </div>`).join('') : '<p class="slot-frei">Alle Tische frei.</p>';
   const freieTische = raum.tische.filter(t => !treffer.some(b => b.tisch === t.code));
   if(!webBuchungErlaubt(raumName)){
     html += `<p style="margin-top:12px;color:var(--amber)">Im Testsystem nur per NFC-Karte buchbar.</p>`;

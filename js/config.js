@@ -20,7 +20,7 @@ const AKTUALISIERUNG_MS = 5000;
 const GAST_NAME = 'Gast';
 // Regeln des Testsystems – nur für Anzeigetexte; die echten Werte prüft die
 // Datenbank (Migration 20261119160000_gast_sitzungen_und_datenschutz.sql)
-const GAST_LOESCH_MINUTEN = 30;         // Test-Buchungen werden danach gelöscht (Migration 20261123120000)
+const GAST_LOESCH_MINUTEN = 20;         // Test-Buchungen werden danach gelöscht (Migration 20261123120000)
 const GAST_ETAGEN_MINUTEN = 15;         // eigene Gast-Etagen ohne Änderung danach
 const GAST_LIMIT = 10;                  // Änderungen je Gast-Sitzung …
 const GAST_LIMIT_MINUTEN = 2;           // … in diesem Zeitraum

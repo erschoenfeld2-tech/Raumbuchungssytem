@@ -92,7 +92,7 @@ Only one is real. Always check which file you're touching before assuming it aff
   floors live in `gast_etagen`, visible only to their session (`gast_etagen_laden`). All guest
   writes go through RPCs that enforce **max 10 changes per session in 2 min**
   (`gast_aenderung_zaehlen`). `gast_zuruecksetzen()` removes only the caller's bookings/floors;
-  `test_buchungen_aufraeumen()` expires test bookings after 30 min (migration `20261123120000_*`;
+  `test_buchungen_aufraeumen()` expires test bookings after 20 min (migration `20261123120000_*`;
   before that 2 min, which deleted them before the admin or other guests could see them — test
   bookings are one shared pool for all guests + the admin view) and guest floors after 15 min.
   The admin can switch into the test system ("🧪 Testsystem"), delete any test booking and wipe

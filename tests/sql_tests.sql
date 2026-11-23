@@ -153,7 +153,7 @@ do $$ declare r jsonb; vorher int; begin
 end $$;
 
 -- 8. Automatisches Aufräumen löscht nur alte Test-Daten. Test-Buchungen
---    bleiben 30 Min. für alle sichtbar (gemeinsames Testsystem), ältere gehen.
+--    bleiben 20 Min. für alle sichtbar (gemeinsames Testsystem), ältere gehen.
 select gast_buchen((select id from s where name = 'b'), 'ShareDesk 5', null, '2030-01-04 09:00', '2030-01-04 10:00');
 select gast_buchen((select id from s where name = 'b'), 'ShareDesk 6', null, '2030-01-04 09:00', '2030-01-04 10:00');
 select gast_etage_speichern((select id from s where name = 'b'), '{"id":"gast-alt","raeume":[{"name":"Gastraum B"}]}');

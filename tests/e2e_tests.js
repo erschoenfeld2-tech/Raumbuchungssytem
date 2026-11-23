@@ -183,6 +183,9 @@ async function main(){
     await toastText('ausgebucht');   // 09–10 sind schon 2/2 belegt …
     await buche('ShareDesk 2', '1.402', '10:00', '12:00');
     await toastText('Buchung erstellt');   // … ab 10 Uhr ist wieder Platz
+    await page.waitForSelector('.cal-seg.status-busy');
+    await page.waitForTimeout(3000);   // Toast ausblenden lassen
+    await page.screenshot({ path: path.join(BILDER, '02e-kalender-belegt.png') });
   });
   await test('Vergangenheit kann nicht gebucht werden', async () => {
     const gestern = new Date(Date.now() - 86400000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
@@ -260,8 +263,13 @@ async function main(){
     await page.waitForSelector('.cal-seg[data-raum="ShareDesk 4"]');
     await page.click('.cal-seg[data-raum="ShareDesk 4"]');
     await page.waitForSelector('#slot-modal.open');
+    await page.waitForTimeout(400);   // Einblend-Animation abwarten
+    await page.screenshot({ path: path.join(BILDER, '02c-zeitfenster.png') });
     await page.click('#slot-body [data-bid]');
     await page.waitForSelector('#modal.open');
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: path.join(BILDER, '02d-buchungsdetails.png') });
+    erwarte((await page.textContent('#m-status')) === 'Belegt', 'Status im Ticket: ' + await page.textContent('#m-status'));
     erwarte((await page.textContent('#m-nutzer')) === 'einer anderen Person', 'Name angezeigt: ' + await page.textContent('#m-nutzer'));
     erwarte(!(await page.isVisible('#m-delete')), 'fremde Buchung löschbar');
     const html = await page.content();

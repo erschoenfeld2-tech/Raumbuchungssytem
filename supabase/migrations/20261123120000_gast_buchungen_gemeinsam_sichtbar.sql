@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════
--- Testsystem: Gast-Buchungen bleiben 30 Minuten sichtbar (statt 2 Minuten)
+-- Testsystem: Gast-Buchungen bleiben 20 Minuten sichtbar (statt 2 Minuten)
 --
 -- Alle Gäste und der Admin teilen sich EIN gemeinsames Testsystem für die
 -- Buchungen der Standard-Räume – jeder sieht dort die Test-Buchungen aller
@@ -21,7 +21,7 @@ language sql
 security definer
 set search_path = public
 as $$
-  delete from buchungen where test and erstellt < now() - interval '30 minutes';
+  delete from buchungen where test and erstellt < now() - interval '20 minutes';
   delete from gast_etagen where aktualisiert < now() - interval '15 minutes';
   delete from gast_aenderungen where zeit < now() - interval '2 minutes';
 $$;
