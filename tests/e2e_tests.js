@@ -183,6 +183,26 @@ async function main(){
     await toastText('ausgebucht');   // 09–10 sind schon 2/2 belegt …
     await buche('ShareDesk 2', '1.402', '10:00', '12:00');
     await toastText('Buchung erstellt');   // … ab 10 Uhr ist wieder Platz
+    await page.waitForSelector('.cal-seg.status-busy');
+    await page.waitForTimeout(3000);   // Toast ausblenden lassen
+    await page.screenshot({ path: path.join(BILDER, '02e-kalender-belegt.png') });
+  });
+  await test('Liste zeigt auch Abendbuchungen; Raumköpfe und Formular bleiben beim Scrollen stehen', async () => {
+    erwarte(await page.$eval('#cal-view', el => el.scrollTop) > 0, 'Liste springt nicht zur ersten Buchung');
+    sql(`insert into buchungen (raum, tisch, nutzer_id, name, start, ende) values ('ShareDesk 5', '1.702', 2, 'x', '${morgen} 21:00', '${morgen} 22:30')`);
+    await page.click('#btn-weiter'); await page.click('#btn-zurueck');   // Tag neu laden
+    await page.waitForSelector(`.cal-seg[data-raum="ShareDesk 5"][data-start="${morgen} 21:00"]`);
+    erwarte(await page.$$eval('.cal-time', z => z.some(x => x.textContent === '22:00')), '22-Uhr-Zeile fehlt');
+    await page.$eval('#cal-view', el => { el.scrollTop = el.scrollHeight; });
+    await page.evaluate(() => window.scrollTo(0, 400));
+    await page.waitForTimeout(300);
+    const kopf = await page.$eval('.cal-header', el => el.getBoundingClientRect().top);
+    const rahmen = await page.$eval('#cal-view', el => el.getBoundingClientRect().top);
+    erwarte(Math.abs(kopf - rahmen) < 2, `Raumköpfe scrollen weg (${kopf} / ${rahmen})`);
+    erwarte(rahmen >= 0 && rahmen < 40, 'Liste bleibt beim Scrollen der Seite nicht stehen: ' + rahmen);
+    erwarte(await page.$eval('#btn-buchen', el => { const r = el.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }), '„Buchen“ nicht mehr sichtbar');
+    await page.screenshot({ path: path.join(BILDER, '02f-liste-gescrollt.png') });
+    await page.evaluate(() => window.scrollTo(0, 0));
   });
   await test('Vergangenheit kann nicht gebucht werden', async () => {
     const gestern = new Date(Date.now() - 86400000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
@@ -260,8 +280,13 @@ async function main(){
     await page.waitForSelector('.cal-seg[data-raum="ShareDesk 4"]');
     await page.click('.cal-seg[data-raum="ShareDesk 4"]');
     await page.waitForSelector('#slot-modal.open');
+    await page.waitForTimeout(400);   // Einblend-Animation abwarten
+    await page.screenshot({ path: path.join(BILDER, '02c-zeitfenster.png') });
     await page.click('#slot-body [data-bid]');
     await page.waitForSelector('#modal.open');
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: path.join(BILDER, '02d-buchungsdetails.png') });
+    erwarte((await page.textContent('#m-status')) === 'Belegt', 'Status im Ticket: ' + await page.textContent('#m-status'));
     erwarte((await page.textContent('#m-nutzer')) === 'einer anderen Person', 'Name angezeigt: ' + await page.textContent('#m-nutzer'));
     erwarte(!(await page.isVisible('#m-delete')), 'fremde Buchung löschbar');
     const html = await page.content();
@@ -394,17 +419,28 @@ async function main(){
     await gast2.waitForSelector('.cal-header');
     erwarte(!(await gast2.$('#gebaeude-tabs [data-gebaeude="Anbau"]')), 'fremde Gast-Etage sichtbar');
   });
-  await test('Gäste sehen gegenseitig nur „belegt“ und können fremde Test-Buchungen nicht löschen', async () => {
+  await test('Jeder Gast hat eine Nummer; Gäste sehen fremde Test-Buchungen als „Gast N“, löschen können sie sie nicht', async () => {
+    const nr1 = await page.evaluate(() => currentUser.nummer), nr2 = await gast2.evaluate(() => currentUser.nummer);
+    erwarte(nr1 > 0 && nr2 > 0 && nr1 !== nr2, `Nummern ${nr1} / ${nr2}`);
+    erwarte((await gast2.textContent('#user-name')).trim() === 'Gast ' + nr2, 'Name im Kopf: ' + await gast2.textContent('#user-name'));
+    erwarte((await gast2.textContent('#gast-nr')) === 'Du bist Gast ' + nr2, 'Banner: ' + await gast2.textContent('#gast-nr'));
     await gast2.fill('#f-datum', morgen); await gast2.dispatchEvent('#f-datum', 'change');
     await gast2.waitForSelector('.cal-seg[data-raum="ShareDesk 3"]');
     erwarte(!(await gast2.$('.cal-seg.mine')), 'fremde Buchung als eigene markiert');
+    erwarte((await gast2.textContent('.cal-seg[data-raum="ShareDesk 3"]')).includes('Gast ' + nr1), 'Gast-Nummer fehlt im Kalender');
     await gast2.click('.cal-seg[data-raum="ShareDesk 3"]');
     await gast2.click('#slot-body [data-bid]');
-    erwarte((await gast2.textContent('#m-nutzer')) === 'einer anderen Person', 'Anzeige');
+    erwarte((await gast2.textContent('#m-nutzer')) === 'Gast ' + nr1, 'Anzeige: ' + await gast2.textContent('#m-nutzer'));
     erwarte(!(await gast2.isVisible('#m-delete')), 'fremde Test-Buchung löschbar');
     await gast2.keyboard.press('Escape');
-    // Gast 2 bucht selbst etwas (bleibt beim Zurücksetzen von Gast 1 bestehen)
+    // Gast 2 bucht selbst etwas (bleibt beim Zurücksetzen von Gast 1 bestehen) – Gast 1 sieht es als „Gast nr2“
     await gast2Bucht('ShareDesk 5', 10);
+    await page.waitForFunction(t => [...document.querySelectorAll('#agenda-list .chip.gast')].some(c => c.textContent === t), 'Gast ' + nr2, { timeout: 8000 });
+    await page.evaluate(() => switchEtage('hauptgebaeude-1'));
+    await page.waitForSelector('.cal-seg[data-raum="ShareDesk 5"]');
+    erwarte((await page.textContent('.cal-seg[data-raum="ShareDesk 5"]')).includes('Gast ' + nr2), 'Gast-Nummer fehlt im Kalender von Gast 1');
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: path.join(BILDER, '06b-gaeste-nummern.png') });
   });
   await test('„Meine Änderungen zurücksetzen“ löscht nur die eigenen Buchungen und Etagen', async () => {
     await page.click('#btn-zuruecksetzen');
@@ -527,6 +563,8 @@ async function main(){
   });
   await test('Admin schaut ins Testsystem, löscht eine Gast-Buchung und leert alles', async () => {
     erwarte(!(await page.isVisible('#ed-pw')), '');
+    // Gast-Buchung ist schon ein paar Minuten alt – muss trotzdem für alle sichtbar bleiben
+    sql(`alter table buchungen disable trigger buchungen_pruefen; update buchungen set erstellt = now() - interval '5 minutes' where test; alter table buchungen enable trigger buchungen_pruefen`);
     await page.click('#btn-testsystem');
     await page.waitForSelector('#admin-test-teil', { state: 'visible' });
     await page.evaluate(() => switchEtage('hauptgebaeude-1'));

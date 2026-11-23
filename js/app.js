@@ -58,7 +58,10 @@ async function sitzungPruefen(fehler){
   if(!fehler || !/Sitzung abgelaufen/.test(fehler) || !istTestModus()) return false;
   const s = await neueTestSitzung();
   if(!s) return false;
-  if(istGast()){ currentUser.sitzung = s.sitzung; currentUser.hash = s.hash; }
+  if(istGast()){
+    Object.assign(currentUser, { sitzung: s.sitzung, hash: s.hash, nummer: s.nummer, name: gastAnzeigeName(s.nummer) });
+    kopfAktualisieren(); bannerAktualisieren();
+  }
   else { currentUser.testSitzung = s.sitzung; currentUser.testHash = s.hash; }
   nutzerSpeichern();
   toast('Neue Test-Sitzung gestartet – bitte nochmal versuchen.', 'error');
@@ -67,6 +70,8 @@ async function sitzungPruefen(fehler){
 function bannerAktualisieren(){
   $('gast-banner').style.display = istTestModus() ? 'block' : 'none';
   $('gast-teil').style.display = istGast() ? '' : 'none';
+  $('gast-nr').textContent = istGast() && currentUser.nummer ? 'Du bist Gast ' + currentUser.nummer : '';
+  $('gast-nr').style.display = $('gast-nr').textContent ? '' : 'none';
   $('admin-test-teil').style.display = istGast() ? 'none' : '';
   $('btn-testsystem').textContent = adminTestAnsicht ? '🏢 Zurück zum Echtbetrieb' : '🧪 Testsystem';
   $('btn-testsystem').classList.toggle('aktiv', adminTestAnsicht);
@@ -90,9 +95,10 @@ async function meineAenderungenZuruecksetzen(){
   if(!ok) return;
   const r = await gastZuruecksetzen(testSitzung());
   if(r.fehler){ if(!(await sitzungPruefen(r.fehler))) toast('✗ ' + r.fehler, 'error'); return; }
-  toast(`Zurückgesetzt: ${r.buchungen} Buchung(en), ${r.etagen} Etage(n)`, 'success');
+  // erst neu laden, dann melden – die Meldung soll den fertigen Zustand bestätigen
   await etagenNeuLaden();
   switchEtage(etageById(aktEtageId) ? aktEtageId : (ETAGEN[0] && ETAGEN[0].id));
+  toast(`Zurückgesetzt: ${r.buchungen} Buchung(en), ${r.etagen} Etage(n)`, 'success');
 }
 // Admin-Passwort: aus der Anmeldung (nur im Speicher) oder verdeckt abfragen
 async function passwortHolen(frage, knopf){
@@ -146,6 +152,9 @@ async function zeigeApp(){
   netzAn(false);
   setDatum();
   zeitVorschlag();
+  await gastSitzungAuffrischen();
+  if(!currentUser) return;
+  kopfAktualisieren(); bannerAktualisieren();
   await etagenNeuLaden();
   if(!currentUser) return;   // während des Ladens abgemeldet
   const start = [urlParameter('etage'), leseGespeicherteEtage(), ETAGEN[0] && ETAGEN[0].id].find(id => id && etageById(id));
@@ -212,6 +221,7 @@ function switchView(which){
   $('view-cal').classList.toggle('active', which === 'cal');
   $('view-office').classList.toggle('active', which === 'office');
   if(which === 'office') drawFloor();
+  else { kalScrollSchluessel = ''; kalenderScrollen(raeumeDerEtage(), statusKontext()); }
 }
 
 // ── Formular: Raum / Tisch ──
@@ -322,6 +332,26 @@ function zeichneAlles(){
   setzeHtml(kal, aktEtage()
     ? kalenderHtml(raeume, allBookings, k.datum, istMeine, k.istHeute)
     : '<div class="etage-leer">Keine Etage vorhanden. Als Admin über „＋ Etage / Gebäude“ anlegen.</div>');
+  kalenderScrollen(raeume, k);
+}
+// Die Liste scrollt in sich (Raumnamen + Uhrzeiten bleiben stehen, das Formular
+// bleibt sichtbar). Nach Tages-/Etagenwechsel einmal zur interessanten Stelle
+// springen: heute → eine Stunde vor jetzt, sonst → kurz vor die erste Buchung.
+// Danach nicht mehr, damit die regelmäßige Aktualisierung nicht dazwischenfunkt.
+let kalScrollSchluessel = '';
+function kalenderScrollen(raeume, k){
+  const wrap = $('cal-view');
+  if(currentView !== 'cal' || !wrap) return;
+  const namen = new Set(raeume.map(r => r.name));
+  const starts = allBookings.filter(b => namen.has(b.raum)).map(b => minutenVon(b.start));
+  const schluessel = `${k.datum}|${aktEtageId}|${starts.length > 0}`;
+  if(schluessel === kalScrollSchluessel) return;
+  kalScrollSchluessel = schluessel;
+  const z = kalenderZeitraum(raeume, allBookings, k.istHeute);
+  let ziel = null;
+  if(k.istHeute){ const j = new Date(); ziel = j.getHours()*60 + j.getMinutes() - 60; }
+  else if(starts.length) ziel = Math.min(...starts) - 30;
+  wrap.scrollTop = ziel === null ? 0 : Math.max(0, pxVon(ziel, z.startH));
 }
 function drawFloor(){
   const svg = $('floorplan');
@@ -383,9 +413,12 @@ async function buchen(){
 function modalOpen(b){
   modalBuchung = b;
   $('m-raum').textContent = b.raum;
-  $('m-tisch-row').style.display = b.tisch ? 'block' : 'none';
+  $('m-tisch-row').style.display = b.tisch ? '' : 'none';
+  const gast = !istMeine(b) && gastNrVon(b);
+  $('m-status').textContent = istMeine(b) ? 'Deine Buchung' : (gast ? 'Gast ' + gast : 'Belegt');
+  $('m-status').className = 'ticket-status ' + werKlasse(b, istMeine);
   $('m-tisch').textContent = b.tisch || '';
-  $('m-nutzer').textContent = istMeine(b) ? 'Dir' : 'einer anderen Person';
+  $('m-nutzer').textContent = istMeine(b) ? 'Dir' : (gast ? 'Gast ' + gast : 'einer anderen Person');
   $('m-zeit').textContent = `${b.start.slice(11,16)} – ${b.ende.slice(11,16)} Uhr`;
   $('m-quelle').textContent = b.quelle === 'nfc' ? '📡 NFC-Buchung' : '🖥 Web-Buchung';
   $('m-delete').style.display = currentUser && darfLoeschen(b) ? 'block' : 'none';
@@ -413,13 +446,15 @@ function zelleOeffnen(raumName, slotStart, slotEnde){
   const treffer = allBookings.filter(b => b.raum === raumName && b.start < slotEnde && b.ende > slotStart);
   $('slot-title').textContent = `${raumName} · ${slotStart.slice(11)}–${slotEnde.slice(11)} Uhr`;
   const belegt = Math.min(maxGleichzeitig(treffer, slotStart, slotEnde), raum.kapazitaet);
-  let html = `<p style="margin-bottom:10px"><strong>${belegt}/${raum.kapazitaet}</strong> Tische belegt</p>`;
+  const anteil = Math.round(belegt / raum.kapazitaet * 100);
+  let html = `<div class="slot-belegung"><strong>${belegt}/${raum.kapazitaet}</strong> Tische belegt
+      <span class="slot-balken${belegt >= raum.kapazitaet ? ' voll' : ''}"><i style="width:${anteil}%"></i></span></div>`;
   html += treffer.length ? treffer.map(b => `
-      <div class="agenda-row" style="cursor:pointer" data-bid="${esc(b.id)}">
-        <span class="agenda-time">${esc(b.tisch || raumName)}</span>
-        <span class="agenda-raum">${esc(b.start.slice(11,16))}–${esc(b.ende.slice(11,16))}</span>
-        <span class="agenda-nutzer">${wer(b, istMeine)}${b.quelle === 'nfc' ? ' · 📡' : ''}</span>
-      </div>`).join('') : '<p>Alle Tische frei.</p>';
+      <div class="agenda-row${istMeine(b) ? ' mine' : ''}" data-bid="${esc(b.id)}">
+        <span class="agenda-time">${esc(b.start.slice(11,16))}<i>${esc(b.ende.slice(11,16))}</i></span>
+        <span class="agenda-raum">${b.tisch ? 'Tisch ' + esc(b.tisch) : esc(raumName)}</span>
+        ${chipsHtml(b, istMeine)}
+      </div>`).join('') : '<p class="slot-frei">Alle Tische frei.</p>';
   const freieTische = raum.tische.filter(t => !treffer.some(b => b.tisch === t.code));
   if(!webBuchungErlaubt(raumName)){
     html += `<p style="margin-top:12px;color:var(--amber)">Im Testsystem nur per NFC-Karte buchbar.</p>`;
@@ -535,7 +570,11 @@ function start(){
     return;
   }
   // Direktlink zum Testsystem: index.html?gast
-  if(urlParameter('gast') !== null){ gastAnmelden(); return; }
+  if(urlParameter('gast') !== null){
+    // sofort aus der Adresse nehmen – ein Neuladen soll keine zweite Gast-Sitzung (neue Nummer) anlegen
+    try { const url = new URL(location.href); url.searchParams.delete('gast'); history.replaceState(null, '', url); } catch(e) {}
+    gastAnmelden(); return;
+  }
   const gespeichert = gespeicherterNutzer();
   if(gespeichert){ currentUser = gespeichert; zeigeApp(); }
 }

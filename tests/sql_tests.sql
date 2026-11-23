@@ -114,6 +114,16 @@ begin
   idb := (gast_buchen(b, 'ShareDesk 3', '1.501', '2030-01-01 10:00', '2030-01-01 11:00')->>'id')::bigint;
   -- Hash ist lesbar und entspricht SHA-256 der Sitzung (so erkennt der Browser eigene Buchungen)
   if (select gast_hash from buchungen where id = ida) <> encode(sha256(a::text::bytea), 'hex') then raise exception 'TEST FEHLGESCHLAGEN: gast_hash'; end if;
+  -- Gast-Nummern: fortlaufend, öffentlich lesbar an der Buchung, unveränderbar
+  if gast_nummer(a) is null or gast_nummer(b) <> gast_nummer(a) + 1 then
+    raise exception 'TEST FEHLGESCHLAGEN: Nummern a=% b=%', gast_nummer(a), gast_nummer(b);
+  end if;
+  if gast_nummer(gen_random_uuid()) is not null then raise exception 'TEST FEHLGESCHLAGEN: Nummer für unbekannte Sitzung'; end if;
+  if (select gast_nr from buchungen where id = ida) <> gast_nummer(a) or (select gast_nr from buchungen where id = idb) <> gast_nummer(b) then
+    raise exception 'TEST FEHLGESCHLAGEN: gast_nr an der Buchung';
+  end if;
+  update buchungen set gast_nr = 99 where id = idb;
+  if (select gast_nr from buchungen where id = idb) <> gast_nummer(b) then raise exception 'TEST FEHLGESCHLAGEN: gast_nr änderbar'; end if;
   -- fremde Test-Buchung darf ein Gast nicht löschen
   begin
     perform gast_buchung_loeschen(a, idb);
@@ -150,21 +160,40 @@ do $$ declare r jsonb; vorher int; begin
   if (r->>'buchungen')::int < 2 then raise exception 'TEST FEHLGESCHLAGEN: leeren %', r; end if;
   if exists (select 1 from buchungen where test) then raise exception 'TEST FEHLGESCHLAGEN: Test-Buchungen übrig'; end if;
   if (select count(*) from buchungen where not test) <> vorher then raise exception 'TEST FEHLGESCHLAGEN: echte Buchungen gelöscht'; end if;
+  -- alle Sitzungen weg → Nummerierung beginnt wieder bei 1
+  if gast_nummer((select id from s where name = 'a')) is not null then raise exception 'TEST FEHLGESCHLAGEN: Sitzung nach dem Leeren noch da'; end if;
+end $$;
+update s set id = gast_sitzung_starten() where name = 'b';
+do $$ begin
+  if gast_nummer((select id from s where name = 'b')) <> 1 then
+    raise exception 'TEST FEHLGESCHLAGEN: nach dem Leeren nicht wieder Gast 1, sondern %', gast_nummer((select id from s where name = 'b'));
+  end if;
+end $$;
+-- echte Buchungen bekommen nie eine Gast-Nummer, auch wenn man sie mitschickt
+insert into buchungen (raum, tisch, nutzer_id, name, start, ende, gast_nr) values ('ShareDesk 10', '2.701', 2, 'x', '2030-03-01 09:00', '2030-03-01 10:00', 7);
+do $$ begin
+  if (select gast_nr from buchungen where raum = 'ShareDesk 10' and start = '2030-03-01 09:00') is not null then
+    raise exception 'TEST FEHLGESCHLAGEN: gast_nr bei echter Buchung gesetzt';
+  end if;
 end $$;
 
--- 8. Automatisches Aufräumen löscht nur alte Test-Daten
+-- 8. Automatisches Aufräumen löscht nur alte Test-Daten. Test-Buchungen
+--    bleiben 20 Min. für alle sichtbar (gemeinsames Testsystem), ältere gehen.
 select gast_buchen((select id from s where name = 'b'), 'ShareDesk 5', null, '2030-01-04 09:00', '2030-01-04 10:00');
+select gast_buchen((select id from s where name = 'b'), 'ShareDesk 6', null, '2030-01-04 09:00', '2030-01-04 10:00');
 select gast_etage_speichern((select id from s where name = 'b'), '{"id":"gast-alt","raeume":[{"name":"Gastraum B"}]}');
 reset role;
 alter table buchungen disable trigger buchungen_pruefen;
-update buchungen set erstellt = now() - interval '5 minutes' where test;
+update buchungen set erstellt = now() - interval '40 minutes' where test and raum = 'ShareDesk 5';
+update buchungen set erstellt = now() - interval '5 minutes' where test and raum = 'ShareDesk 6';
 alter table buchungen enable trigger buchungen_pruefen;
 update gast_etagen set aktualisiert = now() - interval '20 minutes';
 set role anon;
 do $$ declare vorher int; begin
   select count(*) into vorher from buchungen where not test;
   perform test_buchungen_aufraeumen();
-  if exists (select 1 from buchungen where test) then raise exception 'TEST FEHLGESCHLAGEN: Test-Buchungen nicht gelöscht'; end if;
+  if exists (select 1 from buchungen where test and raum = 'ShareDesk 5') then raise exception 'TEST FEHLGESCHLAGEN: alte Test-Buchung nicht gelöscht'; end if;
+  if not exists (select 1 from buchungen where test and raum = 'ShareDesk 6') then raise exception 'TEST FEHLGESCHLAGEN: 5 Min. alte Test-Buchung schon gelöscht (für Admin/andere Gäste unsichtbar)'; end if;
   if (select count(*) from gast_etagen_laden((select id from s where name = 'b'))) <> 0 then raise exception 'TEST FEHLGESCHLAGEN: alte Gast-Etage nicht gelöscht'; end if;
   if (select count(*) from buchungen where not test) <> vorher then raise exception 'TEST FEHLGESCHLAGEN: echte Buchungen gelöscht'; end if;
 end $$;

@@ -421,12 +421,217 @@ input[type=checkbox]:disabled{opacity:.45;cursor:not-allowed}
 .profil-liste{max-height:260px;overflow-y:auto;padding-right:4px}
 .profil-zusammenfassung{font-size:12px;color:var(--muted)}
 
+/* ══════════════════════════════════════════════════════════
+   HUD-Look (Hausmesse 2026): Raster-Hintergrund, Glas-Karten mit
+   HUD-Ecken, Neon-Buchungsblöcke, Agenda als Karten-Liste, Ticket-Modal.
+   Nur Farben aus der Palette (plus deren Transparenzen), keine externen Fonts.
+   ══════════════════════════════════════════════════════════ */
+:root{
+  --mono:ui-monospace,'JetBrains Mono','Cascadia Code','SF Mono',Consolas,'Liberation Mono',monospace;
+  --neon:#8ea2ff;                         /* aufgehelltes --accent für Texte/Linien */
+  --linie:rgba(79,110,247,.2);
+  --glas:linear-gradient(160deg,rgba(34,38,58,.86),rgba(19,22,32,.92));
+  --hud:linear-gradient(var(--accent),var(--accent));
+}
+body{background:
+  radial-gradient(1100px 560px at 8% -8%,rgba(124,58,237,.2),transparent 62%),
+  radial-gradient(900px 520px at 100% 0%,rgba(79,110,247,.16),transparent 60%),
+  var(--bg) fixed}
+/* feines Raster, nach unten ausgeblendet */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(79,110,247,.07) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(79,110,247,.07) 1px,transparent 1px);
+  background-size:46px 46px;
+  -webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 25%,transparent 80%);
+  mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 25%,transparent 80%)}
+
+/* ── Kopf ── */
+.top .sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--neon);
+  opacity:.75;margin-top:4px}
+.top h1{font-size:28px}
+#datum{font-size:16px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.datenav button,.user-info > button,.modal-actions button{border-color:var(--linie)}
+.datenav button:hover,.user-info > button:hover,.modal-actions button:hover{background:rgba(79,110,247,.14);
+  border-color:rgba(79,110,247,.6);box-shadow:0 8px 22px -12px rgba(79,110,247,.8)}
+.btn-today{background:linear-gradient(100deg,var(--accent),var(--purple))!important;border-color:transparent!important;
+  box-shadow:0 8px 22px -10px rgba(124,58,237,.8);font-weight:600}
+.user-info{background:var(--glas);border-color:var(--linie)}
+/* Verlauf beim Hover behalten (allgemeines button:hover machte ihn grau) */
+.btn-book:hover,.login-box button:not(.gast-btn):hover{background:linear-gradient(135deg,var(--accent),var(--purple))}
+
+/* ── Karten: Glas + HUD-Ecken oben links / unten rechts ── */
+.card{border-color:var(--linie);background:
+  var(--hud) left 10px top 10px/14px 2px no-repeat, var(--hud) left 10px top 10px/2px 14px no-repeat,
+  var(--hud) right 10px bottom 10px/14px 2px no-repeat, var(--hud) right 10px bottom 10px/2px 14px no-repeat,
+  var(--glas);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 24px 60px -34px rgba(0,0,0,.9)}
+.card h2{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;
+  color:var(--neon);font-weight:600}
+.card h2::before{content:"";width:6px;height:6px;background:var(--accent);transform:rotate(45deg);
+  box-shadow:0 0 10px var(--accent);flex-shrink:0}
+.card h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(79,110,247,.5),transparent)}
+select,input[type=date],input[type=time],input.cs-input,.cs-btn{background:rgba(15,17,23,.55);border-color:rgba(46,50,80,.9)}
+input[type=date]:focus,input.cs-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,110,247,.2)}
+.cs-list{background:linear-gradient(170deg,rgba(34,38,58,.97),rgba(19,22,32,.98));border-color:rgba(79,110,247,.3);
+  box-shadow:0 18px 40px -10px rgba(0,0,0,.8),0 0 0 1px rgba(79,110,247,.08)}
+.legend-sw.teil{background:linear-gradient(135deg,rgba(79,110,247,.75),rgba(124,58,237,.6))}
+.legend-sw.voll{background:linear-gradient(135deg,rgba(239,68,68,.75),rgba(124,58,237,.55))}
+
+/* ── Kalender (Listenansicht) ── */
+.cal{border-radius:18px;border-color:var(--linie);background:linear-gradient(180deg,rgba(26,29,39,.94),rgba(15,17,23,.94));
+  box-shadow:0 30px 70px -40px rgba(79,110,247,.55),inset 0 1px 0 rgba(255,255,255,.04)}
+.cal-header{background:linear-gradient(180deg,rgba(79,110,247,.16),rgba(34,38,58,.55));border-bottom:1px solid rgba(79,110,247,.35)}
+.cal-header div{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:11px 6px;
+  border-left-color:rgba(46,50,80,.7);min-width:0}
+.cal-raum{font-size:12px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-kap{font-family:var(--mono);font-size:9px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.cal-kap.nfc{color:#c084fc}
+.cal-time{font-family:var(--mono);font-size:10.5px;color:#6c7499;border-right-color:rgba(46,50,80,.7)}
+.cal-row:nth-child(odd) .cal-time{color:var(--neon)}
+.cal-cell{border-left-color:rgba(46,50,80,.55);border-top-color:rgba(46,50,80,.35)}
+.cal-row:nth-child(odd) .cal-cell{border-top-color:rgba(79,110,247,.14)}
+.cal-cell.half{border-top:1px dashed rgba(46,50,80,.35)}
+.cal-cell:hover{background:linear-gradient(90deg,rgba(79,110,247,.16),rgba(124,58,237,.1));
+  box-shadow:inset 0 0 0 1px rgba(79,110,247,.45)}
+.cal-cell:hover::after{content:"+";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:var(--neon);font:700 15px var(--mono);text-shadow:0 0 10px var(--accent)}
+
+/* Buchungsblöcke: Glas mit Neon-Kante, Belegungs-Punkte, "Du"-Chip */
+/* bewusst ohne Einblend-Animation: der Kalender wird jede Minute neu gezeichnet (Jetzt-Linie) */
+.cal-block{padding:2px 4px}
+.cal-block-in{border-radius:12px;box-shadow:0 12px 26px -14px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.06)}
+.cal-seg{align-items:flex-start;justify-content:flex-start;gap:4px;padding:7px 8px 6px 12px;text-align:left;
+  font-family:var(--mono);letter-spacing:.03em}
+.cal-seg.klein{justify-content:center;padding-top:0;padding-bottom:0}
+.cal-seg::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px}
+.cal-seg::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.1),transparent 40%)}
+.cal-seg.status-partial{background:linear-gradient(135deg,rgba(79,110,247,.5),rgba(124,58,237,.34))}
+.cal-seg.status-partial::before{background:var(--accent);box-shadow:0 0 12px var(--accent)}
+.cal-seg.status-busy{background:
+  repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 6px,transparent 6px 12px),
+  linear-gradient(135deg,rgba(239,68,68,.5),rgba(124,58,237,.34))}
+.cal-seg.status-busy::before{background:var(--red);box-shadow:0 0 12px var(--red)}
+.cal-seg.mine{outline:none;box-shadow:inset 0 0 0 1.5px var(--amber)}
+.cal-seg.mine::before{background:var(--amber);box-shadow:0 0 12px var(--amber)}
+.cal-block:has(.mine) .cal-block-in{box-shadow:0 0 24px -6px rgba(245,158,11,.55),0 12px 26px -14px rgba(0,0,0,.9)}
+.cal-seg:hover{filter:brightness(1.25) saturate(1.1);transform:none}
+.cal-block:hover{z-index:3}
+.seg-kopf{display:flex;align-items:center;gap:7px;width:100%}
+.seg-zahl{font-size:12px;font-weight:700}
+.pips{display:flex;gap:3px}
+.pips i{width:6px;height:6px;border-radius:50%;border:1px solid rgba(255,255,255,.55)}
+.pips i.an{background:#fff;border-color:#fff;box-shadow:0 0 6px rgba(255,255,255,.8)}
+.cal-seg .names{font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.75)}
+.cal-seg.mine .names{color:#0f1117;background:var(--amber);padding:1px 7px;border-radius:999px;
+  box-shadow:0 0 12px -2px rgba(245,158,11,.8)}
+.seg-zeit{font-size:10px;color:rgba(232,234,246,.7);margin-top:auto}
+
+/* Jetzt-Linie mit Uhrzeit */
+.now{height:2px;background:linear-gradient(90deg,var(--red),rgba(239,68,68,.25));box-shadow:0 0 12px rgba(239,68,68,.7)}
+.now::before{left:56px;animation:ping 1.8s infinite;box-shadow:0 0 0 0 rgba(239,68,68,.7)}
+.now-zeit{position:absolute;left:4px;top:-9px;font:700 10px/16px var(--mono);color:#fff;background:var(--red);
+  padding:0 6px;border-radius:999px;box-shadow:0 0 12px rgba(239,68,68,.6)}
+
+/* ── Agenda / Zeitfenster-Liste: Karten-Zeilen mit Chips ── */
+#agenda-card{display:block}
+#agenda-list{max-height:340px;overflow-y:auto;margin-right:-6px;padding-right:6px}
+#agenda-list::-webkit-scrollbar{width:6px}
+#agenda-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.agenda-row{position:relative;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;
+  padding:9px 10px 9px 14px;margin-bottom:6px;border:1px solid rgba(46,50,80,.85);border-radius:12px;cursor:pointer;
+  background:linear-gradient(90deg,rgba(79,110,247,.09),rgba(34,38,58,.35));overflow:hidden;
+  transition:transform .2s,border-color .2s,background .2s}
+.agenda-row:last-child{border-bottom:1px solid rgba(46,50,80,.85);margin-bottom:0}
+.agenda-row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);
+  box-shadow:0 0 10px var(--accent)}
+.agenda-row.mine{background:linear-gradient(90deg,rgba(245,158,11,.1),rgba(34,38,58,.35));border-color:rgba(245,158,11,.3)}
+.agenda-row.mine::before{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.agenda-row:hover{padding-left:14px;transform:translateX(3px);border-color:rgba(79,110,247,.6);
+  background:linear-gradient(90deg,rgba(79,110,247,.18),rgba(34,38,58,.45))}
+.agenda-time{display:flex;flex-direction:column;min-width:0;font:700 12px/1.25 var(--mono);color:var(--neon);
+  font-variant-numeric:tabular-nums}
+.agenda-time i{font-style:normal;font-weight:500;font-size:10.5px;color:var(--muted)}
+.agenda-time i::before{content:"→ "}
+.agenda-raum{min-width:0;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agenda-raum small{display:block;font:500 10px var(--mono);letter-spacing:.06em;color:var(--muted);margin-top:2px}
+.agenda-tags{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.chip{font:700 9.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:999px;
+  border:1px solid rgba(239,68,68,.4);color:#fca5a5;background:rgba(239,68,68,.12);white-space:nowrap}
+.chip.du{border-color:rgba(245,158,11,.55);color:#0f1117;background:var(--amber);box-shadow:0 0 12px -3px rgba(245,158,11,.8)}
+.chip.nfc{border-color:rgba(192,132,252,.45);color:#d8b4fe;background:rgba(124,58,237,.16);text-transform:none;letter-spacing:.04em}
+/* Gäste im Testsystem: "Gast N" in 4 wiederkehrenden Farben, damit man sie auseinanderhält */
+.chip.gast,.ticket-status.gast{border:1px solid;letter-spacing:.06em}
+.gast.g1{color:#a5b4fc;border-color:rgba(79,110,247,.55);background:rgba(79,110,247,.16)}
+.gast.g2{color:#d8b4fe;border-color:rgba(192,132,252,.55);background:rgba(124,58,237,.18)}
+.gast.g3{color:#86efac;border-color:rgba(34,197,94,.5);background:rgba(34,197,94,.13)}
+.gast.g0{color:#e8eaf6;border-color:rgba(136,145,180,.55);background:rgba(136,145,180,.16)}
+#gast-banner .gast-nr{background:var(--amber);color:#0f1117;margin-left:8px}
+.agenda-empty,.slot-frei{color:var(--muted);font:500 11px var(--mono);letter-spacing:.08em;padding:14px 0;text-align:center;
+  border:1px dashed rgba(46,50,80,.9);border-radius:12px}
+.slot-belegung{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);margin-bottom:12px}
+.slot-belegung strong{color:var(--text);font-family:var(--mono)}
+.slot-balken{flex:1;height:6px;border-radius:999px;background:rgba(46,50,80,.8);overflow:hidden}
+.slot-balken i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--purple));
+  box-shadow:0 0 10px var(--accent)}
+.slot-balken.voll i{background:linear-gradient(90deg,var(--red),var(--purple));box-shadow:0 0 10px var(--red)}
+
+/* ── Modals: Glas, Leuchtkante oben; Buchungsdetails als "Ticket" ── */
+.modal-bg{background:rgba(5,6,12,.66);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.modal{position:relative;border-color:rgba(79,110,247,.32);
+  background:linear-gradient(165deg,rgba(34,38,58,.97),rgba(15,17,23,.98));
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.9),0 0 60px -30px rgba(79,110,247,.6),inset 0 1px 0 rgba(255,255,255,.05)}
+.modal::before{content:"";position:absolute;left:24px;right:24px;top:-1px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),var(--purple),transparent)}
+.modal h3{letter-spacing:-.01em}
+.ticket-kopf{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.hud-label{font:600 10px var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--neon)}
+.ticket-status{font:700 9.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:5px 9px;border-radius:999px}
+.ticket-status.du{color:#0f1117;background:var(--amber);box-shadow:0 0 14px -3px rgba(245,158,11,.8)}
+.ticket-status.fremd{color:#fca5a5;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.4)}
+.ticket h3{font-size:20px;margin-bottom:14px}
+.kv-liste{border:1px solid rgba(46,50,80,.9);border-radius:12px;overflow:hidden;
+  background:linear-gradient(180deg,rgba(15,17,23,.5),rgba(15,17,23,.25))}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;font-size:13px}
+.kv + .kv{border-top:1px dashed rgba(46,50,80,.9)}
+.kv span{font:600 10px/18px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.kv strong{text-align:right}
+
+/* ── Toast & Grundriss ── */
+#toast{-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+#toast.success{background:linear-gradient(100deg,rgba(34,197,94,.92),rgba(21,128,61,.92));box-shadow:0 0 34px -8px rgba(34,197,94,.8)}
+#toast.error{background:linear-gradient(100deg,rgba(239,68,68,.92),rgba(153,27,27,.92));box-shadow:0 0 34px -8px rgba(239,68,68,.8)}
+.plan-wrap{border-color:var(--linie);background:
+  linear-gradient(rgba(79,110,247,.05) 1px,transparent 1px) 0 0/24px 24px,
+  linear-gradient(90deg,rgba(79,110,247,.05) 1px,transparent 1px) 0 0/24px 24px,var(--bg);
+  box-shadow:0 30px 70px -40px rgba(79,110,247,.55)}
+
+/* ── Liste scrollt in sich: Raumköpfe oben und Uhrzeiten links bleiben stehen,
+   Formular und Kalender bleiben beim Scrollen sichtbar (Kalenderzeitraum s. kalenderZeitraum()) ── */
+.cal-wrap{max-height:calc(100vh - 32px);overflow:auto;border-radius:18px;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;
+  box-shadow:0 30px 70px -40px rgba(79,110,247,.55)}
+.cal-wrap::-webkit-scrollbar{width:8px;height:8px}
+.cal-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.cal{overflow:clip;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.cal-header{position:sticky;top:0;z-index:8;
+  background:linear-gradient(180deg,rgba(79,110,247,.16),rgba(34,38,58,.55)),#191c28}
+.cal-time{position:sticky;left:0;z-index:5;background:#151822}
+.cal-header div:first-child{position:sticky;left:0;z-index:9;background:#1b1e2c}
+.now{z-index:6}
+@media (min-width:721px){
+  .container{align-items:start}
+  #main-area{position:sticky;top:16px}
+}
+
 /* ── Mobile ── */
 @media (max-width:720px){
   #app{padding:14px}
   .container{grid-template-columns:1fr}
   #agenda-card{display:block;order:-1}
+  #agenda-list{max-height:none}
   .cal{min-width:520px}
+  .cal-wrap{max-height:78vh}
   .editor{grid-template-columns:1fr}
   .editor-flaeche{position:static}
   .datenav{flex-wrap:wrap}

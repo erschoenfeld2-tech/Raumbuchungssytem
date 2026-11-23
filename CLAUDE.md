@@ -80,19 +80,26 @@ Only one is real. Always check which file you're touching before assuming it aff
   Since migration `20261119160000_*` the anon key cannot read user names at all: `nutzer_public`
   (a view created in `20260821120000_*` to hide `nfc_uid`) is revoked, and `buchungen` only grants
   column-level SELECT on `id, raum, tisch, nutzer_id, start, ende, quelle, test, erstellt,
-  gast_hash` — so always select explicit columns (`select('*')` fails), and PostgREST writes must
+  gast_hash, gast_nr` — so always select explicit columns (`select('*')` fails), and PostgREST writes must
   not ask for `return=representation` of other columns (the NFC bridge uses `?select=id`). The UI
-  labels bookings "Du" (own) or "belegt"; only `nutzer_login()` returns the user's own name.
+  labels bookings "Du" (own) or "belegt" — test bookings of other guests as "Gast N" (a number,
+  not a name); only `nutzer_login()` returns the user's own name.
   Password inputs are never prefilled; admin actions reuse the in-memory login password or ask
   via the in-page `bestaetigen(..., {passwort:true})` dialog (no `confirm()`/`prompt()`).
 - Guest/test mode (`?gast` deep link or "Als Gast testen"): each guest gets a secret session from
   `gast_sitzung_starten()` (stored in the cached user object). Test bookings (`test = true`) can
   only be created through `gast_buchen()` (the trigger rejects direct test inserts); own ones are
-  recognised via `gast_hash` = SHA-256 of the session. Guests may use the floor editor — their
+  recognised via `gast_hash` = SHA-256 of the session. Each session has a running number
+  (`gast_sitzungen.nummer`, from 1, migration `20261123130000_*`), copied into `buchungen.gast_nr` by
+  trigger `buchungen_gast_nr` and shown as "Gast N"; `gast_nummer(p_sitzung)` returns the own number
+  (null = session gone → the app silently starts a new one); `testsystem_leeren()` also deletes all
+  sessions so numbering restarts at 1. Guests may use the floor editor — their
   floors live in `gast_etagen`, visible only to their session (`gast_etagen_laden`). All guest
   writes go through RPCs that enforce **max 10 changes per session in 2 min**
   (`gast_aenderung_zaehlen`). `gast_zuruecksetzen()` removes only the caller's bookings/floors;
-  `test_buchungen_aufraeumen()` expires test bookings after 2 min and guest floors after 15 min.
+  `test_buchungen_aufraeumen()` expires test bookings after 20 min (migration `20261123120000_*`;
+  before that 2 min, which deleted them before the admin or other guests could see them — test
+  bookings are one shared pool for all guests + the admin view) and guest floors after 15 min.
   The admin can switch into the test system ("🧪 Testsystem"), delete any test booking and wipe
   everything with `testsystem_leeren()` (password-checked). Rooms with `nfc: true` are not
   web-bookable for guests.
@@ -208,6 +215,14 @@ deploy workflows) does `py_compile`, `node --check` on `js/ etagen/ tests/`, uni
 - Dark blue/black theme only — no light/white design. Palette used throughout `css/app.css`:
   `--bg:#0f1117 --surface:#1a1d27 --surface2:#22263a --border:#2e3250 --accent:#4f6ef7
   --purple:#7c3aed --green:#22c55e --red:#ef4444 --amber:#f59e0b --text:#e8eaf6 --muted:#8891b4`.
+  The "HUD-Look" block near the end of `css/app.css` (before the mobile media query) restyles cards,
+  calendar blocks, agenda rows and modals to match the Hausmesse promo material; it adds only
+  `--mono`, `--neon` (light accent) and translucent variants of the palette — no external fonts.
+  The calendar re-renders every minute (now-line), so don't put entrance animations on `.cal-block`.
+  The list view shows `H_START`–`H_ENDE` but `kalenderZeitraum()` widens it to cover every booking
+  of the shown rooms (and "now" on today) — never clip bookings. `#cal-view` scrolls on its own
+  (sticky room header + time column, `#main-area` sticky on desktop) so the booking form stays
+  usable; `kalenderScrollen()` in `app.js` jumps to now / the first booking once per day+floor.
 - Keep changes small and targeted — this is a two-to-three-person student project, not enterprise
   software; avoid introducing abstractions, frameworks, or infra beyond what's asked for.
 - After any frontend or migration change run `bash tests/run_tests.sh` and look at the screenshots

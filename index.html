@@ -43,13 +43,13 @@
 <div id="app">
   <div id="gast-banner">
     <div id="gast-teil" class="banner-zeile">
-      <span>🧪 <strong>Testsystem (Gast)</strong> – Buchungen werden nach 2 Min. gelöscht, eigene Etagen
-        nach 15 Min. und sind nur für dich sichtbar. Räume mit NFC-Reader nur per Karte.
-        <span class="banner-limit" id="gast-limit"></span></span>
+      <span>🧪 <strong>Testsystem (Gast)</strong> – Buchungen sehen alle Gäste gemeinsam, sie werden nach
+        20 Min. gelöscht. Eigene Etagen sind nur für dich sichtbar und werden nach 15 Min. gelöscht. Räume mit NFC-Reader nur per Karte.
+        <span class="banner-limit gast-nr" id="gast-nr"></span><span class="banner-limit" id="gast-limit"></span></span>
       <button type="button" id="btn-zuruecksetzen">↺ Meine Änderungen zurücksetzen</button>
     </div>
     <div id="admin-test-teil" class="banner-zeile">
-      <span>🧪 <strong>Admin-Ansicht des Testsystems</strong> – du siehst alle Test-Buchungen und darfst jede löschen.</span>
+      <span>🧪 <strong>Admin-Ansicht des Testsystems</strong> – du siehst die Test-Buchungen aller Gäste und darfst jede löschen.</span>
       <button type="button" id="btn-test-leeren" class="btn-danger">🗑 Testsystem komplett leeren</button>
     </div>
   </div>
@@ -117,6 +117,11 @@
         <button type="button" class="btn-book" id="btn-buchen">✓ Buchen</button>
       </div>
 
+      <div class="card" id="agenda-card">
+        <h2>Agenda des Tages</h2>
+        <div id="agenda-list"><div class="agenda-empty">Lade...</div></div>
+      </div>
+
       <div class="card">
         <h2>Info</h2>
         <p class="info-text">
@@ -124,8 +129,8 @@
           <strong>Etage.RaumTisch</strong>, z.B. <strong>1.203</strong> = Etage 1, Raum 2, Tisch 3.<br><br>
           In der Listenansicht erscheint jede Belegung als ein zusammenhängender Block.
           Die Farbe zeigt, ob ein Raum teilbelegt
-          (<span class="legend-sw" style="background:#3b3d6e"></span><strong>1/2</strong>) oder
-          voll belegt (<span class="legend-sw" style="background:#5c2d3c"></span><strong>2/2</strong>) ist.
+          (<span class="legend-sw teil"></span><strong>1/2</strong>) oder
+          voll belegt (<span class="legend-sw voll"></span><strong>2/2</strong>) ist.
           Anklicken zeigt Details und erlaubt die Buchung eines freien Tisches.<br><br>
           <span style="color:var(--amber);font-weight:600">▭</span> Deine Buchungen<br><br>
           Meetingräume: 1 Buchung (der ganze Raum) · ShareDesks: Einzeltische.<br><br>
@@ -133,10 +138,6 @@
         </p>
       </div>
 
-      <div class="card" id="agenda-card">
-        <h2>Agenda des Tages</h2>
-        <div id="agenda-list"><div class="agenda-empty">Lade...</div></div>
-      </div>
     </div>
 
     <div id="main-area">
@@ -162,13 +163,15 @@
 
 <!-- ══════════ Buchungs-Details ══════════ -->
 <div class="modal-bg" id="modal">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-titel">
-    <h3 id="m-titel">Buchung</h3>
-    <p>Raum: <strong id="m-raum"></strong></p>
-    <p id="m-tisch-row">Tisch: <strong id="m-tisch"></strong></p>
-    <p>Gebucht von: <strong id="m-nutzer"></strong></p>
-    <p>Zeit: <strong id="m-zeit"></strong></p>
-    <p>Quelle: <strong id="m-quelle"></strong></p>
+  <div class="modal ticket" role="dialog" aria-modal="true" aria-labelledby="m-titel">
+    <div class="ticket-kopf"><span class="hud-label">Buchung</span><span class="ticket-status" id="m-status"></span></div>
+    <h3 id="m-titel"><span id="m-raum"></span></h3>
+    <div class="kv-liste">
+      <div class="kv" id="m-tisch-row"><span>Tisch</span><strong id="m-tisch"></strong></div>
+      <div class="kv"><span>Gebucht von</span><strong id="m-nutzer"></strong></div>
+      <div class="kv"><span>Zeit</span><strong id="m-zeit"></strong></div>
+      <div class="kv"><span>Quelle</span><strong id="m-quelle"></strong></div>
+    </div>
     <div class="modal-actions">
       <button type="button" id="m-close" style="flex:1">Schließen</button>
       <button type="button" id="m-delete" class="btn-danger" style="flex:1;display:none">Löschen</button>
