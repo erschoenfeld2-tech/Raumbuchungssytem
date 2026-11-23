@@ -137,7 +137,7 @@ alle Test-Buchungen und Gast-Etagen auf einmal entfernen (echte Buchungen bleibe
 
 | Wer | darf anlegen | darf ändern/löschen | sichtbar für | bleibt |
 |---|---|---|---|---|
-| Nutzer | ✓ | eigene Etagen | alle | dauerhaft |
+| Nutzer | X | - | - | - |
 | Admin | ✓ | alle, auch Datei-Etagen ersetzen | alle | dauerhaft |
 | Gast | ✓ | alles – aber nur in der eigenen Sitzung | nur sich selbst | 15 Min. ohne Änderung |
 
