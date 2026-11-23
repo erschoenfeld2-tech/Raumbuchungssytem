@@ -440,7 +440,7 @@ ohne Qualitätsverlust auch kleiner drucken.
 | Plakat | Format | Dateien |
 |---|---|---|
 | **Messeplakat** – Blickfang „Ein Tap. Ein Raum.“ mit NFC-Karte, Grundriss und QR-Code zur Web-App | DIN A1 hoch | `plakat.html`, `Plakat_Raumbuchungssystem_A1.pdf`, `…_A1_Beschnitt3mm.pdf`, `…_A1_300dpi.jpg` |
-| **Infoplakat** (Rückwand am Stand) – QR-Codes zu Hausmesse-Seite, Web-App und GitHub-Repo, Anleitung in 4 Schritten, NFC-Check-in, Technik | DIN A0 hoch | `infoplakat.html`, `Infoplakat_Raumbuchungssystem_A0.pdf`, `…_A0_Beschnitt3mm.pdf`, `…_A0_150dpi.jpg` |
+| **Infoplakat** (Rückwand am Stand) – technischer Hintergrund: Architektur-Schaubild, NFC-Ablauf, Schutz vor Doppelbuchungen, Sicherheit, CI/CD; links ergänzend QR-Codes zu Testsystem, Messeseite und GitHub-Repo | DIN A0 quer | `infoplakat.html`, `Infoplakat_Raumbuchungssystem_A0_quer.pdf`, `…_A0_quer_Beschnitt3mm.pdf`, `…_A0_quer_150dpi.jpg` |
 
 - **Druck:** das normale PDF; verlangt die Druckerei Beschnitt, die `…_Beschnitt3mm.pdf`
   (3 mm rundum). Die JPGs nur für Druckdienste, die kein PDF annehmen.
@@ -449,5 +449,5 @@ ohne Qualitätsverlust auch kleiner drucken.
   Adresse inklusive Beschnitt).
 - **QR-Codes** sind als fertige Matrizen eingebettet (`QR_MATRIX` bzw. `QR_DATEN`). Ändert sich
   eine Adresse, müssen sie neu erzeugt werden – Ziele: `https://hausmesse.wara.de/Stand23/index.html`,
-  `https://erschoenfeld2-tech.github.io/Raumbuchungssytem/`,
-  `https://github.com/erschoenfeld2-tech/Raumbuchungssytem`.
+  `https://erschoenfeld2-tech.github.io/Raumbuchungssytem/` (Messeplakat) bzw. `…/Raumbuchungssytem/?gast`
+  (Infoplakat, öffnet direkt das Testsystem), `https://github.com/erschoenfeld2-tech/Raumbuchungssytem`.
