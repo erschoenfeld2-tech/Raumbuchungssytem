@@ -11,3 +11,47 @@ permissions:
 jobs:
   quality:
     uses: ./.github/workflows/quality.yml
+
+  # Komplette Testsuite: Migrationen auf frischer Postgres-DB, SQL-Tests als
+  # Rolle anon und Browser-Tests (Chromium) gegen diese lokale DB.
+  # Die echte Supabase-Datenbank wird dabei nie angesprochen.
+  tests:
+    # Fest auf 24.04: ubuntu-latest ist inzwischen 26.04, dafür liefert die
+    # gepinnte Playwright-Version noch kein Chromium ("does not support chromium on ubuntu26.04").
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Playwright + Chromium installieren (nur für die Tests, nicht Teil der App)
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Tests ausführen
+        run: bash tests/run_tests.sh
+
+      - name: Screenshots der Browser-Tests hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: tests/screenshots/
+          if-no-files-found: ignore

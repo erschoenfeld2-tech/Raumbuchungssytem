@@ -33,17 +33,29 @@ jobs:
       - name: Alle Python-Dateien kompilieren (Syntaxprüfung)
         run: python -m py_compile *.py
 
-      - name: Eingebettetes <script> in index.html auf Syntaxfehler prüfen
+      - name: JavaScript der Live-App auf Syntaxfehler prüfen
+        # Seit der Aufteilung liegt der Code in js/, jede Etage in etagen/
+        run: |
+          for f in js/*.js etagen/*.js tests/*.js; do
+            node --check "$f" || exit 1
+            echo "✓ $f"
+          done
+
+      - name: Unit-Tests (Etagen-Dateien, Belegungslogik) und NFC-Brücken-Tests
+        run: |
+          node tests/unit_tests.js
+          python3 -B tests/bridge_tests.py
+
+      - name: Alle in index.html eingebundenen Dateien existieren
         run: |
           python3 -c "
-          import re, sys
+          import re, sys, os
           html = open('index.html', encoding='utf-8').read()
-          m = re.search(r'<script>(.*)</script>\s*</body>', html, re.S)
-          if not m:
-              sys.exit('Konnte <script>-Block in index.html nicht finden')
-          open('/tmp/index_script.js', 'w', encoding='utf-8').write(m.group(1))
+          dateien = re.findall(r'(?:src|href)=\"((?:js|css|etagen|vendor)/[^\"]+)\"', html)
+          fehlt = [d for d in dateien if not os.path.isfile(d)]
+          print('\n'.join('✓ ' + d for d in dateien if d not in fehlt))
+          if fehlt: sys.exit('Fehlende Dateien: ' + ', '.join(fehlt))
           "
-          node --check /tmp/index_script.js
 
       - name: Eingebettetes <script> in index_lokal_modular.html auf Syntaxfehler prüfen
         run: |

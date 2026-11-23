@@ -1,0 +1,435 @@
+/* ══════════════════════════════════════════════════════════
+   Raumbuchungssystem – Styles der Live-App (index.html)
+   Dunkelblau/Schwarz-Theme, keine helle Variante (siehe CLAUDE.md).
+   ══════════════════════════════════════════════════════════ */
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3250;
+  --accent:#4f6ef7;--purple:#7c3aed;--green:#22c55e;--red:#ef4444;
+  --amber:#f59e0b;--text:#e8eaf6;--muted:#8891b4;--r:12px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif}
+body{background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── Login-Screen ── */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:360px;
+  box-shadow:0 10px 40px rgba(0,0,0,.4)}
+.login-logo{width:52px;height:52px;background:linear-gradient(135deg,var(--accent),var(--purple));
+  border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 18px}
+.login-box h1{text-align:center;font-size:20px;margin-bottom:6px}
+.login-sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:24px}
+.login-box label{font-size:12px;color:var(--muted);display:block;margin:12px 0 4px}
+.login-box input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  padding:10px 12px;border-radius:8px;font-size:14px;outline:none}
+.login-box input:focus{border-color:var(--accent)}
+.login-box button{width:100%;background:linear-gradient(135deg,var(--accent),var(--purple));border:none;color:#fff;
+  padding:11px;border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;margin-top:18px}
+.login-box button:hover{opacity:.9}
+.login-error{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);
+  border-radius:8px;padding:10px 12px;font-size:13px;margin-top:14px;display:none}
+.login-error.show{display:block}
+
+/* ── Konfig-Banner ── */
+#config-banner{display:none;background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.35);
+  border-radius:10px;padding:14px 18px;font-size:13px;line-height:1.6;max-width:520px;margin-top:16px}
+#config-banner code{background:var(--surface2);padding:2px 6px;border-radius:4px;color:var(--text)}
+
+/* ── App ── */
+#app{display:none;padding:20px 28px;max-width:1500px;margin:0 auto}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+h1{font-size:20px}
+.top .sub{color:var(--muted);font-size:12px}
+button{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 14px;
+  border-radius:8px;cursor:pointer;font-size:13px}
+button:hover{background:var(--border)}
+.btn-today{background:var(--accent)!important;border-color:var(--accent)!important}
+
+.user-info{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);
+  padding:8px 14px;border-radius:8px;font-size:13px}
+.user-info .avatar{width:26px;height:26px;background:linear-gradient(135deg,var(--accent),var(--purple));
+  border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
+
+.datenav{display:flex;gap:8px;align-items:center;margin-bottom:16px}
+#datum{font-size:15px;font-weight:600;min-width:220px;text-align:center}
+
+.tabs-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.view-tabs,.etage-tabs{display:flex;gap:6px;background:var(--surface2);padding:6px;border-radius:10px}
+.view-tabs button,.etage-tabs button{flex:1;background:transparent;border:none;color:var(--muted);
+  padding:9px 15px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;transition:.15s;white-space:nowrap}
+.view-tabs button.active,.etage-tabs button.active{background:var(--accent);color:#fff}
+
+.container{display:grid;grid-template-columns:320px 1fr;gap:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:16px}
+.card h2{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+label{font-size:12px;color:var(--muted);display:block;margin:8px 0 3px}
+select,input[type=date],input[type=time],input.cs-input{width:100%;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);padding:8px 10px;border-radius:8px;font-size:13px;outline:none}
+.zeit-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ganztag-row{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:10px;cursor:pointer}
+.btn-book{width:100%;background:linear-gradient(135deg,var(--accent),var(--purple));border:none;color:#fff;
+  padding:10px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;margin-top:12px}
+
+/* ── Agenda (v.a. Mobile) ── */
+#agenda-card{display:none}
+.agenda-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.agenda-row:last-child{border-bottom:none}
+.agenda-time{color:var(--accent);font-weight:700;min-width:88px}
+.agenda-raum{color:var(--text);font-weight:600;flex:1}
+.agenda-nutzer{color:var(--muted)}
+.agenda-empty{color:var(--muted);font-size:12px;padding:6px 0}
+
+/* ── Kalender (Liste) ── */
+.cal-wrap{overflow-x:auto}
+.cal{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;min-width:700px}
+.cal-header{display:grid;background:var(--surface2);font-size:11px;font-weight:600}
+.cal-header div{padding:12px 6px;text-align:center;border-left:1px solid var(--border)}
+.cal-header div:first-child{border-left:none}
+.cal-body{position:relative}
+.cal-row{display:grid;height:48px}
+.cal-time{padding:0 8px;font-size:11px;color:var(--muted);line-height:48px;text-align:right;border-right:1px solid var(--border)}
+.cal-cell{border-left:1px solid var(--border);border-top:1px solid var(--surface2);position:relative}
+.cal-cell.half{border-top:1px dashed rgba(46,50,80,.5)}
+
+.cal-cell{cursor:pointer}
+.cal-cell:hover{background:rgba(79,110,247,.08)}
+
+/* Buchungen als zusammenhängende Blöcke (ein Block = ein belegter Zeitraum,
+   die Farbe im Block zeigt 1/2 bzw. 2/2) */
+.cal-block{position:absolute;z-index:2;padding:2px 3px;pointer-events:none}
+.cal-block-in{position:relative;height:100%;border-radius:9px;overflow:hidden;
+  box-shadow:0 2px 10px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.08)}
+.cal-seg{position:absolute;left:0;right:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:1px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;
+  pointer-events:auto;overflow:hidden;padding:0 4px;text-align:center;transition:filter .15s}
+.cal-seg:hover{filter:brightness(1.2)}
+.cal-seg + .cal-seg{border-top:1px solid rgba(255,255,255,.28)}
+.cal-seg.status-partial{background:linear-gradient(180deg,#4b4f8f,#3b3d6e)}
+.cal-seg.status-busy{background:linear-gradient(180deg,#6b3347,#5c2d3c)}
+.cal-seg.mine{outline:2px solid var(--amber);outline-offset:-2px}
+.cal-seg .names{font-size:10px;font-weight:500;color:rgba(255,255,255,.72);max-width:100%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.legend-sw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+
+.now{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:3;pointer-events:none}
+.now::before{content:'';position:absolute;left:-4px;top:-4px;width:10px;height:10px;background:var(--red);border-radius:50%}
+
+#toast{position:fixed;bottom:20px;right:20px;padding:12px 18px;border-radius:10px;color:#fff;font-size:13px;
+  font-weight:600;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;z-index:100}
+#toast.show{opacity:1;transform:translateY(0)}
+#toast.success{background:var(--green)}
+#toast.error{background:var(--red)}
+
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;width:340px}
+.modal h3{margin-bottom:12px;font-size:16px}
+.modal p{color:var(--muted);font-size:13px;margin-bottom:6px}
+.modal p strong{color:var(--text)}
+.modal-actions{display:flex;gap:8px;margin-top:16px}
+
+.live{position:fixed;top:20px;right:20px;background:var(--green);color:#fff;padding:6px 12px;border-radius:6px;
+  font-size:11px;display:flex;align-items:center;gap:6px;z-index:50}
+.live .dot{width:7px;height:7px;background:#fff;border-radius:50%;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Grundriss ── */
+.plan-wrap{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px}
+.plan-svg{width:100%;height:auto;display:block}
+.plan-room{cursor:pointer;transition:.15s}
+.plan-room:hover .plan-fill{filter:brightness(1.3)}
+.plan-fill{fill:#1a1d27;stroke:none}
+.plan-fill.selected{fill:#2a2f52;stroke:var(--accent);stroke-width:3}
+.plan-fill.status-free{fill:#1a1d27}
+.plan-fill.status-partial{fill:#3b3d5c}
+.plan-fill.status-busy{fill:#5c2d3c}
+.plan-extra{fill:#232637;stroke:none}
+.plan-label{fill:var(--text);font-size:12px;font-weight:700;pointer-events:none;text-anchor:middle;
+  paint-order:stroke;stroke:#0f1117;stroke-width:3px;stroke-linejoin:round}
+.plan-sub{fill:var(--muted);font-size:9px;pointer-events:none;text-anchor:middle;font-style:italic;
+  paint-order:stroke;stroke:#0f1117;stroke-width:3px;stroke-linejoin:round}
+.plan-flur{fill:#12141c;stroke:none}
+.plan-flur-label{fill:#4a5075;font-size:12px;letter-spacing:.25em;text-anchor:middle;text-transform:uppercase}
+.plan-wall{fill:none;stroke:#b9c0e6;stroke-width:4;stroke-linejoin:miter}
+.plan-wall.outer{stroke-width:7}
+.plan-window{fill:#0f1117;stroke:var(--accent);stroke-width:1.2}
+.plan-door{fill:none;stroke:var(--muted);stroke-width:1}
+.plan-text{fill:#6c7499;font-size:9px;pointer-events:none;paint-order:stroke;stroke:#0f1117;stroke-width:3px}
+.plan-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--muted)}
+.plan-legend span{display:flex;align-items:center;gap:6px}
+.plan-legend .sw{width:14px;height:14px;border-radius:3px;border:1px solid var(--border)}
+.plan-legend .dot{width:12px;height:12px;border-radius:50%}
+
+/* ── Einzelne Tische im Grundriss ── */
+.plan-desk{cursor:pointer;transition:.15s}
+.plan-desk:hover{filter:brightness(1.25)}
+.desk-badge{stroke:#0f1117;stroke-width:1.5}
+.desk-badge.frei{fill:var(--green)}
+.desk-badge.belegt{fill:var(--red)}
+.plan-desk.selected .desk-badge{stroke:var(--amber);stroke-width:2.5}
+.desk-plus{fill:#fff;font-size:14px;font-weight:800;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.desk-code{fill:var(--muted);font-size:9px;text-anchor:middle;pointer-events:none;
+  paint-order:stroke;stroke:#0f1117;stroke-width:3px;stroke-linejoin:round}
+.plan-desk-moebel{cursor:pointer}
+.plan-desk-moebel:hover{filter:brightness(1.25)}
+.plan-room-sd{cursor:pointer}
+
+/* ── Eigene Dropdowns / Zeitfelder im Dark-Design ── */
+.cs{position:relative}
+select.cs-native{display:none!important}
+.cs-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 10px;
+  border-radius:8px;font-size:13px;cursor:pointer}
+.cs-btn:hover{background:var(--surface2);border-color:var(--accent)}
+.cs-btn::after{content:'';width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);
+  transform:rotate(45deg) translateY(-2px);flex-shrink:0;transition:.15s}
+.cs.cs-open .cs-btn,.cs-time:focus-within input{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,110,247,.2)}
+.cs.cs-open .cs-btn::after{transform:rotate(-135deg) translateY(-2px)}
+.cs-list{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:60;max-height:220px;overflow-y:auto;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;
+  box-shadow:0 12px 32px rgba(0,0,0,.55)}
+.cs.cs-open .cs-list{display:block}
+.cs-opt{padding:7px 10px;border-radius:6px;font-size:13px;cursor:pointer;color:var(--text)}
+.cs-opt:hover,.cs-opt.active{background:var(--surface2)}
+.cs-opt.selected{background:var(--accent);color:#fff}
+.cs-empty{padding:8px 10px;font-size:12px;color:var(--muted)}
+.cs-list::-webkit-scrollbar{width:8px}
+.cs-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.cs-time input{padding-right:34px;font-variant-numeric:tabular-nums}
+.cs-time input:disabled{opacity:.5}
+.cs-time input.cs-error{border-color:var(--red);animation:csShake .25s}
+@keyframes csShake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+.cs-clock{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:28px;height:28px;padding:0;
+  background:transparent;border:none;color:var(--muted);font-size:14px;display:flex;align-items:center;justify-content:center}
+.cs-clock:hover{background:transparent;color:var(--text)}
+.cs-time:has(input:disabled) .cs-clock{pointer-events:none;opacity:.4}
+
+
+/* ══ Promo-Look (angelehnt an hausmesse.wara.de/Stand23): Spotlight, Verlauf, Animationen ══ */
+body{overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background:radial-gradient(500px circle at var(--mx,50%) var(--my,30%),rgba(79,110,247,.13),transparent 60%)}
+#login-screen,#app{position:relative;z-index:2}
+#net{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.grad{background:linear-gradient(100deg,var(--accent),var(--purple) 55%,#c084fc);
+  -webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% 100%;
+  animation:shift 8s ease-in-out infinite alternate}
+@keyframes shift{to{background-position:100% 0}}
+@keyframes rise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+@keyframes ping{70%{box-shadow:0 0 0 10px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
+@keyframes floaty{50%{transform:translateY(-5px)}}
+@keyframes popin{from{opacity:0;transform:scale(.92) translateY(8px)}to{opacity:1;transform:none}}
+
+.login-box{border-radius:22px;padding:36px 32px;animation:rise .9s cubic-bezier(.2,.7,.2,1) both;
+  background:linear-gradient(160deg,var(--surface),#151824);box-shadow:0 30px 80px -30px rgba(79,110,247,.45)}
+.login-logo{animation:floaty 4s ease-in-out infinite;box-shadow:0 12px 34px -8px rgba(124,58,237,.7);border-radius:16px}
+.login-box h1{font-size:24px;letter-spacing:-.03em}
+.login-box input{transition:border-color .2s,box-shadow .2s}
+.login-box input:focus{box-shadow:0 0 0 3px rgba(79,110,247,.22)}
+.login-box button,.btn-book{position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s,opacity .2s}
+.login-box button:hover,.btn-book:hover{transform:translateY(-2px);box-shadow:0 12px 30px -8px rgba(124,58,237,.65)}
+.login-box button::after,.btn-book::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent);transform:skewX(-20deg);transition:left .6s}
+.login-box button:hover::after,.btn-book:hover::after{left:130%}
+#gast-btn:hover{border-color:var(--accent)!important}
+
+#app.in > *{animation:rise .8s cubic-bezier(.2,.7,.2,1) both}
+#app.in > :nth-child(3){animation-delay:.08s}#app.in > :nth-child(4){animation-delay:.16s}
+#app.in > :nth-child(5){animation-delay:.24s}#app.in > :nth-child(6){animation-delay:.32s}
+#app.in > :nth-child(n+7){animation-delay:.4s}
+.top h1{font-size:26px;font-weight:800;letter-spacing:-.03em}
+.card,.user-info,.cal,.plan-wrap,.modal{border-radius:18px}
+.card{transition:border-color .3s,box-shadow .3s}
+.card:hover{border-color:var(--accent);box-shadow:0 20px 50px -28px rgba(79,110,247,.5)}
+button{transition:background .2s,transform .15s,border-color .2s}
+button:active{transform:scale(.97)}
+.view-tabs,.etage-tabs{border-radius:999px}
+.view-tabs button,.etage-tabs button{border-radius:999px}
+.view-tabs button.active,.etage-tabs button.active{background:linear-gradient(100deg,var(--accent),var(--purple));
+  box-shadow:0 8px 22px -8px rgba(124,58,237,.7)}
+.user-info .avatar{box-shadow:0 0 0 0 rgba(124,58,237,.6);animation:ping 2.4s infinite}
+.live{border-radius:999px;padding:7px 14px}
+.live .dot{animation:pulse 1.5s infinite,ping 2s infinite}
+.cal-seg{transition:filter .15s,transform .15s}
+.cal-seg:hover{transform:scale(1.02)}
+.cal-block-in{border-radius:11px}
+.plan-room:hover .plan-fill{filter:brightness(1.3) drop-shadow(0 0 8px rgba(79,110,247,.6))}
+.plan-desk:hover{filter:brightness(1.25) drop-shadow(0 0 6px rgba(34,197,94,.7))}
+.modal-bg.open{animation:fade .25s ease}
+.modal-bg.open .modal{animation:popin .35s cubic-bezier(.2,.7,.2,1)}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.agenda-row{transition:background .2s,padding-left .2s}
+.agenda-row:hover{background:rgba(79,110,247,.08);padding-left:6px}
+#toast{border-radius:999px;padding:12px 22px;box-shadow:0 12px 30px -8px rgba(0,0,0,.6)}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
+/* ── Gast-/Testsystem ── */
+.gast-btn{background:var(--surface2)!important;border:1px solid var(--border)!important;margin-top:10px!important}
+.gast-btn:hover{border-color:var(--accent)!important}
+.login-hinweis{text-align:center;color:var(--muted);font-size:11px;margin-top:10px;line-height:1.5}
+#gast-banner{display:none;background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.35);
+  border-radius:14px;padding:8px 14px;margin-bottom:12px;font-size:13px}
+/* "Live"-Badge sitzt neben dem Titel statt fest oben rechts (hat dort "Abmelden" verdeckt) */
+.top h1 .live{position:static;display:inline-flex;vertical-align:middle;font-size:11px;font-weight:600;padding:4px 10px;
+  letter-spacing:0;margin-left:6px;-webkit-text-fill-color:#fff}
+/* Grid-Spalten dürfen schmaler als ihr Inhalt werden – der Kalender scrollt dann in sich,
+   statt die ganze Seite auf dem Handy seitlich zu verbreitern */
+.container > *{min-width:0}
+
+#gast-banner .banner-zeile{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#gast-banner button{font-size:12px;padding:6px 12px;border-color:rgba(245,158,11,.5)}
+.banner-limit{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;
+  background:rgba(245,158,11,.18);font-weight:600;font-variant-numeric:tabular-nums}
+.btn-admin.aktiv{background:rgba(245,158,11,.18);border-color:var(--amber)}
+#frage-pw{margin-top:2px}
+#frage-modal{z-index:400}   /* auch über dem Etagen-Editor */
+
+/* ── Gebäude-/Etagen-Auswahl ── */
+.ort-tabs{display:flex;gap:16px;flex-wrap:wrap}
+.gebaeude-tabs{display:flex;gap:6px;background:var(--surface2);padding:6px;border-radius:999px}
+.gebaeude-tabs button{background:transparent;border:none;color:var(--muted);padding:9px 15px;border-radius:999px;
+  font-size:13px;font-weight:600;white-space:nowrap}
+.gebaeude-tabs button.active{background:var(--surface);color:var(--text);box-shadow:inset 0 0 0 1px var(--accent)}
+.btn-admin{background:var(--surface2);border:1px dashed var(--accent);color:var(--text);border-radius:999px;font-weight:600}
+.btn-admin:hover{background:var(--border)}
+.etage-leer{padding:30px;text-align:center;color:var(--muted);font-size:13px}
+
+/* ── Info-Karte ── */
+.info-text{color:var(--muted);font-size:12px;line-height:1.6}
+.info-text strong{color:var(--text)}
+
+/* ── Modals: zusätzliche Varianten ── */
+.modal-breit{width:380px;max-width:calc(100vw - 32px)}
+.modal{max-width:calc(100vw - 32px)}
+.btn-danger{background:var(--red)!important;border-color:var(--red)!important;color:#fff}
+.plan-wrap{position:relative}
+.plan-bild{opacity:.9}
+.plan-fill.bild{fill-opacity:.35;stroke:var(--border);stroke-width:1.5}
+.plan-fill.bild.status-free{fill:#1a1d27}
+.plan-fill.bild.selected{fill:#2a2f52;fill-opacity:.55;stroke:var(--accent);stroke-width:3}
+
+/* ══ Etagen-Editor (Admin): Etage per Bild oder Datei anlegen ══ */
+.editor-bg{display:none;position:fixed;inset:0;background:rgba(5,6,10,.82);z-index:300;padding:18px;overflow:auto}
+.editor-bg.open{display:block;animation:fade .25s ease}
+.editor{background:var(--surface);border:1px solid var(--border);border-radius:18px;max-width:1400px;margin:0 auto;
+  padding:18px;display:grid;grid-template-columns:300px 1fr;gap:18px}
+.editor h3{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;font-size:17px}
+.editor-seite{display:flex;flex-direction:column;gap:4px;min-width:0}
+.editor-seite h4{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 4px}
+.editor-seite h4:first-child{margin-top:0}
+.editor-seite input[type=text],.editor-seite input[type=number],.editor-seite input[type=password],.editor-seite select{
+  width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 9px;
+  border-radius:8px;font-size:13px;outline:none}
+.editor-seite input:focus,.editor-seite select:focus{border-color:var(--accent)}
+.editor-zeile{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.editor-check{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:6px}
+.editor-knoepfe{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.editor-knoepfe button,.editor-knoepfe label.knopf{flex:1 1 auto;font-size:12px;padding:7px 10px;text-align:center}
+label.knopf{display:inline-block;background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  border-radius:8px;cursor:pointer;margin:0}
+label.knopf:hover{background:var(--border)}
+label.knopf input{display:none}
+.editor-flaeche{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:8px;min-width:0;
+  position:sticky;top:0;align-self:start}
+.editor-flaeche svg{width:100%;height:auto;display:block;cursor:crosshair;touch-action:none;user-select:none}
+.editor-hinweis{font-size:12px;color:var(--muted);line-height:1.5;margin-top:8px}
+.editor-meldung{font-size:12px;border-radius:8px;padding:8px 10px;margin-top:8px;display:none;white-space:pre-line}
+.editor-meldung.fehler{display:block;background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)}
+.editor-meldung.ok{display:block;background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.3)}
+.ed-raum{cursor:move}
+.ed-raum rect.ed-flaeche{fill:rgba(79,110,247,.22);stroke:var(--accent);stroke-width:2}
+.ed-raum.bereich rect.ed-flaeche{fill:rgba(136,145,180,.18);stroke:var(--muted);stroke-dasharray:6 4}
+.ed-raum.aktiv rect.ed-flaeche{fill:rgba(245,158,11,.25);stroke:var(--amber);stroke-width:3}
+.ed-raum text{fill:var(--text);font-size:13px;font-weight:700;text-anchor:middle;pointer-events:none;
+  paint-order:stroke;stroke:#0f1117;stroke-width:3px}
+.ed-griff{fill:var(--amber);stroke:#0f1117;stroke-width:1.5;cursor:nwse-resize}
+.ed-neu{fill:rgba(34,197,94,.15);stroke:var(--green);stroke-width:2;stroke-dasharray:5 4;pointer-events:none}
+
+/* ══ Dropdowns v2: Gruppen, Status-Punkte, Häkchen, Suche, Öffnen nach oben ══ */
+.cs-btn{min-height:38px}
+.cs-btn-inhalt{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.cs-btn-inhalt .cs-haken{display:none}
+.cs-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cs-hinweis{font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.cs-icon{flex-shrink:0;width:18px;text-align:center}
+.cs-punkt{width:9px;height:9px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 3px rgba(255,255,255,.04)}
+.cs-punkt.frei{background:var(--green)}
+.cs-punkt.teil{background:var(--amber)}
+.cs-punkt.belegt{background:var(--red)}
+.cs-list{padding:6px;max-height:280px;transform-origin:top center}
+.cs.cs-open .cs-list{animation:csAuf .14s cubic-bezier(.2,.7,.2,1)}
+.cs.cs-oben .cs-list{top:auto;bottom:calc(100% + 4px);transform-origin:bottom center}
+@keyframes csAuf{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
+.cs-opt{display:flex;align-items:center;gap:8px;padding:8px 10px;min-height:36px;border-radius:8px}
+.cs-opt .cs-haken{width:14px;text-align:right;color:var(--accent);font-weight:800;flex-shrink:0}
+.cs-opt.selected{background:rgba(79,110,247,.16);color:var(--text)}
+.cs-opt.selected .cs-hinweis{color:var(--text);opacity:.75}
+.cs-opt.active{background:var(--surface2);box-shadow:inset 0 0 0 1px var(--border)}
+.cs-opt.selected.active{background:rgba(79,110,247,.26)}
+.cs-opt.cs-aus{opacity:.4;cursor:not-allowed}
+.cs-opt.cs-vorbei .cs-text{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(136,145,180,.5)}
+.cs-opt.cs-weg{display:none}
+.cs-gruppe{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  padding:10px 10px 4px}
+.cs-gruppe:first-child,.cs-suche + .cs-gruppe{padding-top:4px}
+.cs-suche{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;
+  padding:7px 10px;font-size:13px;margin-bottom:6px;outline:none;position:sticky;top:0;z-index:1}
+.cs-suche:focus{border-color:var(--accent)}
+.cs-btn:focus-visible,.cs-time input:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,110,247,.25)}
+
+/* ══ Häkchen als Schalter (gilt für alle Checkboxen) ══ */
+input[type=checkbox]{appearance:none;-webkit-appearance:none;position:relative;width:38px;height:22px;flex-shrink:0;
+  margin:0;border-radius:999px;background:var(--surface2);border:1px solid var(--border);cursor:pointer;
+  transition:background .2s,border-color .2s,box-shadow .2s;vertical-align:middle}
+input[type=checkbox]::before{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+  background:var(--muted);transition:transform .2s cubic-bezier(.2,.7,.2,1),background .2s;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+input[type=checkbox]:checked{background:linear-gradient(100deg,var(--accent),var(--purple));border-color:transparent}
+input[type=checkbox]:checked::before{transform:translateX(16px);background:#fff}
+input[type=checkbox]:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(79,110,247,.3)}
+input[type=checkbox]:disabled{opacity:.45;cursor:not-allowed}
+.ganztag-row,.editor-check{gap:10px!important;padding:6px 0;user-select:none}
+.ganztag-row:hover input,.editor-check:hover input{border-color:var(--accent)}
+
+/* ══ Profil ══ */
+.user-info .profil-knopf{display:flex;align-items:center;gap:10px;background:transparent;border:none;padding:0;
+  color:var(--text);text-align:left;cursor:pointer}
+.user-info .profil-knopf:hover .avatar{box-shadow:0 0 0 3px rgba(79,110,247,.45)}
+.user-info .profil-knopf:hover{background:transparent}
+.user-info .profil-knopf:disabled{cursor:default;opacity:1}
+.avatar{overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.profil{width:560px;max-height:calc(100vh - 32px);overflow-y:auto}
+.profil-kopf{display:flex;gap:18px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.profil-bild{width:96px;height:96px;border-radius:50%;flex-shrink:0;overflow:hidden;display:flex;align-items:center;
+  justify-content:center;font-size:32px;font-weight:800;color:#fff;
+  background:linear-gradient(135deg,var(--accent),var(--purple));box-shadow:0 12px 30px -10px rgba(124,58,237,.7)}
+.profil-bild img{width:100%;height:100%;object-fit:cover}
+.profil-abschnitt{border-top:1px solid var(--border);margin-top:14px;padding-top:12px}
+.profil-abschnitt h4{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.profil input[type=text],.profil input[type=password]{width:100%;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);padding:9px 10px;border-radius:8px;font-size:13px;outline:none}
+.profil input[type=text]:focus,.profil input[type=password]:focus{border-color:var(--accent)}
+.profil-tag{font-size:12px;font-weight:700;color:var(--text);margin:10px 0 4px;display:flex;justify-content:space-between;align-items:center}
+.profil-tag button{font-size:11px;padding:4px 10px}
+.profil-buchung{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:var(--surface2);
+  margin-bottom:4px;font-size:12px}
+.profil-buchung .zeit{color:var(--accent);font-weight:700;min-width:88px;font-variant-numeric:tabular-nums}
+.profil-buchung .ort{flex:1;min-width:0}
+.profil-buchung button{padding:4px 8px;font-size:12px}
+.profil-liste{max-height:260px;overflow-y:auto;padding-right:4px}
+.profil-zusammenfassung{font-size:12px;color:var(--muted)}
+
+/* ── Mobile ── */
+@media (max-width:720px){
+  #app{padding:14px}
+  .container{grid-template-columns:1fr}
+  #agenda-card{display:block;order:-1}
+  .cal{min-width:520px}
+  .editor{grid-template-columns:1fr}
+  .editor-flaeche{position:static}
+  .datenav{flex-wrap:wrap}
+  #datum{min-width:0;flex:1 1 100%;order:-1;text-align:left}
+  .top h1{font-size:22px}
+}

@@ -20,7 +20,7 @@ Ablauf pro Karte:
      NFC-Buchung? → VERLÄNGERN (Ende der Buchung um
      nfc_bridge_config.BUCHUNGSDAUER_MINUTEN nach hinten schieben,
      kein Check-out über NFC)
-  4. Sonst → Kapazität prüfen (wie index.html: pruefeKapazitaet) und
+  4. Sonst → Kapazität prüfen (wie kapazitaetPruefen() in js/belegung.js) und
      Check-IN (neue Buchung, quelle='nfc', Dauer siehe
      nfc_bridge_config.BUCHUNGSDAUER_MINUTEN). Bei Besprechungsraum/
      Konferenzraum (Kapazität 1) sperrt das jede weitere Karte für den
@@ -45,10 +45,10 @@ from smartcard.System import readers
 from smartcard.util import toHexString
 from smartcard.Exceptions import NoCardException, CardConnectionException
 
-from nfc_bridge_config import READER_ZU_RAUM, STANDARD_RAUM, BUCHUNGSDAUER_MINUTEN
+from nfc_bridge_config import READER_ZU_RAUM, STANDARD_RAUM, BUCHUNGSDAUER_MINUTEN, RAUM_KAPAZITAET
 
 # ── Supabase-Zugang ────────────────────────────────────────
-# Dieselben (bewusst öffentlichen) Werte wie in index.html – siehe
+# Dieselben (bewusst öffentlichen) Werte wie in js/config.js – siehe
 # CLAUDE.md: Zugriff wird über RLS-Policies geregelt, nicht über
 # Geheimhaltung des anon keys.
 SUPABASE_URL = 'https://yugjccgblqsfjasienwa.supabase.co'
@@ -58,12 +58,6 @@ HEADERS = {
     'apikey': SUPABASE_ANON_KEY,
     'Authorization': f'Bearer {SUPABASE_ANON_KEY}',
     'Content-Type': 'application/json',
-}
-
-# Kapazität je Raum – muss zur ROOMS-Konstante in index.html passen.
-RAUM_KAPAZITAET = {
-    'Besprechungsraum': 1, 'Konferenzraum': 1,
-    **{f'ShareDesk {i}': 2 for i in range(1, 11)},
 }
 
 FMT = '%Y-%m-%d %H:%M'
@@ -115,6 +109,7 @@ def aktive_nfc_buchung(nutzer_id, raum, jetzt):
             'nutzer_id': f'eq.{nutzer_id}',
             'raum': f'eq.{raum}',
             'quelle': 'eq.nfc',
+            'test': 'eq.false',
             'start': f'lte.{jetzt}',
             'ende': f'gt.{jetzt}',
             'select': 'id,start,ende',
@@ -126,21 +121,32 @@ def aktive_nfc_buchung(nutzer_id, raum, jetzt):
     return rows[0] if rows else None
 
 
+def max_gleichzeitig(buchungen, von, bis):
+    """Höchste Zahl gleichzeitig laufender Buchungen in [von, bis) –
+    wie maxGleichzeitig() in js/belegung.js (Zeiten als 'YYYY-MM-DD HH:MM'-Text)."""
+    relevant = [b for b in buchungen if b['start'] < bis and b['ende'] > von]
+    zeitpunkte = [von] + [b['start'] for b in relevant if von < b['start'] < bis]
+    return max([0] + [sum(1 for b in relevant if b['start'] <= t < b['ende']) for t in zeitpunkte])
+
+
 def freie_plaetze(raum, start, ende):
-    """Wie pruefeKapazitaet() in index.html: überlappende Buchungen zählen."""
+    """Wie kapazitaetPruefen() in js/belegung.js: höchste GLEICHZEITIGE
+    Belegung im Zeitraum zählen (nur Echtbetrieb, Test-Buchungen des
+    Gast-Modus zählen nicht)."""
     r = requests.get(
         f'{SUPABASE_URL}/rest/v1/buchungen',
         headers=HEADERS,
         params={
             'raum': f'eq.{raum}',
+            'test': 'eq.false',
             'start': f'lt.{ende}',
             'ende': f'gt.{start}',
-            'select': 'id',
+            'select': 'id,start,ende',
         },
         timeout=5,
     )
     r.raise_for_status()
-    belegt = len(r.json())
+    belegt = max_gleichzeitig(r.json(), start, ende)
     kapazitaet = RAUM_KAPAZITAET.get(raum, 1)
     return max(kapazitaet - belegt, 0), kapazitaet
 
@@ -149,6 +155,8 @@ def checkin(nutzer, raum, start, ende):
     r = requests.post(
         f'{SUPABASE_URL}/rest/v1/buchungen',
         headers={**HEADERS, 'Prefer': 'return=representation'},
+        # nur die id zurücklesen – die Namensspalte ist für den anon key gesperrt
+        params={'select': 'id'},
         json={
             'raum': raum, 'nutzer_id': nutzer['id'], 'name': nutzer['name'],
             'start': start, 'ende': ende, 'quelle': 'nfc',
@@ -300,8 +308,9 @@ def main():
                     last_uids[reader_name] = None
             except CardConnectionException:
                 pass
-            except Exception:
-                pass
+            except Exception as e:
+                # nicht still verschlucken – sonst merkt am Stand niemand, warum nichts passiert
+                print(f'  [{raum}] ⚠ Unerwarteter Fehler: {e!r}')
 
         time.sleep(0.4)
 

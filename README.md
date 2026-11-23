@@ -1,240 +1,432 @@
-# Raumbuchungssystem
+# 🏢 Raumbuchungssystem
 
-Raumbuchungssystem mit NFC-Check-in und grafischer Grundriss-Ansicht.
-Schulprojekt (Fachinformatik Systemintegration, Walther-Rathenau-Gewerbeschule),
-gebaut für die "Hausmesse"-Präsentation (Abgabe 24.11.2026).
+**Räume und Einzeltische buchen – im Browser, auf einem interaktiven Grundriss oder einfach per NFC-Karte.**
+Schulprojekt der Walther-Rathenau-Gewerbeschule (Fachinformatik Systemintegration) für die
+Hausmesse 2026.
 
-## Architekturübersicht
+| | Link |
+|---|---|
+| 🌐 **Live-System** | <https://erschoenfeld2-tech.github.io/Raumbuchungssytem/> |
+| 🧪 **Testsystem (ohne Anmeldung ausprobieren)** | <https://erschoenfeld2-tech.github.io/Raumbuchungssytem/?gast> |
+| 🗺 Direkt zu einer Etage | `…/Raumbuchungssytem/?etage=hauptgebaeude-2` |
 
-Dieses Repository enthält **drei unabhängige, historisch gewachsene Implementierungen**
-derselben Idee. Nur eine davon ist tatsächlich live. Details und Begründung stehen in
-[`CLAUDE.md`](CLAUDE.md) — hier die Kurzfassung:
+> Das **Testsystem** läuft auf derselben Datenbank, ist aber strikt vom Echtbetrieb getrennt.
+> Jeder Gast bekommt eine **eigene Sitzung**: Er kann buchen und sogar eigene Etagen anlegen
+> (die nur er sieht), alles mit einem Klick **zurücksetzen** und höchstens **10 Änderungen in
+> 2 Minuten** machen. Gast-Buchungen werden nach 2 Minuten, Gast-Etagen nach 15 Minuten
+> automatisch gelöscht. Räume mit NFC-Reader sind dort nur per Karte buchbar, damit sie für
+> die Live-Demo am Stand frei bleiben.
 
-| | Live-System | Alte modulare Version | Älteste Version |
-|---|---|---|---|
-| Frontend | `index.html` | `index_lokal_modular.html` | in `raumbuchung.py` eingebettet |
-| Backend | Supabase (Postgres + REST) | `api.py` (FastAPI) + `database.py` (SQLite) | eingebauter `http.server` + SQLite |
-| Status | **deployed, in Benutzung** | lokales Referenzprojekt | lokales Referenzprojekt |
-| Deployment | GitHub Pages (`main`) | manuell `py api.py` | manuell `py raumbuchung.py` |
+---
 
-Das **Live-System** ist eine einzelne statische HTML-Datei (Vanilla JS/CSS, inline SVG
-für den Grundriss, kein Build-Schritt, kein Framework), die direkt mit Supabase über den
-öffentlichen `anon key` spricht. Zugriffsrechte werden über Postgres
-Row-Level-Security-Policies geregelt, nicht durch Geheimhaltung des Keys.
+## Inhalt
 
-Zusätzlich gibt es ein **NFC-Legacy-Toolkit** (`checkin.py`, `nfc_test.py`, `reader_config.py`
-u. a.) für ACR122U-Kartenleser. Wichtige Einschränkung: Diese Skripte schreiben in die alte
-lokale SQLite-Datenbank (`database.py`), **nicht** in die Live-Supabase-Tabelle `buchungen` —
-sie dienen nur noch als Logik-Referenz.
+1. [Überblick](#1-überblick)
+2. [Anleitung](#2-anleitung)
+3. [Technische Beschreibung](#3-technische-beschreibung)
+4. [Entwicklung, Tests und Betrieb](#4-entwicklung-tests-und-betrieb)
 
-Die tatsächliche **NFC-Anbindung ans Live-System** ist `nfc_supabase_bridge.py` +
-`nfc_bridge_config.py`: derselbe Reader-Polling-Ablauf wie `checkin.py`, aber die Karten-UID
-wird über die Postgres-Funktion `nutzer_by_nfc()` aufgelöst und Check-ins landen direkt per
-PostgREST (mit demselben `anon key` wie `index.html`) in `buchungen` mit `quelle='nfc'` —
-sichtbar in der Live-Website beim nächsten Reload.
+---
 
-## Voraussetzungen
+## 1. Überblick
 
-- Für das Live-System: nichts weiter als ein Browser — `index.html` ist eine fertige,
-  statische Datei.
-- Für die Legacy-Python-Prototypen: Python **3.13** (nicht 3.14 — für `pyscard` gibt es
-  dort noch keine Wheels), `pip install fastapi uvicorn pydantic pyscard` je nach Skript.
-  Es gibt kein `requirements.txt`; Abhängigkeiten stehen nur im Docstring jeder Datei.
-- Für NFC-Tests: physischer ACR122U-Kartenleser.
-- Für Datenbank-Änderungen: [Supabase CLI](https://supabase.com/docs/guides/cli), falls
-  lokal getestet werden soll (optional — die CI/CD-Pipeline übernimmt das produktiv).
+### Was kann das System?
 
-## Umgebungsvariablen
+- **Buchen im Browser** – Raum, Tisch, Datum und Uhrzeit wählen, fertig. Doppelbuchungen und
+  überbuchte Räume werden abgewiesen (im Browser *und* in der Datenbank).
+- **Zwei Ansichten** – eine **Liste/Kalender** pro Etage (Belegung als farbige Blöcke: 1/2 =
+  teilbelegt, 2/2 = voll) und ein **Grundriss**, in dem jeder Tisch per Klick auswählbar ist
+  (grün = frei, rot = belegt).
+- **Mehrere Gebäude und Etagen** – jede Etage ist eine eigene Datei (`etagen/*.js`) und hat ihre
+  eigene Adresse (`?etage=<id>`). Neue Etagen entstehen aus einer Vorlage – oder ganz ohne
+  Programmieren im Browser aus einem **Grundriss-Bild** oder einer **JSON-Datei**. Das kann jeder
+  angemeldete Nutzer (dauerhaft, für alle sichtbar) und jeder Gast (nur für sich, mit Verfallszeit).
+- **Mein Profil** – Profilbild, Nutzername und Passwort selbst ändern, dazu eine Übersicht aller
+  eigenen Buchungen nach Tagen.
+- **Bedienung** – Auswahllisten mit Gruppen, Frei/Belegt-Punkten, Häkchen und Suche; Häkchen als
+  Schalter; vergangene Uhrzeiten werden ausgegraut.
+- **NFC-Check-in** – Karte an den Reader am Raum halten → automatische 60-Minuten-Buchung,
+  erneutes Auflegen verlängert. Die Buchung erscheint sofort im Browser (📡).
+- **Persönliche Logins** – Passwörter werden gehasht in der Datenbank geprüft, beim ersten Login
+  muss das Startpasswort geändert werden. Ein Admin darf alle Buchungen löschen, Etagen anlegen
+  und das Testsystem verwalten.
+- **Datenschutz** – Namen anderer Personen und Passwörter werden nie angezeigt: fremde Buchungen
+  erscheinen nur als „belegt", eigene als „Du". Auch über die öffentliche Schnittstelle sind
+  Nutzernamen nicht abrufbar.
+- **Testsystem** für Messebesucher – ein Klick auf „Als Gast testen" oder der Link oben.
+- **Dunkles Design**, läuft auf Desktop und Handy, kein App-Download nötig.
 
-**Keine.** Weder das Live-System noch die Legacy-Prototypen lesen Umgebungsvariablen.
-Supabase-URL und `anon key` stehen als Konstanten direkt in `index.html` (bewusst, siehe
-oben); die Legacy-Prototypen nutzen `config.py` für Einstellungen statt `.env`. Es gibt
-deshalb keine `.env.example` in diesem Repository — sie würde eine Infrastruktur vortäuschen,
-die hier nicht existiert.
+### So hängt alles zusammen
 
-## Lokale Installation & Entwicklungsablauf
-
-Es gibt keinen Build-Schritt für das Live-System:
-
-```bash
-# Live-App lokal ansehen
-open index.html   # oder im Browser öffnen
+```mermaid
+flowchart LR
+  subgraph Browser
+    A[index.html<br/>css/ · js/ · etagen/]
+  end
+  subgraph Laptop am Stand
+    N[nfc_supabase_bridge.py] --- R1[(ACR122U<br/>Besprechungsraum)]
+    N --- R2[(ACR122U<br/>Konferenzraum)]
+  end
+  subgraph Supabase
+    DB[(PostgreSQL<br/>nutzer · buchungen · etagen)]
+    API[PostgREST-API<br/>+ RLS-Policies]
+  end
+  GH[GitHub Pages] -->|liefert aus| A
+  A <-->|anon key, HTTPS| API
+  N -->|anon key, HTTPS| API
+  API --- DB
+  CI[GitHub Actions] -->|Tests, Deploy| GH
+  CI -->|Migrationen| DB
 ```
 
-Änderungen an `index.html` direkt im Editor vornehmen und im Browser neu laden.
+---
 
-Für die Legacy-Prototypen:
+## 2. Anleitung
 
-```bash
-# Alte modulare Version
-py database.py     # legt raumbuchung.db an
-py api.py           # startet FastAPI-Server auf Port 8000
+### 2.1 Für Nutzerinnen und Nutzer
 
-# Älteste Einzeldatei-Version
-py raumbuchung.py   # eigene SQLite-DB, eingebauter Server, Port 8000
+1. **Anmelden** mit Nutzername und Passwort (Zugangsdaten gibt der Admin persönlich weiter).
+   Beim ersten Mal wirst du aufgefordert, ein eigenes Passwort (mind. 6 Zeichen) zu wählen.
+   Nur schauen? → **„👤 Als Gast testen"** (siehe 2.3).
+2. **Gebäude/Etage wählen** über die Tabs oben (Gebäude-Tabs erscheinen, sobald es mehr als ein
+   Gebäude gibt).
+3. **Buchen**:
+   - links im Formular Raum, Tisch, Datum und Zeit wählen und **✓ Buchen** klicken, *oder*
+   - in der **Liste** in ein freies Feld klicken → freien Tisch für diese halbe Stunde buchen, *oder*
+   - im **Grundriss** auf einen Tisch klicken → er wird ins Formular übernommen.
+   - ShareDesks lassen sich auch **ganztägig** buchen.
+4. **Eigene Buchungen** sind gelb umrandet und mit „Du" beschriftet, fremde heißen nur „belegt".
+   Anklicken → Details → **Löschen**. Auf dem Handy steht oben eine anklickbare **Agenda** des Tages.
+5. **Tischnummern**: `Etage.RaumTisch`, z. B. **1.203** = Etage 1, Raum 2, Tisch 3.
+   Gebäude mit Kürzel bekommen ein Präfix, z. B. **A-0.201**.
+6. **Auswahllisten**: Räume sind nach Meetingräumen und ShareDesks gruppiert; der Punkt zeigt die
+   Belegung am gewählten Tag (grün frei, gelb teilweise, rot belegt), ✓ markiert die Auswahl.
+   Bedienbar auch mit der Tastatur (↑ ↓ Enter Esc); lange Listen haben ein Suchfeld.
+7. **Mein Profil**: Klick auf dein Bild/deinen Namen oben rechts.
+   - **Profilbild** wählen oder entfernen (wird automatisch quadratisch verkleinert),
+   - **Nutzername** ändern,
+   - **Passwort** ändern (das aktuelle Passwort wird dabei verdeckt abgefragt),
+   - **Meine Buchungen**: alle eigenen Buchungen ab heute nach Tagen, mit „Zum Tag →“ und Löschen.
+   Name und Bild sieht nur du selbst – anderen wird nichts davon angezeigt.
 
-# NFC-Legacy-Toolkit (Hardware nötig, schreibt in lokale SQLite-DB)
-py list_readers.py  # Reader-Namen ermitteln, in reader_config.py eintragen
-py checkin.py
+### 2.2 NFC am Stand
 
-# NFC-Brücke zum Live-System (Hardware nötig, schreibt live in Supabase)
-py list_readers.py  # Reader-Namen ermitteln, in nfc_bridge_config.py eintragen
-py nfc_supabase_bridge.py
+1. Laptop mit den zwei ACR122U-Readern verbinden, `py list_readers.py` zeigt die Reader-Namen.
+2. Namen in `nfc_bridge_config.py` (`READER_ZU_RAUM`) dem Raum zuordnen.
+3. `py nfc_supabase_bridge.py` starten (Python **3.13**, `pip install pyscard requests`).
+4. Karte auflegen → grüne LED = gebucht/verlängert, rote LED = unbekannte Karte oder Raum voll.
+
+### 2.3 Testsystem (Gäste)
+
+- **„👤 Als Gast testen"** startet eine eigene, geheime Gast-Sitzung (bleibt beim Neuladen erhalten).
+- Gäste können buchen, ihre eigenen Test-Buchungen löschen und über **„＋ Etage / Gebäude"**
+  bzw. **„✎ Etage bearbeiten"** eigene Etagen anlegen oder bestehende verändern – diese
+  Änderungen sieht **nur die eigene Sitzung**, niemand sonst.
+- **„↺ Meine Änderungen zurücksetzen"** löscht alle eigenen Test-Buchungen und Etagen sofort.
+  Die Änderungen anderer Gäste bleiben bestehen, bis sie automatisch gelöscht werden
+  (Buchungen nach 2 Minuten, Etagen nach 15 Minuten ohne Änderung).
+- **Limit:** höchstens **10 Änderungen in 2 Minuten** je Gast (Buchen, Löschen, Etage speichern
+  oder löschen). Der Banner zeigt, wie viele noch übrig sind; die Datenbank setzt das Limit durch.
+
+**Admin im Testsystem:** Über **„🧪 Testsystem"** wechselt der Admin in die Testsystem-Ansicht,
+sieht dort alle Test-Buchungen, darf jede davon löschen und mit **„🗑 Testsystem komplett leeren"**
+alle Test-Buchungen und Gast-Etagen auf einmal entfernen (echte Buchungen bleiben unberührt).
+**„🏢 Zurück zum Echtbetrieb"** wechselt zurück.
+
+### 2.4 Neue Etage oder neues Gebäude (alle angemeldeten Nutzer)
+
+| Wer | darf anlegen | darf ändern/löschen | sichtbar für | bleibt |
+|---|---|---|---|---|
+| Nutzer | X | - | - | - |
+| Admin | ✓ | alle, auch Datei-Etagen ersetzen | alle | dauerhaft |
+| Gast | ✓ | alles – aber nur in der eigenen Sitzung | nur sich selbst | 15 Min. ohne Änderung |
+
+**Variante A – im Browser (ohne Programmieren):**
+
+1. Anmelden → **„＋ Etage / Gebäude"**.
+2. **Grundlage wählen:**
+   - **🖼 Grundriss-Bild laden** (PNG, JPG, SVG, WebP – z. B. ein Foto oder Scan des Fluchtplans).
+     Das Bild wird verkleinert und auf Wunsch fürs dunkle Design invertiert.
+   - **📄 Datei importieren** – eine `.json`-Datei oder eine Etagen-Datei `.js` aus `etagen/`
+     (wird nur gelesen, nie ausgeführt). Beispiel: `tests/fixtures/beispiel-etage.json`.
+   - oder **Leer beginnen** – das System zeichnet Wände, Möbel und Fenster dann selbst.
+3. **Gebäude** (neuer Name = neuer Gebäude-Tab), **Etagen-Nr.** (0 = Erdgeschoss) und Bezeichnung eintragen.
+4. Auf der Fläche **Rechtecke aufziehen** = Räume. Anklicken = bearbeiten (Name, Typ
+   *Meetingraum*/*ShareDesk*, Anzahl Tische, NFC-Reader), ziehen = verschieben, gelbe Ecke =
+   Größe, `Entf` = löschen. „Beim Aufziehen anlegen als → Bereich" für Treppe, WC, Lounge …
+5. **👁 Vorschau** zeigt die Etage genau so, wie sie später in der App aussieht.
+6. **💾 Speichern** (dein Passwort wird in der Datenbank erneut geprüft – nach dem Neuladen der
+   Seite wird es einmal verdeckt abgefragt) – die Etage ist sofort für alle sichtbar und buchbar.
+   Alternativ **⬇ Etagen-Datei (.js)** exportieren und wie bei Variante B ins Repo legen.
+
+Eigene Etagen lassen sich über **„✎ Etage bearbeiten"** anpassen oder löschen. Der Admin darf jede
+Etage bearbeiten; eine von ihm gespeicherte Version ersetzt die Datei-Version mit gleicher ID,
+„DB-Etage löschen" stellt die Datei-Version wieder her.
+
+**Variante B – als Datei im Repository:**
+
+1. `etagen/_vorlage-etage.js` kopieren, z. B. nach `etagen/werkstatt-etage-1.js`, Werte anpassen
+   (alle Felder sind in der Vorlage erklärt).
+2. In `index.html` im Block `<!-- ETAGEN -->` eine Zeile ergänzen:
+   `<script src="etagen/werkstatt-etage-1.js"></script>`
+3. `node tests/unit_tests.js` prüft die Datei (gültige Werte, eindeutige Raumnamen).
+4. Committen, Pull Request, nach dem Merge ist die Etage live.
+
+> **Wichtig:** Raumnamen müssen im ganzen System eindeutig sein, und die Raum-Nummern (`nr`)
+> bestehender Räume nicht mehr ändern – sie stecken in den Tischcodes gespeicherter Buchungen.
+
+### 2.5 Admin-Passwort
+
+Das Admin-Passwort liegt seit Migration `20261119150000` nur noch als Hash in der Datenbank (vorher
+stand es im Klartext im öffentlichen Frontend). Beim **ersten Admin-Login nach dem Deployment** gilt
+noch das bisherige Passwort und muss sofort durch ein neues ersetzt werden – genau wie bei allen
+anderen Nutzern. Die Seite zeigt Passwörter nie an; für Admin-Aktionen wird das Passwort aus der
+Anmeldung verwendet (nur im Arbeitsspeicher) oder verdeckt abgefragt.
+Passwort vergessen → im Supabase-SQL-Editor ein vorläufiges Passwort setzen (das beim nächsten
+Login sofort geändert werden muss):
+`update nutzer set passwort_hash = extensions.crypt('<vorläufiges-passwort>', extensions.gen_salt('bf')), passwort_muss_aendern = true where ist_admin;`
+
+---
+
+## 3. Technische Beschreibung
+
+### 3.1 Aufbau des Repositorys
+
+| Pfad | Inhalt |
+|---|---|
+| `index.html` | Seitengerüst der Live-App (Login, Formular, Ansichten, Dialoge, Etagen-Editor). Kein Build-Schritt, kein Framework. |
+| `css/app.css` | Komplettes Styling (Dark-Theme, Mobil-Layout, Editor). |
+| `js/config.js` | Supabase-URL + öffentlicher anon key, Konstanten (Zeitraum, Aktualisierungsintervall …). |
+| `js/ui.js` | HTML-Escaping, Datum/Uhrzeit (lokale Zeit!), Toast, Dialoge, eigene Dropdowns (Gruppen, Status, Suche) und Zeitfelder. |
+| `js/gebaeude.js` | **Etagen-Modell**: prüft und vereinheitlicht Datei- und Datenbank-Etagen → `ETAGEN`, `ROOMS`; Tischcodes. |
+| `etagen/*.js` | **Eine Datei pro Etage** (`registriereEtage({...})`), `_vorlage-etage.js` = Vorlage. |
+| `js/belegung.js` | Reine Logik ohne DOM/DB: gleichzeitige Belegung, Kapazitätsprüfung, Statusfarben, Kalender-Blöcke. |
+| `js/grundriss.js` | Erzeugt das SVG einer Etage aus ihrer Definition (mit/ohne Hintergrundbild). |
+| `js/kalender.js` | HTML der Listen-/Kalenderansicht und der Agenda. |
+| `js/daten.js` | Alle Supabase-Zugriffe (Buchungen, Nutzer, Etagen, RPCs). |
+| `js/auth.js` | Login, Passwortwechsel, Gast-Zugang, Sitzung im `localStorage`. |
+| `js/editor.js` | Etagen-Editor (Bild-/Datei-Import, Zeichnen, Speichern, Export). |
+| `js/profil.js` | Mein Profil: Bild, Nutzername, Passwort, Übersicht der eigenen Buchungen. |
+| `js/hintergrund.js` | Animierter Netz-Hintergrund und Cursor-Spotlight. |
+| `js/app.js` | Zustand, Gebäude-/Etagenwechsel, Rendern, Buchen, Ereignisse – startet die App. |
+| `vendor/` | Supabase-JS-Client **2.119.0**, lokal mitgeliefert (keine CDN-Abhängigkeit am Stand). |
+| `supabase/migrations/` | Datenbankschema als nummerierte SQL-Migrationen (Quelle der Wahrheit). |
+| `nfc_supabase_bridge.py`, `nfc_bridge_config.py` | NFC-Brücke zum Live-System. |
+| `tests/` | Unit-, SQL- und Browser-Tests (siehe 4.3). |
+| übrige `*.py`, `index_lokal_modular.html` | **Alte Prototypen** (SQLite/FastAPI), nicht deployt, nur Referenz – siehe [`CLAUDE.md`](CLAUDE.md). |
+
+Die Skripte sind bewusst klassische `<script>`-Dateien (keine ES-Module), damit `index.html` auch
+direkt per Doppelklick (`file://`) funktioniert.
+
+### 3.2 Datenmodell (Supabase / PostgreSQL)
+
+| Tabelle/View | Spalten (Auszug) | Zugriff mit dem öffentlichen anon key |
+|---|---|---|
+| `nutzer` | `id, name, nfc_uid, ist_admin, passwort_hash, passwort_muss_aendern, bild` | **kein** direkter Zugriff (eigener Name/Bild nur über `nutzer_login`) |
+| `nutzer_public` (View) | `id, name, ist_admin` | **gesperrt** (seit `20261119160000`) |
+| `buchungen` | `id, raum, tisch, nutzer_id, name, start, ende, quelle ('web'/'nfc'), test, erstellt, gast_sitzung, gast_hash` | lesen ohne `name` und `gast_sitzung`; schreiben (siehe Einschränkung); Test-Buchungen nur per RPC |
+| `etagen` | `id, definition (jsonb), aktualisiert, erstellt_von` | nur lesen; schreiben nur per RPC (angemeldete Nutzer: eigene, Admin: alle) |
+| `gast_sitzungen`, `gast_etagen`, `gast_aenderungen` | Gast-Sitzungen, private Gast-Etagen, Änderungszähler | kein direkter Zugriff, nur per RPC |
+
+`start`/`ende` sind Texte im Format `YYYY-MM-DD HH:MM` (lokale Zeit) – dadurch funktionieren
+Überlappungsabfragen als einfacher Textvergleich.
+
+**Funktionen (RPC, `security definer`):**
+`nutzer_login` (liefert auch das eigene Profilbild), `nutzer_passwort_aendern` (bcrypt via pgcrypto),
+`profil_speichern` (Name/Bild, mit Passwortprüfung), `nutzer_by_nfc` (Karten-UID →
+Nutzer, ohne die UID-Liste preiszugeben), `test_buchungen_aufraeumen` (Gast-Buchungen > 2 Min),
+`etage_speichern` / `etage_loeschen` (prüfen das Admin-Passwort serverseitig);
+Testsystem: `gast_sitzung_starten`, `gast_buchen`, `gast_buchung_loeschen`, `gast_etagen_laden`,
+`gast_etage_speichern`, `gast_etage_loeschen` (alle mit Limit 10 Änderungen / 2 Min. je Sitzung),
+`gast_zuruecksetzen` (nur die eigene Sitzung), `testsystem_leeren` (Admin).
+Die Gast-Sitzung ist eine geheime UUID; lesbar ist nur ihr SHA-256-Hash (`gast_hash`), an dem der
+Browser die eigenen Test-Buchungen erkennt.
+
+**Trigger `buchungen_pruefen`:** setzt `erstellt` immer serverseitig, verlangt `start < ende`,
+lässt Test-Buchungen nur über `gast_buchen` zu und verhindert, dass derselbe Tisch für
+überlappende Zeiten zweimal gebucht wird – auch wenn zwei Browser gleichzeitig klicken (pro Raum
+serialisiert über einen Advisory-Lock).
+
+### 3.3 Etagen-Format
+
+```js
+registriereEtage({
+  id: 'hauptgebaeude-1', gebaeude: 'Hauptgebäude', nr: 1, name: 'Etage 1',
+  breite: 960, hoehe: 480,                 // Zeichenfläche (SVG-Koordinaten)
+  hintergrund: 'etagen/bilder/plan.png',   // optional: Grundriss-Bild
+  aussenwand: {x, y, w, h}, flure: [...],  // optional
+  raeume: [ {name, nr, typ:'meeting'|'sharedesk', tische, nfc, x, y, w, h, sub, sitze, stirn} ],
+  bereiche: [ {typ:'treppe'|'wc'|'lounge'|'kueche'|'technik'|'sonstiges', name, x, y, w, h} ],
+  tueren: [ {o:'h'|'v', x, y, len, s} ], texte: [ {x, y, t} ],
+});
 ```
 
-## Build
+Alle Werte werden in `normalisiereEtage()` geprüft (Zahlenbereiche, erlaubte Typen, eindeutige
+Namen/Nummern, nur `data:image/…` oder relative Bildpfade). Fehlerhafte Etagen werden übersprungen
+und in der Browser-Konsole gemeldet, statt die Seite lahmzulegen. Datenbank-Etagen haben dasselbe
+Format und ersetzen Datei-Etagen mit gleicher `id`.
 
-Kein Build-Schritt vorhanden — `index.html` wird unverändert ausgeliefert. Die
-GitHub-Actions-Pipeline (`.github/workflows/pages-deploy.yml`) kopiert lediglich
-`index.html` und `.nojekyll` in ein Deployment-Artefakt.
+### 3.4 Belegungs- und Kapazitätslogik
 
-## Tests, Linting und Formatierung
+- Kapazität eines Raums = Anzahl seiner Tische (Meetingraum = 1).
+- Eine neue Buchung ist erlaubt, wenn (a) der gewählte Tisch im Zeitraum frei ist und (b) die
+  **höchste gleichzeitige** Belegung im Zeitraum unter der Kapazität liegt (`maxGleichzeitig`).
+  NFC-Buchungen ohne Tisch zählen gegen die Raumkapazität.
+- Dieselbe Logik steckt in `js/belegung.js` (`kapazitaetPruefen`) und in
+  `nfc_supabase_bridge.py` (`freie_plaetze`) – Änderungen immer an beiden Stellen.
+- Statusfarben: am heutigen Tag zählt die aktuelle Belegung, an anderen Tagen die höchste
+  Belegung des Tages.
 
-Es gibt kein Test-Framework, keinen Linter und keinen Formatter in diesem Projekt — für
-eine einzelne statische HTML-Datei ohne Build-Toolchain wäre das unverhältnismäßig
-(siehe `CLAUDE.md`, Abschnitt "Conventions"). Stattdessen läuft bei jedem Push/PR ein
-leichtgewichtiger **Quality-Check** (`.github/workflows/quality.yml`), der ohne
-zusätzliche Abhängigkeiten prüft:
+### 3.5 Sicherheitsmodell
 
-- alle `*.py`-Dateien kompilieren fehlerfrei (`py_compile`)
-- das eingebettete `<script>` in `index.html` und `index_lokal_modular.html` ist
-  syntaktisch gültiges JavaScript (`node --check`)
-- beide HTML-Dateien sind wohlgeformt
-- alle Workflow-YAML-Dateien und `supabase/config.toml` sind syntaktisch gültig
-- Migrationsdateien folgen der Namenskonvention und enthalten keine offensichtlich
-  riskanten Statements (`DROP TABLE`, `TRUNCATE`, `DELETE` ohne `WHERE`)
+- Der Supabase-**anon key ist öffentlich** (steht in `js/config.js`) – das ist bei Supabase so
+  vorgesehen. Rechte regeln die Row-Level-Security-Policies und `security definer`-Funktionen.
+- Passwörter (auch Admin) nur als bcrypt-Hash, Prüfung ausschließlich in der Datenbank.
+- Karten-UIDs (`nfc_uid`) und Nutzernamen sind über den anon key nicht auslesbar; die Seite zeigt
+  nur den eigenen Namen, fremde Buchungen als „belegt".
+- Gast-Sitzungen sind geheime Zufalls-IDs; private Gast-Etagen und das Zurücksetzen hängen daran,
+  das Änderungslimit prüft die Datenbank.
+- Alle Texte aus Datenbank und Etagen-Dateien werden vor der Anzeige escaped; importierte
+  Etagen-Dateien werden geparst, nie ausgeführt.
+- **Bekannte, bewusst akzeptierte Einschränkung:** Es gibt keine echte Supabase-Auth-Sitzung.
+  Die Policies auf `buchungen` sind daher offen (`using (true)`); „nur eigene Buchungen löschen"
+  wird in der Oberfläche durchgesetzt, nicht in der Datenbank. Wer den anon key direkt gegen die
+  REST-API benutzt, könnte das umgehen. Ebenso kann ein Gast durch eine neue Sitzung das
+  Änderungslimit neu starten. Eine Lösung wäre echte Supabase-Auth (siehe `CLAUDE.md`).
 
-Manuell vor jedem Commit sinnvoll: die betroffene Seite tatsächlich im Browser
-durchklicken (Login, Buchung anlegen, Grundriss, Etagenwechsel) — das automatisiert
-diese Pipeline bewusst nicht.
+---
 
-## Lokale Supabase-Einrichtung
+## 4. Entwicklung, Tests und Betrieb
 
-1. Supabase-Projekt anlegen (falls noch nicht vorhanden) unter
-   [supabase.com](https://supabase.com)
-2. Projekt-URL und `anon key` (Project Settings → API) in `index.html` eintragen
-   (Konstanten `SUPABASE_URL` / `SUPABASE_ANON_KEY`)
-3. Schema anlegen — entweder automatisch per CI/CD (siehe unten) oder einmalig manuell
-   im SQL-Editor: Inhalt aller Dateien aus `supabase/migrations/` in Reihenfolge der
-   Zeitstempel ausführen
+### 4.1 Voraussetzungen
 
-## Datenbankmigrationen erstellen und testen
+- **Live-System:** nur ein Browser – `index.html` öffnen (oder `python3 -m http.server` im
+  Repo-Ordner und <http://localhost:8000> aufrufen).
+- **NFC-Brücke:** Python **3.13** (nicht 3.14 – für `pyscard` gibt es dort noch keine Wheels),
+  `pip install pyscard requests`, ACR122U-Reader.
+- **Tests:** Node.js 22, PostgreSQL 16 (Server + `psql`), Playwright mit Chromium
+  (`npm i -g playwright && npx playwright install chromium`), Python 3.
+- **Alte Prototypen:** `pip install fastapi uvicorn pydantic pyscard` je nach Skript (kein
+  `requirements.txt`, Abhängigkeiten stehen im Docstring jeder Datei).
 
-Neue Schema-Änderungen kommen **immer** als neue, eigene Datei in `supabase/migrations/`:
+### 4.2 Umgebungsvariablen
+
+**Keine.** Supabase-URL und anon key stehen in `js/config.js` bzw. `nfc_supabase_bridge.py`
+(bewusst öffentlich, siehe 3.5). Die alten Prototypen nutzen `config.py` statt `.env` – dort
+niemals echte SMTP-Zugangsdaten eintragen, das Repo ist öffentlich.
+
+### 4.3 Tests
+
+```bash
+bash tests/run_tests.sh
+```
+
+| Stufe | Datei | Prüft |
+|---|---|---|
+| Unit | `tests/unit_tests.js` | alle eingebundenen Etagen-Dateien (gültig, eindeutige Namen, **Tischcodes unverändert**), Etagen-Prüfung, Kapazitätslogik, Datums-/Zeit-Helfer, Escaping |
+| NFC-Brücke | `tests/bridge_tests.py` | Kapazitätslogik der Brücke = Logik im Browser |
+| Migrationen | `tests/run_tests.sh` | alle Migrationen auf **frischer** Datenbank, neue zusätzlich ein zweites Mal (idempotent) |
+| SQL | `tests/sql_tests.sql` | als Rolle `anon`: Admin-Login, Passwortwechsel, Etagen-Rechte, Doppelbuchungs-Trigger, `erstellt`, Aufräumen |
+| Browser | `tests/e2e_tests.js` | Chromium klickt alle Abläufe durch (Login, Buchen, Kapazität, Grundriss, Etagenwechsel, Türen überdecken nichts, Löschen, Datenschutz/XSS, zwei Gäste mit privaten Etagen, Zurücksetzen, Limit, Admin, Admin im Testsystem, Editor mit Bild-/JSON-Import, Export, Löschen) und speichert Screenshots in `tests/screenshots/` |
+
+Die Browser-Tests leiten alle Supabase-Aufrufe über `tests/mini_postgrest.js` auf eine **lokale**
+Test-Datenbank um (`tests/supabase_stub.sql` bildet die Supabase-Rollen nach) – die echte
+Datenbank wird nie angefasst. Ohne gesetztes `PGHOST` startet das Skript einen temporären
+PostgreSQL-Server in `/var/tmp/rb-pgtest`.
+
+In der CI laufen bei jedem Push/PR (`.github/workflows/ci.yml`):
+
+- **Quality-Check** (`quality.yml`, auch Gate vor jedem Deployment): `py_compile` aller
+  Python-Dateien, `node --check` für `js/`, `etagen/`, `tests/`, Unit- und Brücken-Tests,
+  Existenz aller in `index.html` eingebundenen Dateien, HTML-Wohlgeformtheit, YAML/TOML,
+  Migrations-Namenskonvention und riskante Statements.
+- **Komplette Testsuite** mit PostgreSQL-Service und Chromium; Screenshots als Artefakt.
+
+### 4.4 Datenbankmigrationen
+
+Neue Schema-Änderungen kommen **immer** als neue Datei nach `supabase/migrations/`:
 
 ```
 supabase/migrations/YYYYMMDDHHMMSS_kurze_beschreibung.sql
 ```
 
-- Zeitstempel muss größer sein als der der letzten vorhandenen Migration
-- Bestehende Migrationsdateien **nie** nachträglich bearbeiten, auch nicht für
-  Korrekturen — dafür eine neue, korrigierende Migration anlegen
-- SQL nach Möglichkeit idempotent schreiben (`if not exists`, `on conflict do nothing`)
-- Lokal testen: Datei im Supabase SQL-Editor gegen ein Test-Projekt ausführen, oder mit
-  installierter Supabase-CLI `supabase db push` gegen ein verlinktes Test-Projekt
+- Zeitstempel größer als der der letzten Migration
+- Bestehende Migrationen **nie** nachträglich bearbeiten – stattdessen eine korrigierende neue anlegen
+- Idempotent schreiben (`if not exists`, `on conflict do nothing`, `create or replace`, `drop … if exists`)
+- Vorher lokal testen: `bash tests/run_tests.sh` (wendet alle Migrationen auf eine frische DB an)
 
-## GitHub-Pages-Deployment
+Angewendet werden sie automatisch per `.github/workflows/supabase-deploy.yml` (Supabase CLI
+`supabase db push`) bei jedem Push nach `main`, der `supabase/migrations/**` ändert – nach
+bestandenem Quality-Check. Schritt-für-Schritt-Einrichtung: [`CICD_ANLEITUNG.md`](CICD_ANLEITUNG.md).
 
-Automatisiert über `.github/workflows/pages-deploy.yml`: läuft bei jedem Push nach
-`main`, prüft zuerst die Quality-Checks, deployt danach `index.html` +`.nojekyll`.
-Manuell auslösbar über den Actions-Tab (`workflow_dispatch`).
+### 4.5 GitHub-Pages-Deployment
 
-**Einmalige manuelle Einrichtung:** Repo-Settings → Pages → Source muss von
-"Deploy from a branch" auf **"GitHub Actions"** umgestellt werden. Bis dahin bleibt die
-bisherige klassische Auslieferung von `main`/root aktiv (kein Blackout).
+`.github/workflows/pages-deploy.yml` läuft bei jedem Push nach `main`, prüft zuerst die
+Quality-Checks und veröffentlicht dann `index.html`, `css/`, `js/`, `etagen/`, `vendor/` und
+`.nojekyll` (nicht die Python-Skripte oder Doku). Manuell auslösbar über den Actions-Tab.
 
-## Supabase-CI/CD
+**Einmalige Einrichtung:** Settings → Pages → Source von „Deploy from a branch" auf
+**„GitHub Actions"** umstellen. Bis dahin liefert GitHub den `main`-Branch wie bisher direkt aus
+(funktioniert ebenfalls, dann sind allerdings alle Repo-Dateien abrufbar).
 
-Automatisiert über `.github/workflows/supabase-deploy.yml`. Vollständige
-Schritt-für-Schritt-Anleitung inkl. Screenshots-Beschreibung in
-[`CICD_ANLEITUNG.md`](CICD_ANLEITUNG.md). Kurzfassung:
-
-- läuft bei Push nach `main`, wenn sich `supabase/migrations/**` ändert
-- wendet Migrationen per Supabase CLI (`supabase db push`) an, in Zeitstempel-Reihenfolge
-- führt vorher denselben Quality-Check aus (u. a. Migrations-Namenskonvention, riskante
-  Statements)
-- kein automatischer `db reset`, kein automatisches Seed-Deployment auf Produktion
-- manuell auslösbar über `workflow_dispatch`
-
-## Benötigte GitHub Secrets
+### 4.6 Benötigte GitHub Secrets
 
 | Secret | Wofür | Woher |
 |---|---|---|
 | `SUPABASE_ACCESS_TOKEN` | Authentifizierung der Supabase-CLI in der Pipeline | [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens) |
 | `SUPABASE_DB_PASSWORD` | Datenbank-Passwort für `supabase db push` | Supabase-Projekt → *Project Settings → Database* |
 
-Die Projekt-Referenz (`yugjccgblqsfjasienwa`) steht direkt im Workflow — sie ist nicht
-geheim, da sie ohnehin Teil der öffentlichen Supabase-URL in `index.html` ist.
+Die Projekt-Referenz (`yugjccgblqsfjasienwa`) steht direkt im Workflow – sie ist nicht geheim, da
+sie ohnehin Teil der öffentlichen Supabase-URL ist.
 
-## Erforderliche manuelle Repository-Einstellungen
+### 4.7 Manuelle Repository-Einstellungen
 
 - **Settings → Secrets and variables → Actions**: die beiden Secrets oben anlegen
-- **Settings → Environments**: optional, für dieses Team bewusst nicht eingerichtet.
-  Ein Environment `production` würde `supabase-deploy.yml` erlauben, produktive
-  Deployments abzusichern (z. B. Reviewer vorschreiben) — ohne dieses Environment läuft
-  die Pipeline ganz normal automatisch weiter, wie aktuell eingerichtet
-- **Settings → Pages**: Source auf "GitHub Actions" umstellen (siehe oben)
-- Repo-Sichtbarkeit muss **öffentlich** sein, damit GitHub Pages ohne kostenpflichtigen
-  Plan funktioniert (bereits erledigt)
+- **Settings → Environments**: optional ein Environment `production` (z. B. mit Pflicht-Reviewer
+  für Datenbank-Deployments) – ohne läuft die Pipeline automatisch weiter
+- **Settings → Pages**: Source auf „GitHub Actions" (siehe 4.5)
+- Repo-Sichtbarkeit **öffentlich**, damit GitHub Pages ohne kostenpflichtigen Plan funktioniert
 
-## Branch- und Pull-Request-Workflow
+### 4.8 Branch- und Pull-Request-Workflow
 
-- Niemals direkt auf `main` committen
-- Für jede Änderung einen eigenen Branch von `main` abzweigen, sprechender Name
-  (z. B. `fix/...`, `feat/...`, `refactor/...`)
-- Commit-Konvention: [Conventional Commits](https://www.conventionalcommits.org/)
+- Niemals direkt auf `main` committen – eigener Branch (`fix/…`, `feat/…`, `refactor/…`)
+- Commit-Nachrichten nach [Conventional Commits](https://www.conventionalcommits.org/)
   (`fix:`, `feat:`, `refactor:`, `docs:`, `ci:`, `test:`)
-- Pull Request gegen `main`, Quality-Check muss grün sein
+- Pull Request gegen `main`, CI muss grün sein
 
-## Messeplakat (Hausmesse)
+### 4.9 Troubleshooting
 
-Im Ordner `Plakat/` liegt das Plakat für den Messestand (DIN A1 hoch, Stil der Messeseite):
+**Seite zeigt alte Version / 404** – harter Reload (Strg+Shift+R); im Actions-Tab prüfen, ob der
+letzte Pages-Workflow grün ist; Settings → Pages kontrollieren.
 
-- `Plakat_Raumbuchungssystem_A1.pdf` – Druckdatei, reine Vektorgrafik (auch für A0/A2/A3
-  ohne Qualitätsverlust skalierbar)
-- `Plakat_Raumbuchungssystem_A1_Beschnitt3mm.pdf` – dieselbe Datei mit 3 mm Beschnitt
-  rundum, falls die Druckerei das verlangt
-- `Plakat_Raumbuchungssystem_A1_300dpi.jpg` – Rasterversion (7016 × 9933 px) für
-  Druckdienste, die kein PDF annehmen
-- `plakat.html` – die Quelle (eine Datei, kein Build-Schritt). Texte, Standnummer und
-  Datum stehen direkt im HTML. Neu exportieren: in Chrome/Edge öffnen → Drucken →
-  "Als PDF speichern", Ränder "Keine", Hintergrundgrafiken an (Format A1 wird automatisch
-  gesetzt; mit `?beschnitt=3` an der Adresse inklusive Beschnitt)
+**„Supabase ist nicht erreichbar oder nicht konfiguriert"** – `js/config.js` prüfen; fehlt
+`vendor/supabase-js-2.119.0.min.js`, kann der Client nicht laden.
 
-Der QR-Code auf dem Plakat zeigt auf die Live-App (GitHub Pages). Er ist als fertige Matrix
-in `plakat.html` eingebettet (`QR_MATRIX`) – ändert sich die Adresse, muss er neu erzeugt
-werden.
+**Admin-Login klappt nicht** – Sind die Migrationen deployt (Actions → „Supabase Schema Deploy")?
+Vor `20261119150000` kennt `nutzer_login` keine Admins. Beim ersten Login nach dem Deployment gilt
+das bisherige Admin-Passwort, danach das neu gewählte. Zurücksetzen: siehe 2.5.
 
-## Troubleshooting
+**Login schlägt fehl trotz korrektem Passwort** – Der Name wird ohne Groß-/Kleinschreibung
+verglichen, muss aber exakt existieren (im Supabase-SQL-Editor: `select name from nutzer;`).
 
-**"Relationship-Fehler zwischen nutzer und buchungen"**
-Die Web-App lädt Nutzernamen absichtlich über eine separate Abfrage (`nutzerMap`) statt
-über eine eingebettete Supabase-Relation — das funktioniert unabhängig davon, ob ein
-Fremdschlüssel-Constraint im Schema-Cache erkannt wurde. Tritt der Fehler trotzdem auf,
-prüfen ob `supabase/migrations/` vollständig angewendet wurde.
+**Gast: „Limit erreicht"** – gewollt: höchstens 10 Änderungen in 2 Minuten je Gast-Sitzung.
+Kurz warten; der Zähler läuft automatisch ab.
 
-**"null value in column ... violates not-null constraint" beim Buchen**
-Die tatsächliche Tabellenstruktur in Supabase weicht von der erwarteten ab. Mit
-`select column_name, is_nullable from information_schema.columns where table_name='buchungen';`
-im SQL-Editor prüfen, welche Spalte fehlt, und eine korrigierende Migration ergänzen.
+**Neue Etage erscheint nicht** – Browser-Konsole öffnen: `[Etagen] … ignoriert: …` nennt den
+Grund (z. B. doppelter Raumname). Bei Datei-Etagen `node tests/unit_tests.js` ausführen und
+prüfen, ob die Datei in `index.html` eingetragen ist.
 
-**GitHub Pages zeigt 404 oder alte Version**
-Cache-bedingt — harter Reload (Strg+Shift+R). Prüfen, ob Pages-Source auf `main`/`GitHub Actions`
-zeigt (Settings → Pages) und ob der letzte Workflow-Lauf im Actions-Tab grün ist.
+**„Tisch … ist in diesem Zeitraum bereits belegt" beim Buchen** – gewollt: jemand anderes war
+schneller (der Datenbank-Trigger verhindert Doppelbuchungen).
 
-**Login schlägt fehl trotz korrektem Passwort**
-Der Nutzername wird per `ilike` gegen die `nutzer_public`-View geprüft (Groß-/Kleinschreibung
-egal, aber der Name muss exakt existieren). Tippfehler oder fehlender Nutzer in der DB
-sind die häufigste Ursache.
+**„null value in column … violates not-null constraint"** – Die Tabellenstruktur in Supabase
+weicht ab. Mit `select column_name, is_nullable from information_schema.columns where table_name='buchungen';`
+prüfen und eine korrigierende Migration ergänzen.
 
-**NFC-Karte wird nicht erkannt**
-`py list_readers.py` prüft, ob der Reader überhaupt erkannt wird (USB-Verbindung, Treiber).
-Betrifft sowohl das Legacy-Toolkit (`checkin.py` etc., lokale SQLite-DB) als auch die
-Live-Brücke (`nfc_supabase_bridge.py`) — beide nutzen dieselbe PC/SC-Anbindung über `pyscard`.
+**NFC-Karte wird nicht erkannt** – `py list_readers.py` prüft, ob der Reader erkannt wird (USB,
+Treiber). Die Brücke meldet unerwartete Fehler jetzt in der Konsole (`⚠ Unerwarteter Fehler`).
 
-**Karte wird erkannt, aber Check-in schlägt fehl / Nutzer "unbekannt"**
-Betrifft `nfc_supabase_bridge.py`. Prüfen: (1) Ist die Karten-UID in der `nutzer`-Tabelle
-hinterlegt (`nfc_uid`-Spalte)? (2) Ist die Migration
-`supabase/migrations/20260831140000_add_nfc_lookup_rpc.sql` deployt (RPC `nutzer_by_nfc`
-muss existieren)? (3) Steht der Raumname in `nfc_bridge_config.py` (`READER_ZU_RAUM`) exakt
-so wie in der `ROOMS`-Konstante in `index.html`?
+**Karte erkannt, aber Nutzer „unbekannt" / Check-in schlägt fehl** – (1) Ist die UID in
+`nutzer.nfc_uid` hinterlegt? (2) Ist die RPC `nutzer_by_nfc` deployt? (3) Steht der Raumname in
+`nfc_bridge_config.py` exakt so wie in der Etagen-Datei, und ist seine Kapazität in
+`RAUM_KAPAZITAET` eingetragen?
