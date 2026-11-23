@@ -13,8 +13,9 @@ Hausmesse 2026.
 > Das **Testsystem** läuft auf derselben Datenbank, ist aber strikt vom Echtbetrieb getrennt.
 > Jeder Gast bekommt eine **eigene Sitzung**: Er kann buchen und sogar eigene Etagen anlegen
 > (die nur er sieht), alles mit einem Klick **zurücksetzen** und höchstens **10 Änderungen in
-> 2 Minuten** machen. Gast-Buchungen werden nach 2 Minuten, Gast-Etagen nach 15 Minuten
-> automatisch gelöscht. Räume mit NFC-Reader sind dort nur per Karte buchbar, damit sie für
+> 2 Minuten** machen. Die **Buchungen** in den Standard-Räumen teilen sich alle Gäste (und die
+> Admin-Ansicht) in einem gemeinsamen Testsystem; sie werden nach 30 Minuten, Gast-Etagen nach
+> 15 Minuten automatisch gelöscht. Räume mit NFC-Reader sind dort nur per Karte buchbar, damit sie für
 > die Live-Demo am Stand frei bleiben.
 
 ---
@@ -124,7 +125,9 @@ flowchart LR
   Änderungen sieht **nur die eigene Sitzung**, niemand sonst.
 - **„↺ Meine Änderungen zurücksetzen"** löscht alle eigenen Test-Buchungen und Etagen sofort.
   Die Änderungen anderer Gäste bleiben bestehen, bis sie automatisch gelöscht werden
-  (Buchungen nach 2 Minuten, Etagen nach 15 Minuten ohne Änderung).
+  (Buchungen nach 30 Minuten, Etagen nach 15 Minuten ohne Änderung).
+- **Test-Buchungen sind gemeinsam:** Alle Gäste sehen die Buchungen der anderen (als „belegt"),
+  der Admin sieht im „🧪 Testsystem" alle und darf jede löschen. Nur die Etagen sind je Gast privat.
 - **Limit:** höchstens **10 Änderungen in 2 Minuten** je Gast (Buchen, Löschen, Etage speichern
   oder löschen). Der Banner zeigt, wie viele noch übrig sind; die Datenbank setzt das Limit durch.
 
@@ -234,7 +237,7 @@ direkt per Doppelklick (`file://`) funktioniert.
 **Funktionen (RPC, `security definer`):**
 `nutzer_login` (liefert auch das eigene Profilbild), `nutzer_passwort_aendern` (bcrypt via pgcrypto),
 `profil_speichern` (Name/Bild, mit Passwortprüfung), `nutzer_by_nfc` (Karten-UID →
-Nutzer, ohne die UID-Liste preiszugeben), `test_buchungen_aufraeumen` (Gast-Buchungen > 2 Min),
+Nutzer, ohne die UID-Liste preiszugeben), `test_buchungen_aufraeumen` (Gast-Buchungen > 30 Min),
 `etage_speichern` / `etage_loeschen` (prüfen das Admin-Passwort serverseitig);
 Testsystem: `gast_sitzung_starten`, `gast_buchen`, `gast_buchung_loeschen`, `gast_etagen_laden`,
 `gast_etage_speichern`, `gast_etage_loeschen` (alle mit Limit 10 Änderungen / 2 Min. je Sitzung),

@@ -152,19 +152,23 @@ do $$ declare r jsonb; vorher int; begin
   if (select count(*) from buchungen where not test) <> vorher then raise exception 'TEST FEHLGESCHLAGEN: echte Buchungen gelöscht'; end if;
 end $$;
 
--- 8. Automatisches Aufräumen löscht nur alte Test-Daten
+-- 8. Automatisches Aufräumen löscht nur alte Test-Daten. Test-Buchungen
+--    bleiben 30 Min. für alle sichtbar (gemeinsames Testsystem), ältere gehen.
 select gast_buchen((select id from s where name = 'b'), 'ShareDesk 5', null, '2030-01-04 09:00', '2030-01-04 10:00');
+select gast_buchen((select id from s where name = 'b'), 'ShareDesk 6', null, '2030-01-04 09:00', '2030-01-04 10:00');
 select gast_etage_speichern((select id from s where name = 'b'), '{"id":"gast-alt","raeume":[{"name":"Gastraum B"}]}');
 reset role;
 alter table buchungen disable trigger buchungen_pruefen;
-update buchungen set erstellt = now() - interval '5 minutes' where test;
+update buchungen set erstellt = now() - interval '40 minutes' where test and raum = 'ShareDesk 5';
+update buchungen set erstellt = now() - interval '5 minutes' where test and raum = 'ShareDesk 6';
 alter table buchungen enable trigger buchungen_pruefen;
 update gast_etagen set aktualisiert = now() - interval '20 minutes';
 set role anon;
 do $$ declare vorher int; begin
   select count(*) into vorher from buchungen where not test;
   perform test_buchungen_aufraeumen();
-  if exists (select 1 from buchungen where test) then raise exception 'TEST FEHLGESCHLAGEN: Test-Buchungen nicht gelöscht'; end if;
+  if exists (select 1 from buchungen where test and raum = 'ShareDesk 5') then raise exception 'TEST FEHLGESCHLAGEN: alte Test-Buchung nicht gelöscht'; end if;
+  if not exists (select 1 from buchungen where test and raum = 'ShareDesk 6') then raise exception 'TEST FEHLGESCHLAGEN: 5 Min. alte Test-Buchung schon gelöscht (für Admin/andere Gäste unsichtbar)'; end if;
   if (select count(*) from gast_etagen_laden((select id from s where name = 'b'))) <> 0 then raise exception 'TEST FEHLGESCHLAGEN: alte Gast-Etage nicht gelöscht'; end if;
   if (select count(*) from buchungen where not test) <> vorher then raise exception 'TEST FEHLGESCHLAGEN: echte Buchungen gelöscht'; end if;
 end $$;

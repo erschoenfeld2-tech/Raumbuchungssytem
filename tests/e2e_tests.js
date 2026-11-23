@@ -527,6 +527,8 @@ async function main(){
   });
   await test('Admin schaut ins Testsystem, löscht eine Gast-Buchung und leert alles', async () => {
     erwarte(!(await page.isVisible('#ed-pw')), '');
+    // Gast-Buchung ist schon ein paar Minuten alt – muss trotzdem für alle sichtbar bleiben
+    sql(`alter table buchungen disable trigger buchungen_pruefen; update buchungen set erstellt = now() - interval '5 minutes' where test; alter table buchungen enable trigger buchungen_pruefen`);
     await page.click('#btn-testsystem');
     await page.waitForSelector('#admin-test-teil', { state: 'visible' });
     await page.evaluate(() => switchEtage('hauptgebaeude-1'));
