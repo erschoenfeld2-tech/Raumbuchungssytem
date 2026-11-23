@@ -599,6 +599,24 @@ input[type=date]:focus,input.cs-input:focus{border-color:var(--accent);box-shado
   linear-gradient(90deg,rgba(79,110,247,.05) 1px,transparent 1px) 0 0/24px 24px,var(--bg);
   box-shadow:0 30px 70px -40px rgba(79,110,247,.55)}
 
+/* ── Liste scrollt in sich: Raumköpfe oben und Uhrzeiten links bleiben stehen,
+   Formular und Kalender bleiben beim Scrollen sichtbar (Kalenderzeitraum s. kalenderZeitraum()) ── */
+.cal-wrap{max-height:calc(100vh - 32px);overflow:auto;border-radius:18px;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;
+  box-shadow:0 30px 70px -40px rgba(79,110,247,.55)}
+.cal-wrap::-webkit-scrollbar{width:8px;height:8px}
+.cal-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.cal{overflow:clip;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.cal-header{position:sticky;top:0;z-index:8;
+  background:linear-gradient(180deg,rgba(79,110,247,.16),rgba(34,38,58,.55)),#191c28}
+.cal-time{position:sticky;left:0;z-index:5;background:#151822}
+.cal-header div:first-child{position:sticky;left:0;z-index:9;background:#1b1e2c}
+.now{z-index:6}
+@media (min-width:721px){
+  .container{align-items:start}
+  #main-area{position:sticky;top:16px}
+}
+
 /* ── Mobile ── */
 @media (max-width:720px){
   #app{padding:14px}
@@ -606,6 +624,7 @@ input[type=date]:focus,input.cs-input:focus{border-color:var(--accent);box-shado
   #agenda-card{display:block;order:-1}
   #agenda-list{max-height:none}
   .cal{min-width:520px}
+  .cal-wrap{max-height:78vh}
   .editor{grid-template-columns:1fr}
   .editor-flaeche{position:static}
   .datenav{flex-wrap:wrap}

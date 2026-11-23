@@ -213,6 +213,7 @@ function switchView(which){
   $('view-cal').classList.toggle('active', which === 'cal');
   $('view-office').classList.toggle('active', which === 'office');
   if(which === 'office') drawFloor();
+  else { kalScrollSchluessel = ''; kalenderScrollen(raeumeDerEtage(), statusKontext()); }
 }
 
 // ── Formular: Raum / Tisch ──
@@ -323,6 +324,26 @@ function zeichneAlles(){
   setzeHtml(kal, aktEtage()
     ? kalenderHtml(raeume, allBookings, k.datum, istMeine, k.istHeute)
     : '<div class="etage-leer">Keine Etage vorhanden. Als Admin über „＋ Etage / Gebäude“ anlegen.</div>');
+  kalenderScrollen(raeume, k);
+}
+// Die Liste scrollt in sich (Raumnamen + Uhrzeiten bleiben stehen, das Formular
+// bleibt sichtbar). Nach Tages-/Etagenwechsel einmal zur interessanten Stelle
+// springen: heute → eine Stunde vor jetzt, sonst → kurz vor die erste Buchung.
+// Danach nicht mehr, damit die regelmäßige Aktualisierung nicht dazwischenfunkt.
+let kalScrollSchluessel = '';
+function kalenderScrollen(raeume, k){
+  const wrap = $('cal-view');
+  if(currentView !== 'cal' || !wrap) return;
+  const namen = new Set(raeume.map(r => r.name));
+  const starts = allBookings.filter(b => namen.has(b.raum)).map(b => minutenVon(b.start));
+  const schluessel = `${k.datum}|${aktEtageId}|${starts.length > 0}`;
+  if(schluessel === kalScrollSchluessel) return;
+  kalScrollSchluessel = schluessel;
+  const z = kalenderZeitraum(raeume, allBookings, k.istHeute);
+  let ziel = null;
+  if(k.istHeute){ const j = new Date(); ziel = j.getHours()*60 + j.getMinutes() - 60; }
+  else if(starts.length) ziel = Math.min(...starts) - 30;
+  wrap.scrollTop = ziel === null ? 0 : Math.max(0, pxVon(ziel, z.startH));
 }
 function drawFloor(){
   const svg = $('floorplan');

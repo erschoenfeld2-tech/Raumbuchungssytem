@@ -187,6 +187,23 @@ async function main(){
     await page.waitForTimeout(3000);   // Toast ausblenden lassen
     await page.screenshot({ path: path.join(BILDER, '02e-kalender-belegt.png') });
   });
+  await test('Liste zeigt auch Abendbuchungen; Raumköpfe und Formular bleiben beim Scrollen stehen', async () => {
+    erwarte(await page.$eval('#cal-view', el => el.scrollTop) > 0, 'Liste springt nicht zur ersten Buchung');
+    sql(`insert into buchungen (raum, tisch, nutzer_id, name, start, ende) values ('ShareDesk 5', '1.702', 2, 'x', '${morgen} 21:00', '${morgen} 22:30')`);
+    await page.click('#btn-weiter'); await page.click('#btn-zurueck');   // Tag neu laden
+    await page.waitForSelector(`.cal-seg[data-raum="ShareDesk 5"][data-start="${morgen} 21:00"]`);
+    erwarte(await page.$$eval('.cal-time', z => z.some(x => x.textContent === '22:00')), '22-Uhr-Zeile fehlt');
+    await page.$eval('#cal-view', el => { el.scrollTop = el.scrollHeight; });
+    await page.evaluate(() => window.scrollTo(0, 400));
+    await page.waitForTimeout(300);
+    const kopf = await page.$eval('.cal-header', el => el.getBoundingClientRect().top);
+    const rahmen = await page.$eval('#cal-view', el => el.getBoundingClientRect().top);
+    erwarte(Math.abs(kopf - rahmen) < 2, `Raumköpfe scrollen weg (${kopf} / ${rahmen})`);
+    erwarte(rahmen >= 0 && rahmen < 40, 'Liste bleibt beim Scrollen der Seite nicht stehen: ' + rahmen);
+    erwarte(await page.$eval('#btn-buchen', el => { const r = el.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }), '„Buchen“ nicht mehr sichtbar');
+    await page.screenshot({ path: path.join(BILDER, '02f-liste-gescrollt.png') });
+    await page.evaluate(() => window.scrollTo(0, 0));
+  });
   await test('Vergangenheit kann nicht gebucht werden', async () => {
     const gestern = new Date(Date.now() - 86400000).toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
     await page.evaluate(d => { document.getElementById('f-datum').value = d; }, gestern);

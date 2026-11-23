@@ -214,6 +214,10 @@ deploy workflows) does `py_compile`, `node --check` on `js/ etagen/ tests/`, uni
   calendar blocks, agenda rows and modals to match the Hausmesse promo material; it adds only
   `--mono`, `--neon` (light accent) and translucent variants of the palette — no external fonts.
   The calendar re-renders every minute (now-line), so don't put entrance animations on `.cal-block`.
+  The list view shows `H_START`–`H_ENDE` but `kalenderZeitraum()` widens it to cover every booking
+  of the shown rooms (and "now" on today) — never clip bookings. `#cal-view` scrolls on its own
+  (sticky room header + time column, `#main-area` sticky on desktop) so the booking form stays
+  usable; `kalenderScrollen()` in `app.js` jumps to now / the first booking once per day+floor.
 - Keep changes small and targeted — this is a two-to-three-person student project, not enterprise
   software; avoid introducing abstractions, frameworks, or infra beyond what's asked for.
 - After any frontend or migration change run `bash tests/run_tests.sh` and look at the screenshots

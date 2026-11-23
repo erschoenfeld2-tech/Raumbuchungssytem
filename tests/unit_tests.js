@@ -120,6 +120,19 @@ test('Kalender und Agenda zeigen keine Namen, nur „Du“ / „belegt“', () =
   assert(html.includes('Du') && html.includes('belegt'));
 });
 
+console.log('Listenansicht');
+test('Zeitraum wächst mit Buchungen außerhalb 7–20 Uhr (nichts wird abgeschnitten)', () => {
+  const sd1 = "ROOMS.filter(r => r.name === 'ShareDesk 1')";
+  const z = bs => js(`kalenderZeitraum(${sd1}, ${JSON.stringify(bs)}, false)`);
+  const b = (start, ende, raum = 'ShareDesk 1') => ({ id: 1, raum, tisch: '1.301', nutzer_id: 1, start: '2030-01-01 ' + start, ende: '2030-01-01 ' + ende, quelle: 'web' });
+  assert(JSON.stringify(z([])) === '{"startH":7,"endeH":20}', 'Standard: ' + JSON.stringify(z([])));
+  assert(JSON.stringify(z([b('21:00', '22:30')])) === '{"startH":7,"endeH":23}', 'Abend: ' + JSON.stringify(z([b('21:00', '22:30')])));
+  assert(JSON.stringify(z([b('00:00', '23:59')])) === '{"startH":0,"endeH":24}', 'ganztägig');
+  assert(JSON.stringify(z([b('05:00', '06:00', 'Konferenzraum')])) === '{"startH":7,"endeH":20}', 'andere Räume zählen nicht');
+  const html = js(`kalenderHtml(${sd1}, ${JSON.stringify([b('21:00', '22:30')])}, '2030-01-01', () => true, false)`);
+  assert(html.includes('>22:00<') && html.includes('data-start="2030-01-01 21:00"'), 'Abendbuchung fehlt im Kalender');
+});
+
 console.log('Etagen-Prüfung');
 const pruefe = def => js(`normalisiereEtage(${JSON.stringify(def)}, 'test')`);
 test('ungültige id wird abgelehnt', () => assert(pruefe({ id: 'Böse ID', raeume: [{ name: 'A' }] }).fehler.length));
