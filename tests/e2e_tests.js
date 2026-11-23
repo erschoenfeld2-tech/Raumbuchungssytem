@@ -419,17 +419,28 @@ async function main(){
     await gast2.waitForSelector('.cal-header');
     erwarte(!(await gast2.$('#gebaeude-tabs [data-gebaeude="Anbau"]')), 'fremde Gast-Etage sichtbar');
   });
-  await test('Gäste sehen gegenseitig nur „belegt“ und können fremde Test-Buchungen nicht löschen', async () => {
+  await test('Jeder Gast hat eine Nummer; Gäste sehen fremde Test-Buchungen als „Gast N“, löschen können sie sie nicht', async () => {
+    const nr1 = await page.evaluate(() => currentUser.nummer), nr2 = await gast2.evaluate(() => currentUser.nummer);
+    erwarte(nr1 > 0 && nr2 > 0 && nr1 !== nr2, `Nummern ${nr1} / ${nr2}`);
+    erwarte((await gast2.textContent('#user-name')).trim() === 'Gast ' + nr2, 'Name im Kopf: ' + await gast2.textContent('#user-name'));
+    erwarte((await gast2.textContent('#gast-nr')) === 'Du bist Gast ' + nr2, 'Banner: ' + await gast2.textContent('#gast-nr'));
     await gast2.fill('#f-datum', morgen); await gast2.dispatchEvent('#f-datum', 'change');
     await gast2.waitForSelector('.cal-seg[data-raum="ShareDesk 3"]');
     erwarte(!(await gast2.$('.cal-seg.mine')), 'fremde Buchung als eigene markiert');
+    erwarte((await gast2.textContent('.cal-seg[data-raum="ShareDesk 3"]')).includes('Gast ' + nr1), 'Gast-Nummer fehlt im Kalender');
     await gast2.click('.cal-seg[data-raum="ShareDesk 3"]');
     await gast2.click('#slot-body [data-bid]');
-    erwarte((await gast2.textContent('#m-nutzer')) === 'einer anderen Person', 'Anzeige');
+    erwarte((await gast2.textContent('#m-nutzer')) === 'Gast ' + nr1, 'Anzeige: ' + await gast2.textContent('#m-nutzer'));
     erwarte(!(await gast2.isVisible('#m-delete')), 'fremde Test-Buchung löschbar');
     await gast2.keyboard.press('Escape');
-    // Gast 2 bucht selbst etwas (bleibt beim Zurücksetzen von Gast 1 bestehen)
+    // Gast 2 bucht selbst etwas (bleibt beim Zurücksetzen von Gast 1 bestehen) – Gast 1 sieht es als „Gast nr2“
     await gast2Bucht('ShareDesk 5', 10);
+    await page.waitForFunction(t => [...document.querySelectorAll('#agenda-list .chip.gast')].some(c => c.textContent === t), 'Gast ' + nr2, { timeout: 8000 });
+    await page.evaluate(() => switchEtage('hauptgebaeude-1'));
+    await page.waitForSelector('.cal-seg[data-raum="ShareDesk 5"]');
+    erwarte((await page.textContent('.cal-seg[data-raum="ShareDesk 5"]')).includes('Gast ' + nr2), 'Gast-Nummer fehlt im Kalender von Gast 1');
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: path.join(BILDER, '06b-gaeste-nummern.png') });
   });
   await test('„Meine Änderungen zurücksetzen“ löscht nur die eigenen Buchungen und Etagen', async () => {
     await page.click('#btn-zuruecksetzen');

@@ -58,7 +58,10 @@ async function sitzungPruefen(fehler){
   if(!fehler || !/Sitzung abgelaufen/.test(fehler) || !istTestModus()) return false;
   const s = await neueTestSitzung();
   if(!s) return false;
-  if(istGast()){ currentUser.sitzung = s.sitzung; currentUser.hash = s.hash; }
+  if(istGast()){
+    Object.assign(currentUser, { sitzung: s.sitzung, hash: s.hash, nummer: s.nummer, name: gastAnzeigeName(s.nummer) });
+    kopfAktualisieren(); bannerAktualisieren();
+  }
   else { currentUser.testSitzung = s.sitzung; currentUser.testHash = s.hash; }
   nutzerSpeichern();
   toast('Neue Test-Sitzung gestartet – bitte nochmal versuchen.', 'error');
@@ -67,6 +70,8 @@ async function sitzungPruefen(fehler){
 function bannerAktualisieren(){
   $('gast-banner').style.display = istTestModus() ? 'block' : 'none';
   $('gast-teil').style.display = istGast() ? '' : 'none';
+  $('gast-nr').textContent = istGast() && currentUser.nummer ? 'Du bist Gast ' + currentUser.nummer : '';
+  $('gast-nr').style.display = $('gast-nr').textContent ? '' : 'none';
   $('admin-test-teil').style.display = istGast() ? 'none' : '';
   $('btn-testsystem').textContent = adminTestAnsicht ? '🏢 Zurück zum Echtbetrieb' : '🧪 Testsystem';
   $('btn-testsystem').classList.toggle('aktiv', adminTestAnsicht);
@@ -147,6 +152,9 @@ async function zeigeApp(){
   netzAn(false);
   setDatum();
   zeitVorschlag();
+  await gastSitzungAuffrischen();
+  if(!currentUser) return;
+  kopfAktualisieren(); bannerAktualisieren();
   await etagenNeuLaden();
   if(!currentUser) return;   // während des Ladens abgemeldet
   const start = [urlParameter('etage'), leseGespeicherteEtage(), ETAGEN[0] && ETAGEN[0].id].find(id => id && etageById(id));
@@ -406,10 +414,11 @@ function modalOpen(b){
   modalBuchung = b;
   $('m-raum').textContent = b.raum;
   $('m-tisch-row').style.display = b.tisch ? '' : 'none';
-  $('m-status').textContent = istMeine(b) ? 'Deine Buchung' : 'Belegt';
-  $('m-status').className = 'ticket-status ' + (istMeine(b) ? 'du' : 'fremd');
+  const gast = !istMeine(b) && gastNrVon(b);
+  $('m-status').textContent = istMeine(b) ? 'Deine Buchung' : (gast ? 'Gast ' + gast : 'Belegt');
+  $('m-status').className = 'ticket-status ' + werKlasse(b, istMeine);
   $('m-tisch').textContent = b.tisch || '';
-  $('m-nutzer').textContent = istMeine(b) ? 'Dir' : 'einer anderen Person';
+  $('m-nutzer').textContent = istMeine(b) ? 'Dir' : (gast ? 'Gast ' + gast : 'einer anderen Person');
   $('m-zeit').textContent = `${b.start.slice(11,16)} – ${b.ende.slice(11,16)} Uhr`;
   $('m-quelle').textContent = b.quelle === 'nfc' ? '📡 NFC-Buchung' : '🖥 Web-Buchung';
   $('m-delete').style.display = currentUser && darfLoeschen(b) ? 'block' : 'none';
@@ -561,7 +570,11 @@ function start(){
     return;
   }
   // Direktlink zum Testsystem: index.html?gast
-  if(urlParameter('gast') !== null){ gastAnmelden(); return; }
+  if(urlParameter('gast') !== null){
+    // sofort aus der Adresse nehmen – ein Neuladen soll keine zweite Gast-Sitzung (neue Nummer) anlegen
+    try { const url = new URL(location.href); url.searchParams.delete('gast'); history.replaceState(null, '', url); } catch(e) {}
+    gastAnmelden(); return;
+  }
   const gespeichert = gespeicherterNutzer();
   if(gespeichert){ currentUser = gespeichert; zeigeApp(); }
 }

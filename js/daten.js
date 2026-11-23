@@ -10,7 +10,16 @@
 // Namen geladen und in der Oberfläche als "Du" bzw. "belegt" angezeigt.
 // ══════════════════════════════════════════════════════════
 
-const BUCHUNG_SPALTEN = 'id,raum,tisch,nutzer_id,start,ende,quelle,test,gast_hash';
+// gast_nr = Nummer des Gastes bei Test-Buchungen ("Gast 3"), seit Migration
+// 20261123130000. Fehlt die Spalte noch (Migration nicht deployt), wird ohne
+// sie weitergeladen, statt dass die ganze Liste leer bleibt.
+let BUCHUNG_SPALTEN = 'id,raum,tisch,nutzer_id,start,ende,quelle,test,gast_hash,gast_nr';
+function ohneGastNr(error){
+  if(!error || !/gast_nr/.test(error.message) || !BUCHUNG_SPALTEN.includes('gast_nr')) return false;
+  BUCHUNG_SPALTEN = BUCHUNG_SPALTEN.replace(',gast_nr', '');
+  console.warn('[Buchungen] Spalte gast_nr fehlt (Migration 20261123130000 nicht deployt) – lade ohne Gast-Nummern.');
+  return true;
+}
 
 // Etagen aus der Datenbank (angelegt über den Etagen-Editor). Fehlt die
 // Tabelle noch (Migration nicht deployt), läuft die App mit den Datei-Etagen weiter.
@@ -52,6 +61,7 @@ async function ladeBuchungen(datum, testModus){
     q = q.eq('test', false);
   }
   const { data, error } = await q.order('start');
+  if(ohneGastNr(error)) return ladeBuchungen(datum, testModus);
   if(error) return { fehler: error.message, buchungen: [] };
   return { buchungen: data };
 }

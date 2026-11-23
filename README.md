@@ -126,8 +126,12 @@ flowchart LR
 - **„↺ Meine Änderungen zurücksetzen"** löscht alle eigenen Test-Buchungen und Etagen sofort.
   Die Änderungen anderer Gäste bleiben bestehen, bis sie automatisch gelöscht werden
   (Buchungen nach 20 Minuten, Etagen nach 15 Minuten ohne Änderung).
-- **Test-Buchungen sind gemeinsam:** Alle Gäste sehen die Buchungen der anderen (als „belegt"),
-  der Admin sieht im „🧪 Testsystem" alle und darf jede löschen. Nur die Etagen sind je Gast privat.
+- **Test-Buchungen sind gemeinsam:** Alle Gäste sehen die Buchungen der anderen, der Admin sieht
+  im „🧪 Testsystem" alle und darf jede löschen. Nur die Etagen sind je Gast privat.
+- **Gast-Nummern:** Jeder Gast bekommt eine Nummer ab 1 („Du bist Gast 3" im Banner). Fremde
+  Test-Buchungen erscheinen als **„Gast N"** (farbig unterschieden) statt nur „belegt". Echte
+  Buchungen bleiben anonym („belegt"). „Testsystem komplett leeren" setzt die Nummerierung wieder
+  auf 1 zurück; offene Gast-Fenster bekommen dabei automatisch eine neue Nummer.
 - **Limit:** höchstens **10 Änderungen in 2 Minuten** je Gast (Buchen, Löschen, Etage speichern
   oder löschen). Der Banner zeigt, wie viele noch übrig sind; die Datenbank setzt das Limit durch.
 
@@ -239,7 +243,7 @@ direkt per Doppelklick (`file://`) funktioniert.
 `profil_speichern` (Name/Bild, mit Passwortprüfung), `nutzer_by_nfc` (Karten-UID →
 Nutzer, ohne die UID-Liste preiszugeben), `test_buchungen_aufraeumen` (Gast-Buchungen > 20 Min),
 `etage_speichern` / `etage_loeschen` (prüfen das Admin-Passwort serverseitig);
-Testsystem: `gast_sitzung_starten`, `gast_buchen`, `gast_buchung_loeschen`, `gast_etagen_laden`,
+Testsystem: `gast_sitzung_starten`, `gast_nummer`, `gast_buchen`, `gast_buchung_loeschen`, `gast_etagen_laden`,
 `gast_etage_speichern`, `gast_etage_loeschen` (alle mit Limit 10 Änderungen / 2 Min. je Sitzung),
 `gast_zuruecksetzen` (nur die eigene Sitzung), `testsystem_leeren` (Admin).
 Die Gast-Sitzung ist eine geheime UUID; lesbar ist nur ihr SHA-256-Hash (`gast_hash`), an dem der

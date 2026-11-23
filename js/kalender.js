@@ -26,7 +26,17 @@ function kalenderZeitraum(raeume, buchungen, istHeute){
   return { startH: Math.max(0, Math.floor(von / 60)), endeH: Math.min(24, Math.ceil(bis / 60)) };
 }
 
-function wer(b, istMeine){ return istMeine(b) ? 'Du' : 'belegt'; }
+// Anzeige "wer": eigene = "Du", Test-Buchungen anderer Gäste = "Gast N"
+// (Nummer, kein Name), echte fremde Buchungen nur "belegt" (Datenschutz).
+const gastNrVon = b => b.test && b.gast_nr ? b.gast_nr : null;
+function wer(b, istMeine){
+  if(istMeine(b)) return 'Du';
+  return gastNrVon(b) ? 'Gast ' + gastNrVon(b) : 'belegt';
+}
+function werKlasse(b, istMeine){
+  if(istMeine(b)) return 'du';
+  return gastNrVon(b) ? 'gast g' + (gastNrVon(b) % 4) : 'fremd';
+}
 
 // Belegungs-Anzeige als Punkte (●●○), nur für kleine Räume sinnvoll
 function pipsHtml(belegt, kapazitaet){
@@ -35,7 +45,7 @@ function pipsHtml(belegt, kapazitaet){
 }
 // Chips "Du"/"belegt" und NFC – gemeinsam für Agenda und Zeitfenster-Modal
 function chipsHtml(b, istMeine){
-  return `<span class="agenda-tags"><span class="agenda-nutzer chip ${istMeine(b) ? 'du' : 'fremd'}">${wer(b, istMeine)}</span>`
+  return `<span class="agenda-tags"><span class="agenda-nutzer chip ${werKlasse(b, istMeine)}">${wer(b, istMeine)}</span>`
     + (b.quelle === 'nfc' ? '<span class="chip nfc" title="per NFC-Karte gebucht">📡 NFC</span>' : '') + '</span>';
 }
 
@@ -47,7 +57,11 @@ function blockHtml(raum, spalte, anzahlSpalten, buchungen, datum, istMeine, z){
       const status = belegt >= raum.kapazitaet ? 'busy' : 'partial';
       const mine = seg.bs.some(istMeine) ? ' mine' : '';
       const hoehe = px(seg.bis) - px(seg.von);
-      const namen = seg.bs.some(istMeine) ? 'Du' + (seg.bs.length > 1 ? ' + ' + (seg.bs.length - 1) : '') : '';
+      // "Du" und Gast-Nummern ausschreiben, echte fremde Buchungen nur zählen
+      const bekannt = [...new Set(seg.bs.filter(b => istMeine(b) || gastNrVon(b)).map(b => wer(b, istMeine)))]
+        .sort((a, b) => (b === 'Du') - (a === 'Du'));
+      const rest = seg.bs.filter(b => !istMeine(b) && !gastNrVon(b)).length;
+      const namen = bekannt.length ? bekannt.join(' · ') + (rest ? ' + ' + rest : '') : '';
       const zeit = `${minutenZuUhrzeit(seg.von)}–${minutenZuUhrzeit(seg.bis)}`;
       return `<div class="cal-seg status-${status}${mine}${hoehe < 40 ? ' klein' : ''}" style="top:${px(seg.von)-px(blk.von)}px;height:${hoehe}px"
           title="${zeit} · ${belegt}/${raum.kapazitaet} belegt"

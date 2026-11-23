@@ -57,11 +57,34 @@ async function sha256Hex(text){
   const puffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return [...new Uint8Array(puffer)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
+// Nummer einer Gast-Sitzung ("Gast 3"). undefined = unbekannt (z.B. Migration
+// fehlt), null = Sitzung existiert nicht mehr (abgelaufen / Testsystem geleert).
+async function gastNummerHolen(sitzung){
+  const { data, error } = await supa.rpc('gast_nummer', { p_sitzung: sitzung });
+  return error ? undefined : data;
+}
+const gastAnzeigeName = nr => nr ? `${GAST_NAME} ${nr}` : GAST_NAME;
 // Neue geheime Test-Sitzung (für Gäste und für den Admin im Testsystem)
 async function neueTestSitzung(){
   const { data, error } = await supa.rpc('gast_sitzung_starten');
   if(error || !data) return null;
-  return { sitzung: data, hash: await sha256Hex(data) };
+  return { sitzung: data, hash: await sha256Hex(data), nummer: (await gastNummerHolen(data)) || null };
+}
+// Beim Start: gespeicherte Gast-Sitzung prüfen, Nummer nachladen; ist die
+// Sitzung weg (nach einem Tag oder "Testsystem leeren"), still eine neue holen.
+async function gastSitzungAuffrischen(){
+  if(!istGast()) return;
+  let nr = await gastNummerHolen(currentUser.sitzung);
+  if(nr === null){
+    const s = await neueTestSitzung();
+    if(!s) return;
+    Object.assign(currentUser, { sitzung: s.sitzung, hash: s.hash });
+    nr = s.nummer;
+  }
+  if(nr === undefined) return;
+  currentUser.nummer = nr;
+  currentUser.name = gastAnzeigeName(nr);
+  nutzerSpeichern();
 }
 
 async function gastAnmelden(){
@@ -69,7 +92,8 @@ async function gastAnmelden(){
   if(!CONFIGURED || !supa){ loginFehler('Supabase ist nicht erreichbar oder nicht konfiguriert.'); return; }
   const s = await neueTestSitzung();
   if(!s){ loginFehler('Das Testsystem ist gerade nicht verfügbar (Migration fehlt?).'); return; }
-  loginAbschliessen({ id: null, name: GAST_NAME, ist_admin: false, gast: true, sitzung: s.sitzung, hash: s.hash });
+  loginAbschliessen({ id: null, name: gastAnzeigeName(s.nummer), ist_admin: false, gast: true,
+    sitzung: s.sitzung, hash: s.hash, nummer: s.nummer });
 }
 
 async function passwortWechseln(){

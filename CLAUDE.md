@@ -80,15 +80,20 @@ Only one is real. Always check which file you're touching before assuming it aff
   Since migration `20261119160000_*` the anon key cannot read user names at all: `nutzer_public`
   (a view created in `20260821120000_*` to hide `nfc_uid`) is revoked, and `buchungen` only grants
   column-level SELECT on `id, raum, tisch, nutzer_id, start, ende, quelle, test, erstellt,
-  gast_hash` — so always select explicit columns (`select('*')` fails), and PostgREST writes must
+  gast_hash, gast_nr` — so always select explicit columns (`select('*')` fails), and PostgREST writes must
   not ask for `return=representation` of other columns (the NFC bridge uses `?select=id`). The UI
-  labels bookings "Du" (own) or "belegt"; only `nutzer_login()` returns the user's own name.
+  labels bookings "Du" (own) or "belegt" — test bookings of other guests as "Gast N" (a number,
+  not a name); only `nutzer_login()` returns the user's own name.
   Password inputs are never prefilled; admin actions reuse the in-memory login password or ask
   via the in-page `bestaetigen(..., {passwort:true})` dialog (no `confirm()`/`prompt()`).
 - Guest/test mode (`?gast` deep link or "Als Gast testen"): each guest gets a secret session from
   `gast_sitzung_starten()` (stored in the cached user object). Test bookings (`test = true`) can
   only be created through `gast_buchen()` (the trigger rejects direct test inserts); own ones are
-  recognised via `gast_hash` = SHA-256 of the session. Guests may use the floor editor — their
+  recognised via `gast_hash` = SHA-256 of the session. Each session has a running number
+  (`gast_sitzungen.nummer`, from 1, migration `20261123130000_*`), copied into `buchungen.gast_nr` by
+  trigger `buchungen_gast_nr` and shown as "Gast N"; `gast_nummer(p_sitzung)` returns the own number
+  (null = session gone → the app silently starts a new one); `testsystem_leeren()` also deletes all
+  sessions so numbering restarts at 1. Guests may use the floor editor — their
   floors live in `gast_etagen`, visible only to their session (`gast_etagen_laden`). All guest
   writes go through RPCs that enforce **max 10 changes per session in 2 min**
   (`gast_aenderung_zaehlen`). `gast_zuruecksetzen()` removes only the caller's bookings/floors;
