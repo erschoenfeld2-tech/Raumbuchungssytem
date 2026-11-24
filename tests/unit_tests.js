@@ -120,6 +120,19 @@ test('Kalender und Agenda zeigen keine Namen, nur „Du“ / „belegt“', () =
   assert(html.includes('Du') && html.includes('belegt'));
 });
 
+test('Grundriss-Status heute: spätere Buchungen zählen schon, beendete nicht mehr', () => {
+  const sd = "ROOMS.find(r => r.name === 'ShareDesk 1')";
+  const b = (tisch, start, ende) => ({ raum: 'ShareDesk 1', tisch, start: '2030-01-01 ' + start, ende: '2030-01-01 ' + ende });
+  const st = (bs, code) => js(`tischStatus(${sd}, ${JSON.stringify(code)}, ${JSON.stringify(bs)}, true, '2030-01-01 10:00', '2030-01-01')`);
+  const rs = bs => js(`raumStatus(${sd}, ${JSON.stringify(bs)}, true, '2030-01-01 10:00', '2030-01-01')`);
+  assert(st([b('1.301', '14:00', '15:00')], '1.301') === 'belegt', 'spätere Buchung (Gast bucht 14 Uhr) nicht sichtbar');
+  assert(rs([b('1.301', '14:00', '15:00')]) === 'partial', 'Raum nicht teilbelegt');
+  assert(st([b('1.301', '08:00', '09:00')], '1.301') === 'frei', 'beendete Buchung zählt noch');
+  // 9–11 und 14–15 Uhr überschneiden sich nicht → Raum (2 Tische) nicht voll
+  assert(rs([b('1.301', '09:00', '11:00'), b('1.302', '14:00', '15:00')]) === 'partial', 'nicht gleichzeitige Buchungen als voll gezählt');
+  assert(rs([b('1.301', '09:00', '11:00'), b('1.302', '10:30', '12:00')]) === 'busy', 'gleichzeitige Buchungen nicht voll');
+});
+
 console.log('Listenansicht');
 test('Zeitraum wächst mit Buchungen außerhalb 7–20 Uhr (nichts wird abgeschnitten)', () => {
   const sd1 = "ROOMS.filter(r => r.name === 'ShareDesk 1')";
