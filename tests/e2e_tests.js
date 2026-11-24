@@ -389,6 +389,30 @@ async function main(){
     await page.waitForSelector('.cal-seg.mine');
     await page.screenshot({ path: path.join(BILDER, '06-gast.png') });
   });
+  await test('Grundriss im Testsystem: Räume sichtbar, Gast-Buchungen (auch heute später) als belegt', async () => {
+    await page.click('#view-office');
+    await page.waitForSelector('#floorplan .plan-room');
+    const raeume = await page.$$eval('#floorplan .plan-room, #floorplan .plan-room-sd', g => g.length);
+    erwarte(raeume >= 7, 'Räume im Grundriss: ' + raeume);
+    erwarte(await page.$('#floorplan .plan-desk[data-tisch="1.502"] .desk-badge.belegt'), 'gebuchter Tisch 1.502 nicht rot');
+    // Gast bucht HEUTE für später (alter Fehler: zählte nur gerade laufende Buchungen → Tisch blieb grün)
+    const jetzt = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
+    if(jetzt.getHours() < 23){
+      const heute = jetzt.toLocaleDateString('sv-SE');
+      const m = jetzt.getHours() * 60 + jetzt.getMinutes() + 20;
+      const von = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+      const sitzung = await page.evaluate(() => currentUser.sitzung);
+      sql(`select set_config('rb.gast_rpc', 'on', false); insert into buchungen (raum, tisch, nutzer_id, name, start, ende, quelle, test, gast_sitzung)
+           values ('ShareDesk 4', '1.602', (select id from nutzer where name = 'Gast'), 'Gast', '${heute} ${von}', '${heute} 23:59', 'web', true, '${sitzung}')`);
+      await page.click('#btn-heute');
+      await page.waitForSelector('#floorplan .plan-desk[data-tisch="1.602"] .desk-badge.belegt', { timeout: 8000 });
+      await page.screenshot({ path: path.join(BILDER, '06c-gast-grundriss.png') });
+      erwarte(await page.$('#floorplan .plan-desk[data-tisch="1.601"] .desk-badge.frei'), 'freier Nachbartisch nicht grün');
+      sql(`delete from buchungen where tisch = '1.602' and start = '${heute} ${von}'`);
+      await page.fill('#f-datum', morgen); await page.dispatchEvent('#f-datum', 'change');
+    }
+    await page.click('#view-cal');
+  });
   // zweiter Gast in einem eigenen Browser-Fenster (eigene Sitzung)
   const ctx2 = await browser.newContext({ viewport: { width: 1400, height: 900 }, timezoneId: 'Europe/Berlin', locale: 'de-DE' });
   await ctx2.route(/yugjccgblqsfjasienwa\.supabase\.co/, async route => {

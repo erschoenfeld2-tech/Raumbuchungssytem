@@ -33,14 +33,18 @@ function kapazitaetPruefen(raum, buchungen, start, ende, tisch){
   return { ok:true };
 }
 
-// Buchungen eines Raums, die für die Statusfarbe zählen:
-// heute nur die gerade laufenden, an anderen Tagen alle des Tages.
+// Buchungen eines Raums, die für die Statusfarbe (Grundriss, Dropdowns) zählen:
+// heute alle, die noch nicht vorbei sind (laufende UND spätere), an anderen
+// Tagen alle des Tages. Früher zählten heute nur die gerade laufenden – eine
+// Buchung für später am Tag (z.B. ein Gast bucht 14–15 Uhr) blieb dann im
+// Grundriss unsichtbar, bis sie begann.
 function relevanteBuchungen(raumName, buchungen, istHeute, jetzt){
   const bs = buchungen.filter(b => b.raum === raumName);
-  return istHeute ? bs.filter(b => b.start <= jetzt && b.ende > jetzt) : bs;
+  return istHeute ? bs.filter(b => b.ende > jetzt) : bs;
 }
+// Höchste gleichzeitige Belegung im restlichen Tag (heute ab jetzt) bzw. am ganzen Tag
 function belegtAnzahl(relevante, istHeute, jetzt, datum){
-  return istHeute ? relevante.length : maxGleichzeitig(relevante, datum + ' 00:00', datum + ' 23:59:59');
+  return maxGleichzeitig(relevante, istHeute ? jetzt : datum + ' 00:00', datum + ' 23:59:59');
 }
 // 'free' | 'partial' | 'busy'
 function raumStatus(raum, buchungen, istHeute, jetzt, datum){
